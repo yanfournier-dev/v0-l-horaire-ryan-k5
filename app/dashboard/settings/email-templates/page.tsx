@@ -2,6 +2,7 @@ import { getSession } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { getAllEmailTemplates } from "@/app/actions/email-templates"
 import { EmailTemplatesList } from "@/components/email-templates-list"
+import { UpdateTemplatesButton } from "@/components/update-templates-button"
 
 export default async function EmailTemplatesPage() {
   const user = await getSession()
@@ -25,6 +26,9 @@ export default async function EmailTemplatesPage() {
         <p className="text-muted-foreground mt-2">
           Personnalisez les messages envoyés par email pour chaque type de notification
         </p>
+        <div className="mt-4">
+          <UpdateTemplatesButton />
+        </div>
       </div>
 
       <EmailTemplatesList templates={templates} />

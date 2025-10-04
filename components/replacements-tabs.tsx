@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -27,16 +26,7 @@ export function ReplacementsTabs({
   isAdmin,
   initialTab = "open",
 }: ReplacementsTabsProps) {
-  const searchParams = useSearchParams()
-  const router = useRouter()
   const [activeTab, setActiveTab] = useState(initialTab)
-
-  useEffect(() => {
-    const tabParam = searchParams.get("tab")
-    if (tabParam) {
-      setActiveTab(tabParam)
-    }
-  }, [searchParams])
 
   const getStatusLabel = (status: string) => {
     switch (status) {

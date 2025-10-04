@@ -81,9 +81,8 @@ function getFallbackTemplate(type: string, variables: Record<string, string>) {
         <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p style="margin: 5px 0;"><strong>Date :</strong> ${variables.date}</p>
           <p style="margin: 5px 0;"><strong>Type de quart :</strong> ${variables.shiftType}</p>
-          <p style="margin: 5px 0;"><strong>Équipe :</strong> ${variables.teamName}</p>
-          <p style="margin: 5px 0;"><strong>Partiel :</strong> ${variables.isPartial}</p>
-          <p style="margin: 5px 0;"><strong>Heures partielles :</strong> ${variables.partialHours}</p>
+          <p style="margin: 5px 0;"><strong>Pompier à remplacer :</strong> ${variables.firefighterToReplace}</p>
+          ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Remplacement partiel :</strong> ${variables.partialHours}</p>` : ""}
         </div>
         <a href="${appUrl}/dashboard/replacements" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les remplacements</a>
       `,
@@ -97,9 +96,8 @@ function getFallbackTemplate(type: string, variables: Record<string, string>) {
         <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p style="margin: 5px 0;"><strong>Date :</strong> ${variables.date}</p>
           <p style="margin: 5px 0;"><strong>Type de quart :</strong> ${variables.shiftType}</p>
-          <p style="margin: 5px 0;"><strong>Équipe :</strong> ${variables.teamName}</p>
-          <p style="margin: 5px 0;"><strong>Partiel :</strong> ${variables.isPartial}</p>
-          <p style="margin: 5px 0;"><strong>Heures partielles :</strong> ${variables.partialHours}</p>
+          <p style="margin: 5px 0;"><strong>Pompier à remplacer :</strong> ${variables.firefighterToReplace}</p>
+          ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Remplacement partiel :</strong> ${variables.partialHours}</p>` : ""}
         </div>
         <a href="${appUrl}/dashboard" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir mon horaire</a>
       `,
@@ -113,9 +111,8 @@ function getFallbackTemplate(type: string, variables: Record<string, string>) {
         <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p style="margin: 5px 0;"><strong>Date :</strong> ${variables.date}</p>
           <p style="margin: 5px 0;"><strong>Type de quart :</strong> ${variables.shiftType}</p>
-          <p style="margin: 5px 0;"><strong>Équipe :</strong> ${variables.teamName}</p>
-          <p style="margin: 5px 0;"><strong>Partiel :</strong> ${variables.isPartial}</p>
-          <p style="margin: 5px 0;"><strong>Heures partielles :</strong> ${variables.partialHours}</p>
+          <p style="margin: 5px 0;"><strong>Pompier à remplacer :</strong> ${variables.firefighterToReplace}</p>
+          ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Remplacement partiel :</strong> ${variables.partialHours}</p>` : ""}
         </div>
         <a href="${appUrl}/dashboard/replacements" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les remplacements disponibles</a>
       `,
@@ -193,7 +190,7 @@ export async function getReplacementAvailableEmail(
   name: string,
   date: string,
   shiftType: string,
-  teamName: string,
+  firefighterToReplace: string,
   isPartial?: boolean,
   partialHours?: string,
 ) {
@@ -202,7 +199,7 @@ export async function getReplacementAvailableEmail(
     name,
     date,
     shiftType: translatedShiftType,
-    teamName,
+    firefighterToReplace,
     isPartial: isPartial ? "true" : "",
     partialHours: partialHours || "",
   })
@@ -212,7 +209,7 @@ export async function getApplicationApprovedEmail(
   name: string,
   date: string,
   shiftType: string,
-  teamName: string,
+  firefighterToReplace: string,
   isPartial?: boolean,
   partialHours?: string,
 ) {
@@ -221,7 +218,7 @@ export async function getApplicationApprovedEmail(
     name,
     date,
     shiftType: translatedShiftType,
-    teamName,
+    firefighterToReplace,
     isPartial: isPartial ? "true" : "",
     partialHours: partialHours || "",
   })
@@ -231,7 +228,7 @@ export async function getApplicationRejectedEmail(
   name: string,
   date: string,
   shiftType: string,
-  teamName: string,
+  firefighterToReplace: string,
   isPartial?: boolean,
   partialHours?: string,
 ) {
@@ -240,7 +237,7 @@ export async function getApplicationRejectedEmail(
     name,
     date,
     shiftType: translatedShiftType,
-    teamName,
+    firefighterToReplace,
     isPartial: isPartial ? "true" : "",
     partialHours: partialHours || "",
   })

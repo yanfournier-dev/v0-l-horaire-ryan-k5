@@ -38,7 +38,9 @@ export function ApplyForReplacementButton({
 
     setIsLoading(true)
 
-    const scrollPosition = window.scrollY
+    console.log("[v0] Saving to sessionStorage:", cardId)
+    sessionStorage.setItem("scrollToReplacement", cardId)
+    console.log("[v0] Saved to sessionStorage:", sessionStorage.getItem("scrollToReplacement"))
 
     const result = await applyForReplacement(
       replacementId,
@@ -58,11 +60,9 @@ export function ApplyForReplacementButton({
         setSelectedFirefighter("")
       }
 
-      router.refresh()
-
-      setTimeout(() => {
-        window.scrollTo({ top: scrollPosition, behavior: "instant" })
-      }, 500)
+      const currentUrl = new URL(window.location.href)
+      currentUrl.searchParams.set("_t", Date.now().toString())
+      router.push(currentUrl.pathname + currentUrl.search)
     } else if (result.error) {
       toast({
         title: "Erreur",

@@ -172,20 +172,30 @@ async function sendEmailNotification(type: string, email: string, name: string, 
     case "replacement_available":
       if (relatedId) {
         const replacement = await sql`
-          SELECT r.shift_date, r.shift_type, r.is_partial, r.partial_hours, t.name as team_name
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
           FROM replacements r
-          JOIN teams t ON r.team_id = t.id
+          JOIN users u ON r.user_id = u.id
           WHERE r.id = ${relatedId}
         `
         if (replacement.length > 0) {
           const r = replacement[0]
+          const partialHours =
+            r.is_partial && r.start_time && r.end_time
+              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : null
           emailContent = await getReplacementAvailableEmail(
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
             r.shift_type,
-            r.team_name,
+            r.firefighter_to_replace,
             r.is_partial,
-            r.partial_hours,
+            partialHours,
           )
         }
       }
@@ -194,20 +204,30 @@ async function sendEmailNotification(type: string, email: string, name: string, 
     case "application_approved":
       if (relatedId) {
         const replacement = await sql`
-          SELECT r.shift_date, r.shift_type, r.is_partial, r.partial_hours, t.name as team_name
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
           FROM replacements r
-          JOIN teams t ON r.team_id = t.id
+          JOIN users u ON r.user_id = u.id
           WHERE r.id = ${relatedId}
         `
         if (replacement.length > 0) {
           const r = replacement[0]
+          const partialHours =
+            r.is_partial && r.start_time && r.end_time
+              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : null
           emailContent = await getApplicationApprovedEmail(
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
             r.shift_type,
-            r.team_name,
+            r.firefighter_to_replace,
             r.is_partial,
-            r.partial_hours,
+            partialHours,
           )
         }
       }
@@ -216,20 +236,30 @@ async function sendEmailNotification(type: string, email: string, name: string, 
     case "application_rejected":
       if (relatedId) {
         const replacement = await sql`
-          SELECT r.shift_date, r.shift_type, r.is_partial, r.partial_hours, t.name as team_name
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
           FROM replacements r
-          JOIN teams t ON r.team_id = t.id
+          JOIN users u ON r.user_id = u.id
           WHERE r.id = ${relatedId}
         `
         if (replacement.length > 0) {
           const r = replacement[0]
+          const partialHours =
+            r.is_partial && r.start_time && r.end_time
+              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : null
           emailContent = await getApplicationRejectedEmail(
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
             r.shift_type,
-            r.team_name,
+            r.firefighter_to_replace,
             r.is_partial,
-            r.partial_hours,
+            partialHours,
           )
         }
       }
@@ -238,20 +268,30 @@ async function sendEmailNotification(type: string, email: string, name: string, 
     case "replacement_rejected":
       if (relatedId) {
         const replacement = await sql`
-          SELECT r.shift_date, r.shift_type, r.is_partial, r.partial_hours, t.name as team_name
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
           FROM replacements r
-          JOIN teams t ON r.team_id = t.id
+          JOIN users u ON r.user_id = u.id
           WHERE r.id = ${relatedId}
         `
         if (replacement.length > 0) {
           const r = replacement[0]
+          const partialHours =
+            r.is_partial && r.start_time && r.end_time
+              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : null
           emailContent = await getApplicationRejectedEmail(
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
             r.shift_type,
-            r.team_name,
+            r.firefighter_to_replace,
             r.is_partial,
-            r.partial_hours,
+            partialHours,
           )
         }
       }
