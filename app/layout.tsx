@@ -1,9 +1,13 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Inter } from "next/font/google"
 import "./globals.css"
 import { Suspense } from "react"
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+})
 
 export const metadata: Metadata = {
   title: "L'horaire Ryan - Gestion des horaires de pompiers",
@@ -19,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className={`font-sans ${inter.variable}`}>
         <Suspense fallback={null}>{children}</Suspense>
       </body>
     </html>

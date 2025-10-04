@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth"
 import { getAllShifts, getCycleConfig } from "@/app/actions/calendar"
 import { getShiftAssignments } from "@/app/actions/shift-assignments"
 import { redirect } from "next/navigation"
-import { getCycleDay } from "@/lib/calendar"
+import { getCycleDay, parseLocalDate } from "@/lib/calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,8 +24,8 @@ export default async function DailyViewPage({
     redirect("/dashboard/calendar")
   }
 
-  const cycleStartDate = new Date(cycleConfig.start_date)
-  const selectedDate = searchParams.date ? new Date(searchParams.date) : new Date()
+  const cycleStartDate = parseLocalDate(cycleConfig.start_date)
+  const selectedDate = searchParams.date ? parseLocalDate(searchParams.date) : new Date()
   const currentCycleDay = getCycleDay(selectedDate, cycleStartDate)
 
   // Get all shifts for this cycle day

@@ -182,7 +182,6 @@ export async function updateFirefighter(
   }
 
   try {
-    // Check if email is already used by another user
     const existingUser = await sql`
       SELECT id FROM users WHERE email = ${data.email} AND id != ${userId}
     `
@@ -194,7 +193,6 @@ export async function updateFirefighter(
       }
     }
 
-    // Update user information
     await sql`
       UPDATE users
       SET 
@@ -207,21 +205,16 @@ export async function updateFirefighter(
       WHERE id = ${userId}
     `
 
-    // Update team memberships
-    // First, remove all existing team memberships
     await sql`
       DELETE FROM team_members WHERE user_id = ${userId}
     `
 
-    // Then add the new team memberships
-    if (data.teamIds.length > 0) {
-      for (const teamId of data.teamIds) {
-        await sql`
-          INSERT INTO team_members (user_id, team_id)
-          VALUES (${userId}, ${teamId})
-          ON CONFLICT DO NOTHING
-        `
-      }
+    for (const teamId of data.teamIds) {
+      await sql`
+        INSERT INTO team_members (user_id, team_id)
+        VALUES (${userId}, ${teamId})
+        ON CONFLICT DO NOTHING
+      `
     }
 
     revalidatePath("/dashboard/firefighters")
@@ -229,9 +222,10 @@ export async function updateFirefighter(
     return { success: true, message: "Pompier mis à jour avec succès" }
   } catch (error) {
     console.error("[v0] Error updating firefighter:", error)
+    const errorMessage = error instanceof Error ? error.message : "Erreur inconnue"
     return {
       success: false,
-      message: "Erreur lors de la mise à jour du pompier",
+      message: `Erreur lors de la mise à jour du pompier: ${errorMessage}`,
     }
   }
 }

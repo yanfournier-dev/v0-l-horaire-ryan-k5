@@ -131,3 +131,34 @@ export function getMonthName(month: number): string {
   ]
   return months[month]
 }
+
+/**
+ * Parse a date string or Date object in the local timezone
+ * This prevents timezone conversion issues when displaying dates
+ *
+ * @param dateInput - Date string (YYYY-MM-DD) or Date object from database
+ * @returns Date object in local timezone
+ */
+export function parseLocalDate(dateInput: string | Date | null | undefined): Date {
+  console.log("[v0] parseLocalDate called with:", dateInput, "type:", typeof dateInput)
+
+  if (!dateInput) {
+    console.log("[v0] dateInput is null/undefined, returning current date")
+    return new Date()
+  }
+
+  if (dateInput instanceof Date) {
+    console.log("[v0] dateInput is already a Date object")
+    return dateInput
+  }
+
+  if (typeof dateInput !== "string") {
+    console.log("[v0] dateInput is not a string, returning current date")
+    return new Date()
+  }
+
+  const [year, month, day] = dateInput.split("-").map(Number)
+  const result = new Date(year, month - 1, day)
+  console.log("[v0] Parsed date:", result)
+  return result
+}

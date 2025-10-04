@@ -9,6 +9,7 @@ import Link from "next/link"
 import { AddMemberDialog } from "@/components/add-member-dialog"
 import { RemoveMemberButton } from "@/components/remove-member-button"
 import { getTeamColor } from "@/lib/colors"
+import { parseLocalDate } from "@/lib/date-utils"
 
 export default async function TeamDetailPage({ params }: { params: { id: string } }) {
   const user = await getSession()
@@ -94,7 +95,7 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
             <CardContent>
               {member.phone && <p className="text-sm text-muted-foreground mb-2">📞 {member.phone}</p>}
               <p className="text-xs text-muted-foreground mb-3">
-                Membre depuis {new Date(member.joined_at).toLocaleDateString("fr-CA")}
+                Membre depuis {parseLocalDate(member.joined_at).toLocaleDateString("fr-CA")}
               </p>
 
               {user.is_admin && <RemoveMemberButton teamId={teamId} userId={member.id} />}

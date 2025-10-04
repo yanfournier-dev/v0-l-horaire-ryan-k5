@@ -4,6 +4,7 @@ import { sql } from "@/lib/db"
 import { getSession } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 import { createNotification } from "./notifications"
+import { parseLocalDate } from "@/lib/date-utils"
 
 export async function createLeaveRequest(formData: FormData) {
   const user = await getSession()
@@ -109,7 +110,7 @@ export async function approveLeave(leaveId: number) {
     await createNotification(
       leave.user_id,
       "Demande d'absence approuvée",
-      `Votre demande d'absence du ${new Date(leave.start_date).toLocaleDateString("fr-CA")} au ${new Date(leave.end_date).toLocaleDateString("fr-CA")} a été approuvée.`,
+      `Votre demande d'absence du ${parseLocalDate(leave.start_date).toLocaleDateString("fr-CA")} au ${parseLocalDate(leave.end_date).toLocaleDateString("fr-CA")} a été approuvée.`,
       "leave_approved",
       leaveId,
       "leave",
@@ -148,7 +149,7 @@ export async function rejectLeave(leaveId: number) {
     await createNotification(
       leave.user_id,
       "Demande d'absence rejetée",
-      `Votre demande d'absence du ${new Date(leave.start_date).toLocaleDateString("fr-CA")} au ${new Date(leave.end_date).toLocaleDateString("fr-CA")} a été rejetée.`,
+      `Votre demande d'absence du ${parseLocalDate(leave.start_date).toLocaleDateString("fr-CA")} au ${parseLocalDate(leave.end_date).toLocaleDateString("fr-CA")} a été rejetée.`,
       "leave_rejected",
       leaveId,
       "leave",

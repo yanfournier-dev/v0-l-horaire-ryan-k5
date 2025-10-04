@@ -19,6 +19,7 @@ import { createReplacementFromShift, getReplacementsForShift } from "@/app/actio
 import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
 import { UserX } from "lucide-react"
+import { toast } from "sonner"
 
 interface ShiftAssignmentDrawerProps {
   open: boolean
@@ -98,9 +99,9 @@ export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefight
     const result = await createReplacementFromShift(selectedFirefighter.id, shiftDate, shift.shift_type, shift.team_id)
 
     if (result.error) {
-      alert(result.error)
+      toast.error(result.error)
     } else {
-      alert("Demande de remplacement créée avec succès")
+      toast.success("Demande de remplacement créée avec succès")
       const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
       setReplacements(data as ReplacementData[])
       router.refresh()

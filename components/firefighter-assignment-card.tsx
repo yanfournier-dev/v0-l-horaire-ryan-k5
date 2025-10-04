@@ -15,6 +15,7 @@ import { createReplacementFromShift } from "@/app/actions/replacements"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { getRoleLabel } from "@/lib/role-labels"
+import { parseLocalDate } from "@/lib/calendar"
 
 interface FirefighterAssignmentCardProps {
   assignment: {
@@ -112,7 +113,7 @@ export function FirefighterAssignmentCard({
             <div>
               <div className="text-sm font-medium text-muted-foreground">Date</div>
               <div className="text-base">
-                {new Date(shiftDate).toLocaleDateString("fr-CA", {
+                {parseLocalDate(shiftDate).toLocaleDateString("fr-CA", {
                   weekday: "long",
                   year: "numeric",
                   month: "long",

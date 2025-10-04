@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
+import { parseLocalDate } from "@/lib/calendar"
 
 interface AvailableReplacementsTabProps {
   groupedReplacements: Record<string, any[]>
@@ -50,7 +51,7 @@ export function AvailableReplacementsTab({ groupedReplacements, userApplications
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg">
-                      {new Date(firstReplacement.shift_date).toLocaleDateString("fr-CA", {
+                      {parseLocalDate(firstReplacement.shift_date).toLocaleDateString("fr-CA", {
                         weekday: "long",
                         year: "numeric",
                         month: "long",

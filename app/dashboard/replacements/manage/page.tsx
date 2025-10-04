@@ -11,6 +11,7 @@ import { getCycleDay } from "@/lib/calendar"
 import { getShiftTypeColor, getShiftTypeLabel, getTeamColor } from "@/lib/colors"
 import { CreateReplacementButton } from "@/components/create-replacement-button"
 import { getRoleLabel } from "@/lib/role-labels"
+import { parseLocalDate } from "@/lib/calendar"
 
 export default async function ManageReplacementsPage({
   searchParams,
@@ -25,8 +26,8 @@ export default async function ManageReplacementsPage({
     redirect("/dashboard/calendar")
   }
 
-  const cycleStartDate = new Date(cycleConfig.start_date)
-  const selectedDate = searchParams.date ? new Date(searchParams.date) : new Date()
+  const cycleStartDate = parseLocalDate(cycleConfig.start_date)
+  const selectedDate = searchParams.date ? parseLocalDate(searchParams.date) : new Date()
   const currentCycleDay = getCycleDay(selectedDate, cycleStartDate)
 
   // Get all shifts for this cycle day

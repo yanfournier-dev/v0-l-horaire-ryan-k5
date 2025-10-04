@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { MarkAsReadButton } from "@/components/mark-as-read-button"
 import { DeleteNotificationButton } from "@/components/delete-notification-button"
 import { MarkAllAsReadButton } from "@/components/mark-all-as-read-button"
+import { parseLocalDate } from "@/lib/date-utils"
 
 export default async function NotificationsPage() {
   const user = await getSession()
@@ -76,7 +77,7 @@ export default async function NotificationsPage() {
                       <CardTitle className="text-lg">{notification.title}</CardTitle>
                       <CardDescription>{notification.message}</CardDescription>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(notification.created_at).toLocaleDateString("fr-CA", {
+                        {parseLocalDate(notification.created_at).toLocaleDateString("fr-CA", {
                           year: "numeric",
                           month: "long",
                           day: "numeric",

@@ -9,6 +9,7 @@ import Link from "next/link"
 import { ApproveApplicationButton } from "@/components/approve-application-button"
 import { RejectApplicationButton } from "@/components/reject-application-button"
 import { getRoleLabel } from "@/lib/role-labels"
+import { parseLocalDate } from "@/lib/calendar"
 
 export default async function ReplacementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getSession()
@@ -104,7 +105,7 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">
-              {new Date(replacement.shift_date).toLocaleDateString("fr-CA", {
+              {parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA", {
                 weekday: "long",
                 year: "numeric",
                 month: "long",
@@ -154,14 +155,14 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
                       <CardContent>
                         <div className="space-y-3">
                           <p className="text-sm text-muted-foreground">
-                            Postulé le {new Date(application.applied_at).toLocaleDateString("fr-CA")}
+                            Postulé le {parseLocalDate(application.applied_at).toLocaleDateString("fr-CA")}
                           </p>
 
                           {application.status !== "pending" && application.reviewer_first_name && (
                             <p className="text-sm text-muted-foreground">
                               {application.status === "approved" ? "Approuvée" : "Rejetée"} par{" "}
                               {application.reviewer_first_name} {application.reviewer_last_name} le{" "}
-                              {new Date(application.reviewed_at).toLocaleDateString("fr-CA")}
+                              {parseLocalDate(application.reviewed_at).toLocaleDateString("fr-CA")}
                             </p>
                           )}
 

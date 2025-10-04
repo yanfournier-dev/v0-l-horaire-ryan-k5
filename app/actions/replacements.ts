@@ -4,6 +4,7 @@ import { sql } from "@/lib/db"
 import { getSession } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 import { createNotification } from "./notifications"
+import { parseLocalDate } from "@/lib/calendar"
 
 export async function getOpenReplacements() {
   const replacements = await sql`
@@ -227,7 +228,7 @@ export async function approveApplication(applicationId: number) {
     await createNotification(
       applicant_id,
       "Candidature approuvée",
-      `Votre candidature pour le remplacement du ${new Date(replacement.shift_date).toLocaleDateString("fr-CA")} a été approuvée.`,
+      `Votre candidature pour le remplacement du ${parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA")} a été approuvée.`,
       "application_approved",
       replacement_id,
       "replacement",
@@ -237,7 +238,7 @@ export async function approveApplication(applicationId: number) {
       await createNotification(
         applicant.applicant_id,
         "Candidature rejetée",
-        `Votre candidature pour le remplacement du ${new Date(replacement.shift_date).toLocaleDateString("fr-CA")} a été rejetée.`,
+        `Votre candidature pour le remplacement du ${parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA")} a été rejetée.`,
         "application_rejected",
         replacement_id,
         "replacement",
@@ -286,7 +287,7 @@ export async function createReplacementFromShift(userId: number, shiftDate: stri
     await createNotification(
       userId,
       "Demande de remplacement",
-      `Une demande de remplacement a été créée pour votre quart du ${new Date(shiftDate).toLocaleDateString("fr-CA")}.`,
+      `Une demande de remplacement a été créée pour votre quart du ${parseLocalDate(shiftDate).toLocaleDateString("fr-CA")}.`,
       "replacement_created",
       null,
       "replacement",
@@ -297,42 +298,6 @@ export async function createReplacementFromShift(userId: number, shiftDate: stri
   } catch (error) {
     console.error("[v0] Error creating replacement:", error)
     return { error: "Erreur lors de la création du remplacement" }
-  }
-}
-
-export async function getScheduledFirefighters(date: string) {
-  const user = await getSession()
-  if (!user?.is_admin) {
-    return { error: "Non autorisé" }
-  }
-
-  try {
-    const firefighters = await sql`
-      SELECT 
-        sa.id as assignment_id,
-        sa.shift_id,
-        u.id as user_id,
-        u.first_name,
-        u.last_name,
-        u.role,
-        t.name as team_name,
-        t.id as team_id,
-        t.color as team_color,
-        s.shift_type,
-        s.start_time,
-        s.end_time,
-        s.cycle_day
-      FROM shift_assignments sa
-      JOIN users u ON sa.user_id = u.id
-      JOIN shifts s ON sa.shift_id = s.id
-      JOIN teams t ON s.team_id = t.id
-      WHERE s.shift_date = ${date}
-      ORDER BY s.shift_type, t.name, u.last_name
-    `
-    return firefighters
-  } catch (error) {
-    console.error("[v0] Error getting scheduled firefighters:", error)
-    return { error: "Erreur lors de la récupération des pompiers" }
   }
 }
 
@@ -436,5 +401,41 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
   } catch (error) {
     console.error("[v0] Error getting replacements for shift:", error)
     return []
+  }
+}
+
+export async function getScheduledFirefighters(date: string) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    const firefighters = await sql`
+      SELECT 
+        sa.id as assignment_id,
+        sa.shift_id,
+        u.id as user_id,
+        u.first_name,
+        u.last_name,
+        u.role,
+        t.name as team_name,
+        t.id as team_id,
+        t.color as team_color,
+        s.shift_type,
+        s.start_time,
+        s.end_time,
+        s.cycle_day
+      FROM shift_assignments sa
+      JOIN users u ON sa.user_id = u.id
+      JOIN shifts s ON sa.shift_id = s.id
+      JOIN teams t ON s.team_id = t.id
+      WHERE s.shift_date = ${date}
+      ORDER BY s.shift_type, t.name, u.last_name
+    `
+    return firefighters
+  } catch (error) {
+    console.error("[v0] Error getting scheduled firefighters:", error)
+    return { error: "Erreur lors de la récupération des pompiers" }
   }
 }

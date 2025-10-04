@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/auth"
 import { getCycleConfig, getAllShiftsWithAssignments } from "@/app/actions/calendar"
 import { redirect } from "next/navigation"
-import { generateMonthView, getCycleDay, getMonthName } from "@/lib/calendar"
+import { generateMonthView, getCycleDay, getMonthName, parseLocalDate } from "@/lib/calendar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -31,7 +31,7 @@ export default async function CalendarPage({
     )
   }
 
-  const cycleStartDate = new Date(cycleConfig.start_date)
+  const cycleStartDate = parseLocalDate(cycleConfig.start_date)
   const today = new Date()
 
   const selectedYear = searchParams.year ? Number.parseInt(searchParams.year) : today.getFullYear()

@@ -8,6 +8,7 @@ import Link from "next/link"
 import { ApproveLeaveButton } from "@/components/approve-leave-button"
 import { RejectLeaveButton } from "@/components/reject-leave-button"
 import { DeleteLeaveButton } from "@/components/delete-leave-button"
+import { parseLocalDate } from "@/lib/calendar"
 
 export default async function LeavesPage() {
   const user = await getSession()
@@ -82,8 +83,8 @@ export default async function LeavesPage() {
                   <div>
                     <CardTitle className="text-lg">
                       {user.is_admin && `${leave.first_name} ${leave.last_name} - `}
-                      {new Date(leave.start_date).toLocaleDateString("fr-CA")} au{" "}
-                      {new Date(leave.end_date).toLocaleDateString("fr-CA")}
+                      {parseLocalDate(leave.start_date).toLocaleDateString("fr-CA")} au{" "}
+                      {parseLocalDate(leave.end_date).toLocaleDateString("fr-CA")}
                     </CardTitle>
                     <CardDescription>
                       {getLeaveTypeLabel(leave.leave_type)}
@@ -100,13 +101,13 @@ export default async function LeavesPage() {
                     {leave.status === "approved" && leave.approver_first_name && (
                       <p>
                         Approuvée par {leave.approver_first_name} {leave.approver_last_name} le{" "}
-                        {new Date(leave.approved_at).toLocaleDateString("fr-CA")}
+                        {parseLocalDate(leave.approved_at).toLocaleDateString("fr-CA")}
                       </p>
                     )}
                     {leave.status === "rejected" && leave.approver_first_name && (
                       <p>
                         Rejetée par {leave.approver_first_name} {leave.approver_last_name} le{" "}
-                        {new Date(leave.approved_at).toLocaleDateString("fr-CA")}
+                        {parseLocalDate(leave.approved_at).toLocaleDateString("fr-CA")}
                       </p>
                     )}
                   </div>

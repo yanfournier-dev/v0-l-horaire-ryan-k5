@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { AvailableReplacementsTab } from "@/components/available-replacements-tab"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
+import { parseLocalDate } from "@/lib/calendar"
 
 export default async function ReplacementsPage({
   searchParams,
@@ -31,7 +32,7 @@ export default async function ReplacementsPage({
     } else if (sortBy === "team") {
       sorted.sort((a, b) => a.team_name.localeCompare(b.team_name))
     } else {
-      sorted.sort((a, b) => new Date(a.shift_date).getTime() - new Date(b.shift_date).getTime())
+      sorted.sort((a, b) => parseLocalDate(a.shift_date).getTime() - parseLocalDate(b.shift_date).getTime())
     }
     return sorted
   }
@@ -47,9 +48,6 @@ export default async function ReplacementsPage({
     })
     return groups
   }
-
-  const sortedRecentReplacements = sortReplacements(recentReplacements)
-  const groupedReplacements = groupByShift(sortedRecentReplacements)
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -107,6 +105,9 @@ export default async function ReplacementsPage({
     }
   }
 
+  const sortedRecentReplacements = sortReplacements(recentReplacements)
+  const groupedReplacements = groupByShift(sortedRecentReplacements)
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -141,7 +142,7 @@ export default async function ReplacementsPage({
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-lg">
-                        {new Date(application.shift_date).toLocaleDateString("fr-CA", {
+                        {parseLocalDate(application.shift_date).toLocaleDateString("fr-CA", {
                           weekday: "long",
                           year: "numeric",
                           month: "long",
@@ -162,12 +163,12 @@ export default async function ReplacementsPage({
                 </CardHeader>
                 <CardContent>
                   <div className="text-sm text-muted-foreground">
-                    <p>Postulé le {new Date(application.applied_at).toLocaleDateString("fr-CA")}</p>
+                    <p>Postulé le {parseLocalDate(application.applied_at).toLocaleDateString("fr-CA")}</p>
                     {application.status !== "pending" && application.reviewer_first_name && (
                       <p>
                         {application.status === "approved" ? "Approuvée" : "Rejetée"} par{" "}
                         {application.reviewer_first_name} {application.reviewer_last_name} le{" "}
-                        {new Date(application.reviewed_at).toLocaleDateString("fr-CA")}
+                        {parseLocalDate(application.reviewed_at).toLocaleDateString("fr-CA")}
                       </p>
                     )}
                   </div>
@@ -198,7 +199,7 @@ export default async function ReplacementsPage({
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg">
-                          {new Date(replacement.shift_date).toLocaleDateString("fr-CA", {
+                          {parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA", {
                             weekday: "long",
                             year: "numeric",
                             month: "long",

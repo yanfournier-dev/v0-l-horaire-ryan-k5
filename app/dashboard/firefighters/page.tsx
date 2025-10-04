@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { EditFirefighterDialog } from "@/components/edit-firefighter-dialog"
 import { DeleteFirefighterButton } from "@/components/delete-firefighter-button"
 import { AddFirefighterDialog } from "@/components/add-firefighter-dialog"
+import { ResetPasswordDialog } from "@/components/reset-password-dialog"
 import { sql } from "@/lib/db"
 
 export default async function FirefightersPage() {
@@ -93,9 +94,15 @@ export default async function FirefightersPage() {
               </div>
 
               {user.is_admin && (
-                <div className="flex gap-2">
-                  <EditFirefighterDialog firefighter={firefighter} availableTeams={teams} />
-                  <DeleteFirefighterButton userId={firefighter.id} />
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <EditFirefighterDialog firefighter={firefighter} availableTeams={teams} />
+                    <DeleteFirefighterButton userId={firefighter.id} />
+                  </div>
+                  <ResetPasswordDialog
+                    userId={firefighter.id}
+                    userName={`${firefighter.first_name} ${firefighter.last_name}`}
+                  />
                 </div>
               )}
             </CardContent>
