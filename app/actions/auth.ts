@@ -12,24 +12,36 @@ export async function login(formData: FormData) {
     return { error: "Email et mot de passe requis" }
   }
 
-  const result = await sql`
-    SELECT id, email, password_hash, first_name, last_name, role, is_admin
-    FROM users
-    WHERE email = ${email}
-  `
+  try {
+    const result = await sql`
+      SELECT id, email, password_hash, first_name, last_name, role, is_admin
+      FROM users
+      WHERE email = ${email}
+    `
 
-  if (result.length === 0) {
-    return { error: "Email ou mot de passe incorrect" }
+    if (result.length === 0) {
+      return { error: "Email ou mot de passe incorrect" }
+    }
+
+    const user = result[0]
+    const isValid = await verifyPassword(password, user.password_hash)
+
+    if (!isValid) {
+      return { error: "Email ou mot de passe incorrect" }
+    }
+
+    await createSession(user.id)
+  } catch (error) {
+    console.error("[v0] Login error:", error)
+
+    // Handle rate limiting errors
+    if (error instanceof Error && error.message.includes("Too Many Requests")) {
+      return { error: "Trop de tentatives de connexion. Veuillez réessayer dans quelques instants." }
+    }
+
+    return { error: "Une erreur est survenue lors de la connexion. Veuillez réessayer." }
   }
 
-  const user = result[0]
-  const isValid = await verifyPassword(password, user.password_hash)
-
-  if (!isValid) {
-    return { error: "Email ou mot de passe incorrect" }
-  }
-
-  await createSession(user.id)
   redirect("/dashboard")
 }
 
@@ -44,24 +56,36 @@ export async function register(formData: FormData) {
     return { error: "Tous les champs sont requis" }
   }
 
-  // Check if user already exists
-  const existing = await sql`
-    SELECT id FROM users WHERE email = ${email}
-  `
+  try {
+    // Check if user already exists
+    const existing = await sql`
+      SELECT id FROM users WHERE email = ${email}
+    `
 
-  if (existing.length > 0) {
-    return { error: "Cet email est déjà utilisé" }
+    if (existing.length > 0) {
+      return { error: "Cet email est déjà utilisé" }
+    }
+
+    const passwordHash = await hashPassword(password)
+
+    const result = await sql`
+      INSERT INTO users (email, password_hash, first_name, last_name, phone, role)
+      VALUES (${email}, ${passwordHash}, ${firstName}, ${lastName}, ${phone || null}, 'firefighter')
+      RETURNING id
+    `
+
+    await createSession(result[0].id)
+  } catch (error) {
+    console.error("[v0] Register error:", error)
+
+    // Handle rate limiting errors
+    if (error instanceof Error && error.message.includes("Too Many Requests")) {
+      return { error: "Trop de requêtes. Veuillez réessayer dans quelques instants." }
+    }
+
+    return { error: "Une erreur est survenue lors de l'inscription. Veuillez réessayer." }
   }
 
-  const passwordHash = await hashPassword(password)
-
-  const result = await sql`
-    INSERT INTO users (email, password_hash, first_name, last_name, phone, role)
-    VALUES (${email}, ${passwordHash}, ${firstName}, ${lastName}, ${phone || null}, 'firefighter')
-    RETURNING id
-  `
-
-  await createSession(result[0].id)
   redirect("/dashboard")
 }
 

@@ -9,10 +9,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { useState } from "react"
+import { useFormStatus } from "react-dom"
+
+function SubmitButton() {
+  const { pending } = useFormStatus()
+
+  return (
+    <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={pending}>
+      {pending ? "Connexion..." : "Se connecter"}
+    </Button>
+  )
+}
 
 export default function LoginPage() {
   const [setupMessage, setSetupMessage] = useState("")
   const [isSettingUp, setIsSettingUp] = useState(false)
+  const [loginError, setLoginError] = useState("")
 
   async function setupAdmin() {
     setIsSettingUp(true)
@@ -35,6 +47,15 @@ export default function LoginPage() {
       )
     } finally {
       setIsSettingUp(false)
+    }
+  }
+
+  async function handleLogin(formData: FormData) {
+    setLoginError("")
+    const result = await login(formData)
+
+    if (result?.error) {
+      setLoginError(result.error)
     }
   }
 
@@ -64,7 +85,13 @@ export default function LoginPage() {
             </Alert>
           )}
 
-          <form action={login} className="space-y-4">
+          {loginError && (
+            <Alert className="mb-4 border-red-200 bg-red-50">
+              <AlertDescription className="text-red-800">{loginError}</AlertDescription>
+            </Alert>
+          )}
+
+          <form action={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" placeholder="pompier@caserne.ca" required />
@@ -73,9 +100,7 @@ export default function LoginPage() {
               <Label htmlFor="password">Mot de passe</Label>
               <Input id="password" name="password" type="password" required />
             </div>
-            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
-              Se connecter
-            </Button>
+            <SubmitButton />
           </form>
 
           <div className="mt-4">

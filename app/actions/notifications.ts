@@ -6,10 +6,8 @@ import { revalidatePath } from "next/cache"
 import {
   sendEmail,
   getReplacementAvailableEmail,
-  getReplacementAcceptedEmail,
-  getLeaveApprovedEmail,
-  getLeaveRejectedEmail,
-  getApplicationApprovedEmail, // Adding import for new email template
+  getApplicationRejectedEmail,
+  getApplicationApprovedEmail,
 } from "@/lib/email"
 import { parseLocalDate } from "@/lib/date-utils"
 
@@ -114,10 +112,7 @@ export async function createNotification(
         np.notify_replacement_available,
         np.notify_replacement_accepted,
         np.notify_replacement_rejected,
-        np.notify_leave_approved,
-        np.notify_leave_rejected,
-        np.notify_schedule_change,
-        np.notify_shift_reminder
+        np.notify_schedule_change
       FROM users u
       LEFT JOIN notification_preferences np ON u.id = np.user_id
       WHERE u.id = ${userId}
@@ -136,16 +131,13 @@ export async function createNotification(
     console.log("[v0] User email:", user.email)
     console.log("[v0] Email enabled:", user.enable_email)
 
-    // Check if user wants this type of notification
     const notificationTypeMap: Record<string, string> = {
       replacement_available: "notify_replacement_available",
       replacement_accepted: "notify_replacement_accepted",
       replacement_rejected: "notify_replacement_rejected",
-      leave_approved: "notify_leave_approved",
-      leave_rejected: "notify_leave_rejected",
       schedule_change: "notify_schedule_change",
-      shift_reminder: "notify_shift_reminder",
-      application_approved: "notify_application_approved", // Adding new notification type mapping
+      application_approved: "notify_replacement_accepted",
+      application_rejected: "notify_replacement_rejected",
     }
 
     const prefKey = notificationTypeMap[type]
@@ -154,11 +146,10 @@ export async function createNotification(
 
     if (prefKey && user[prefKey] === false) {
       console.log("[v0] User disabled this notification type, skipping email")
-      return { success: true } // User disabled this notification type
+      return { success: true }
     }
 
-    // Send email if enabled
-    if (user.enable_email && user.email) {
+    if (user.enable_email === true && user.email) {
       console.log("[v0] Sending email notification to:", user.email)
       await sendEmailNotification(type, user.email, fullName, message, relatedId)
     } else {
@@ -179,108 +170,96 @@ async function sendEmailNotification(type: string, email: string, name: string, 
 
   switch (type) {
     case "replacement_available":
-      // Fetch replacement details
       if (relatedId) {
         const replacement = await sql`
-          SELECT r.shift_date, r.shift_type, t.name as team_name
+          SELECT r.shift_date, r.shift_type, r.is_partial, r.partial_hours, t.name as team_name
           FROM replacements r
           JOIN teams t ON r.team_id = t.id
           WHERE r.id = ${relatedId}
         `
         if (replacement.length > 0) {
           const r = replacement[0]
-          emailContent = getReplacementAvailableEmail(
+          emailContent = await getReplacementAvailableEmail(
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
             r.shift_type,
             r.team_name,
+            r.is_partial,
+            r.partial_hours,
           )
-        }
-      }
-      break
-
-    case "replacement_accepted":
-      if (relatedId) {
-        const replacement = await sql`
-          SELECT shift_date, shift_type
-          FROM replacements
-          WHERE id = ${relatedId}
-        `
-        if (replacement.length > 0) {
-          const r = replacement[0]
-          emailContent = getReplacementAcceptedEmail(
-            name,
-            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
-            r.shift_type,
-          )
-        }
-      }
-      break
-
-    case "leave_approved":
-      console.log("[v0] Processing leave_approved email")
-      if (relatedId) {
-        const leave = await sql`
-          SELECT start_date, end_date
-          FROM leaves
-          WHERE id = ${relatedId}
-        `
-        console.log("[v0] Leave data found:", leave.length > 0)
-        if (leave.length > 0) {
-          const l = leave[0]
-          emailContent = getLeaveApprovedEmail(
-            name,
-            parseLocalDate(l.start_date).toLocaleDateString("fr-CA"),
-            parseLocalDate(l.end_date).toLocaleDateString("fr-CA"),
-          )
-          console.log("[v0] Email content generated for leave_approved")
-        }
-      }
-      break
-
-    case "leave_rejected":
-      console.log("[v0] Processing leave_rejected email")
-      if (relatedId) {
-        const leave = await sql`
-          SELECT start_date, end_date, reason
-          FROM leaves
-          WHERE id = ${relatedId}
-        `
-        console.log("[v0] Leave data found:", leave.length > 0)
-        if (leave.length > 0) {
-          const l = leave[0]
-          emailContent = getLeaveRejectedEmail(
-            name,
-            parseLocalDate(l.start_date).toLocaleDateString("fr-CA"),
-            parseLocalDate(l.end_date).toLocaleDateString("fr-CA"),
-            l.reason,
-          )
-          console.log("[v0] Email content generated for leave_rejected")
         }
       }
       break
 
     case "application_approved":
-      console.log("[v0] Processing application_approved email")
       if (relatedId) {
         const replacement = await sql`
-          SELECT r.shift_date, r.shift_type, t.name as team_name
+          SELECT r.shift_date, r.shift_type, r.is_partial, r.partial_hours, t.name as team_name
           FROM replacements r
           JOIN teams t ON r.team_id = t.id
           WHERE r.id = ${relatedId}
         `
-        console.log("[v0] Replacement data found:", replacement.length > 0)
         if (replacement.length > 0) {
           const r = replacement[0]
-          emailContent = getApplicationApprovedEmail(
+          emailContent = await getApplicationApprovedEmail(
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
             r.shift_type,
             r.team_name,
+            r.is_partial,
+            r.partial_hours,
           )
-          console.log("[v0] Email content generated for application_approved")
         }
       }
+      break
+
+    case "application_rejected":
+      if (relatedId) {
+        const replacement = await sql`
+          SELECT r.shift_date, r.shift_type, r.is_partial, r.partial_hours, t.name as team_name
+          FROM replacements r
+          JOIN teams t ON r.team_id = t.id
+          WHERE r.id = ${relatedId}
+        `
+        if (replacement.length > 0) {
+          const r = replacement[0]
+          emailContent = await getApplicationRejectedEmail(
+            name,
+            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
+            r.shift_type,
+            r.team_name,
+            r.is_partial,
+            r.partial_hours,
+          )
+        }
+      }
+      break
+
+    case "replacement_rejected":
+      if (relatedId) {
+        const replacement = await sql`
+          SELECT r.shift_date, r.shift_type, r.is_partial, r.partial_hours, t.name as team_name
+          FROM replacements r
+          JOIN teams t ON r.team_id = t.id
+          WHERE r.id = ${relatedId}
+        `
+        if (replacement.length > 0) {
+          const r = replacement[0]
+          emailContent = await getApplicationRejectedEmail(
+            name,
+            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
+            r.shift_type,
+            r.team_name,
+            r.is_partial,
+            r.partial_hours,
+          )
+        }
+      }
+      break
+
+    case "schedule_change":
+      // Schedule change notifications don't need specific email templates
+      // The message is already descriptive enough
       break
   }
 
@@ -292,7 +271,11 @@ async function sendEmailNotification(type: string, email: string, name: string, 
         subject: emailContent.subject,
         html: emailContent.html,
       })
-      console.log("[v0] sendEmail result:", result)
+      if (result.isTestModeRestriction) {
+        console.log("[v0] Email skipped due to Resend test mode - notification still created in database")
+      } else {
+        console.log("[v0] sendEmail result:", result)
+      }
     } catch (error) {
       console.error("[v0] sendEmail error:", error)
     }
@@ -317,11 +300,7 @@ export async function updateUserPreferences(
     notify_replacement_available?: boolean
     notify_replacement_accepted?: boolean
     notify_replacement_rejected?: boolean
-    notify_leave_approved?: boolean
-    notify_leave_rejected?: boolean
     notify_schedule_change?: boolean
-    notify_shift_reminder?: boolean
-    notify_application_approved?: boolean // Adding new preference field
   },
 ) {
   const user = await getSession()
@@ -337,7 +316,6 @@ export async function updateUserPreferences(
     `
 
     if (existing.length === 0) {
-      // Insert new preferences with defaults
       await sql`
         INSERT INTO notification_preferences (
           user_id,
@@ -346,11 +324,7 @@ export async function updateUserPreferences(
           notify_replacement_available,
           notify_replacement_accepted,
           notify_replacement_rejected,
-          notify_leave_approved,
-          notify_leave_rejected,
-          notify_schedule_change,
-          notify_shift_reminder,
-          notify_application_approved // Adding new preference field in insert
+          notify_schedule_change
         ) VALUES (
           ${userId},
           ${preferences.enable_app ?? true},
@@ -358,15 +332,10 @@ export async function updateUserPreferences(
           ${preferences.notify_replacement_available ?? true},
           ${preferences.notify_replacement_accepted ?? true},
           ${preferences.notify_replacement_rejected ?? true},
-          ${preferences.notify_leave_approved ?? true},
-          ${preferences.notify_leave_rejected ?? true},
-          ${preferences.notify_schedule_change ?? true},
-          ${preferences.notify_shift_reminder ?? true},
-          ${preferences.notify_application_approved ?? true} // Adding new preference field in insert
+          ${preferences.notify_schedule_change ?? true}
         )
       `
     } else {
-      // Update existing preferences
       await sql`
         UPDATE notification_preferences
         SET
@@ -375,11 +344,7 @@ export async function updateUserPreferences(
           notify_replacement_available = ${preferences.notify_replacement_available ?? existing[0].notify_replacement_available},
           notify_replacement_accepted = ${preferences.notify_replacement_accepted ?? existing[0].notify_replacement_accepted},
           notify_replacement_rejected = ${preferences.notify_replacement_rejected ?? existing[0].notify_replacement_rejected},
-          notify_leave_approved = ${preferences.notify_leave_approved ?? existing[0].notify_leave_approved},
-          notify_leave_rejected = ${preferences.notify_leave_rejected ?? existing[0].notify_leave_rejected},
           notify_schedule_change = ${preferences.notify_schedule_change ?? existing[0].notify_schedule_change},
-          notify_shift_reminder = ${preferences.notify_shift_reminder ?? existing[0].notify_shift_reminder},
-          notify_application_approved = ${preferences.notify_application_approved ?? existing[0].notify_application_approved}, // Adding new preference field in update
           updated_at = CURRENT_TIMESTAMP
         WHERE user_id = ${userId}
       `

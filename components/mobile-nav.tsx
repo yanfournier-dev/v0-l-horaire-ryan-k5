@@ -22,7 +22,7 @@ export function MobileNav({ userName }: MobileNavProps) {
     { href: "/dashboard/notifications", label: "Notifications" },
     { href: "/dashboard/teams", label: "Équipes" },
     { href: "/dashboard/firefighters", label: "Pompiers" },
-    { href: "/dashboard/settings/notifications", label: "Paramètres" },
+    { href: "/dashboard/settings", label: "Paramètres" },
   ]
 
   return (

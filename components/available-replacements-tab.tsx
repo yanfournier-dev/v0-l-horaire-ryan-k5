@@ -8,13 +8,21 @@ import { Label } from "@/components/ui/label"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { parseLocalDate } from "@/lib/calendar"
+import { formatReplacementTime } from "@/lib/replacement-utils"
 
 interface AvailableReplacementsTabProps {
   groupedReplacements: Record<string, any[]>
   userApplications: any[]
+  isAdmin: boolean
+  firefighters: any[]
 }
 
-export function AvailableReplacementsTab({ groupedReplacements, userApplications }: AvailableReplacementsTabProps) {
+export function AvailableReplacementsTab({
+  groupedReplacements,
+  userApplications,
+  isAdmin,
+  firefighters,
+}: AvailableReplacementsTabProps) {
   const [showAssigned, setShowAssigned] = useState(false)
 
   return (
@@ -46,7 +54,7 @@ export function AvailableReplacementsTab({ groupedReplacements, userApplications
           const firstReplacement = filteredReplacements[0]
 
           return (
-            <Card key={key}>
+            <Card key={key} id={`replacement-card-${key}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -82,9 +90,19 @@ export function AvailableReplacementsTab({ groupedReplacements, userApplications
                       >
                         <div className="text-sm">
                           <p className="font-medium">
-                            Remplace {replacement.first_name} {replacement.last_name}
+                            {replacement.first_name} {replacement.last_name}
                           </p>
                           <p className="text-muted-foreground">{replacement.team_name}</p>
+                          {replacement.is_partial && (
+                            <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
+                              Remplacement partiel
+                              {formatReplacementTime(
+                                replacement.is_partial,
+                                replacement.start_time,
+                                replacement.end_time,
+                              )}
+                            </p>
+                          )}
                           {isAssigned && replacement.assigned_first_name && (
                             <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
                               Assigné à {replacement.assigned_first_name} {replacement.assigned_last_name}
@@ -98,7 +116,12 @@ export function AvailableReplacementsTab({ groupedReplacements, userApplications
                         ) : hasApplied ? (
                           <Badge variant="outline">Candidature soumise</Badge>
                         ) : (
-                          <ApplyForReplacementButton replacementId={replacement.id} />
+                          <ApplyForReplacementButton
+                            replacementId={replacement.id}
+                            cardId={`replacement-card-${key}`}
+                            isAdmin={isAdmin}
+                            firefighters={firefighters}
+                          />
                         )}
                       </div>
                     )

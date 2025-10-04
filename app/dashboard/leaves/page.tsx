@@ -8,7 +8,7 @@ import Link from "next/link"
 import { ApproveLeaveButton } from "@/components/approve-leave-button"
 import { RejectLeaveButton } from "@/components/reject-leave-button"
 import { DeleteLeaveButton } from "@/components/delete-leave-button"
-import { parseLocalDate } from "@/lib/calendar"
+import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 
 export default async function LeavesPage() {
   const user = await getSession()
@@ -89,6 +89,8 @@ export default async function LeavesPage() {
                     <CardDescription>
                       {getLeaveTypeLabel(leave.leave_type)}
                       {leave.reason && ` • ${leave.reason}`}
+                      {" • Créée le "}
+                      {formatLocalDateTime(leave.created_at)}
                     </CardDescription>
                   </div>
                   <Badge className={getStatusColor(leave.status)}>{getStatusLabel(leave.status)}</Badge>

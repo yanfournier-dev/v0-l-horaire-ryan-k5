@@ -91,12 +91,7 @@ export default async function DashboardLayout({
                 Pompiers
               </Button>
             </Link>
-            <Link href="/dashboard/settings/password">
-              <Button variant="ghost" size="sm">
-                Mot de passe
-              </Button>
-            </Link>
-            <Link href="/dashboard/settings/notifications">
+            <Link href="/dashboard/settings">
               <Button variant="ghost" size="sm">
                 Paramètres
               </Button>

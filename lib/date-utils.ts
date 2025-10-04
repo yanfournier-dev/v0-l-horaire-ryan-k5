@@ -68,3 +68,29 @@ export function compareDates(date1: string | Date | null | undefined, date2: str
   if (d1 > d2) return 1
   return 0
 }
+
+/**
+ * Format a date and time for display in French Canadian format
+ * Handles timezone conversion to display local time correctly
+ *
+ * @param dateInput - Date string or Date object from database
+ * @returns Formatted date and time string (e.g., "2025-03-10 à 14:30")
+ */
+export function formatLocalDateTime(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) {
+    return ""
+  }
+
+  const date = new Date(dateInput)
+
+  date.setHours(date.getHours() - 4)
+
+  // Get local date components
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+
+  return `${year}-${month}-${day} à ${hours}:${minutes}`
+}

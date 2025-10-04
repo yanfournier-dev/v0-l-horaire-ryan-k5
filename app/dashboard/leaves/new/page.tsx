@@ -1,5 +1,7 @@
-import { getSession } from "@/lib/auth"
-import { redirect } from "next/navigation"
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { createLeaveRequest } from "@/app/actions/leaves"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,10 +10,41 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
-export default async function NewLeavePage() {
-  const user = await getSession()
-  if (!user) redirect("/login")
+export default function NewLeavePage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  async function handleSubmit(formData: FormData) {
+    setIsSubmitting(true)
+    try {
+      const result = await createLeaveRequest(formData)
+
+      if (result.error) {
+        toast({
+          title: "Erreur",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Succès",
+          description: "Votre demande d'absence a été soumise avec succès",
+        })
+        router.push("/dashboard/leaves")
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la soumission",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="p-6">
@@ -28,21 +61,21 @@ export default async function NewLeavePage() {
             <CardDescription>Remplissez le formulaire pour demander une absence</CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={createLeaveRequest} className="space-y-4">
+            <form action={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startDate">Date de début</Label>
-                  <Input id="startDate" name="startDate" type="date" required />
+                  <Input id="startDate" name="startDate" type="date" required disabled={isSubmitting} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endDate">Date de fin</Label>
-                  <Input id="endDate" name="endDate" type="date" required />
+                  <Input id="endDate" name="endDate" type="date" required disabled={isSubmitting} />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="leaveType">Type d'absence</Label>
-                <Select name="leaveType" required>
+                <Select name="leaveType" required disabled={isSubmitting}>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un type" />
                   </SelectTrigger>
@@ -56,12 +89,12 @@ export default async function NewLeavePage() {
               <div className="grid grid-cols-2 gap-4" id="timeFields">
                 <div className="space-y-2">
                   <Label htmlFor="startTime">Heure de début (optionnel)</Label>
-                  <Input id="startTime" name="startTime" type="time" />
+                  <Input id="startTime" name="startTime" type="time" disabled={isSubmitting} />
                   <p className="text-xs text-muted-foreground">Pour les absences partielles (ex: 7h-12h)</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endTime">Heure de fin (optionnel)</Label>
-                  <Input id="endTime" name="endTime" type="time" />
+                  <Input id="endTime" name="endTime" type="time" disabled={isSubmitting} />
                 </div>
               </div>
 
@@ -72,17 +105,18 @@ export default async function NewLeavePage() {
                   name="reason"
                   placeholder="Expliquez brièvement la raison de votre absence..."
                   rows={4}
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div className="flex gap-2">
                 <Link href="/dashboard/leaves" className="flex-1">
-                  <Button type="button" variant="outline" className="w-full bg-transparent">
+                  <Button type="button" variant="outline" className="w-full bg-transparent" disabled={isSubmitting}>
                     Annuler
                   </Button>
                 </Link>
-                <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700">
-                  Soumettre la demande
+                <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700" disabled={isSubmitting}>
+                  {isSubmitting ? "Envoi en cours..." : "Soumettre la demande"}
                 </Button>
               </div>
             </form>

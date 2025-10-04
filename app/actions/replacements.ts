@@ -65,14 +65,19 @@ export async function getAllReplacements() {
       t.name as team_name,
       t.type as team_type,
       assigned_user.first_name as assigned_first_name,
-      assigned_user.last_name as assigned_last_name
+      assigned_user.last_name as assigned_last_name,
+      COUNT(ra.id) as application_count
     FROM replacements r
     LEFT JOIN leaves l ON r.leave_id = l.id
     LEFT JOIN users leave_user ON l.user_id = leave_user.id
     LEFT JOIN users direct_user ON r.user_id = direct_user.id
     JOIN teams t ON r.team_id = t.id
-    LEFT JOIN replacement_applications ra ON r.id = ra.replacement_id AND ra.status = 'approved'
-    LEFT JOIN users assigned_user ON ra.applicant_id = assigned_user.id
+    LEFT JOIN replacement_applications ra_approved ON r.id = ra_approved.replacement_id AND ra_approved.status = 'approved'
+    LEFT JOIN users assigned_user ON ra_approved.applicant_id = assigned_user.id
+    LEFT JOIN replacement_applications ra ON r.id = ra.replacement_id
+    GROUP BY r.id, l.user_id, leave_user.first_name, leave_user.last_name, 
+             direct_user.first_name, direct_user.last_name, t.name, t.type,
+             assigned_user.first_name, assigned_user.last_name
     ORDER BY 
       CASE r.status 
         WHEN 'open' THEN 1 
@@ -147,26 +152,37 @@ export async function getUserApplications(userId: number) {
   return applications
 }
 
-export async function applyForReplacement(replacementId: number) {
+export async function applyForReplacement(replacementId: number, firefighterId?: number) {
   const user = await getSession()
   if (!user) {
     return { error: "Non authentifié" }
   }
 
+  // If firefighterId is provided, verify user is admin
+  if (firefighterId && !user.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  const applicantId = firefighterId || user.id
+
   try {
     // Check if already applied
     const existing = await sql`
       SELECT id FROM replacement_applications
-      WHERE replacement_id = ${replacementId} AND applicant_id = ${user.id}
+      WHERE replacement_id = ${replacementId} AND applicant_id = ${applicantId}
     `
 
     if (existing.length > 0) {
-      return { error: "Vous avez déjà postulé pour ce remplacement" }
+      return {
+        error: firefighterId
+          ? "Ce pompier a déjà postulé pour ce remplacement"
+          : "Vous avez déjà postulé pour ce remplacement",
+      }
     }
 
     await sql`
       INSERT INTO replacement_applications (replacement_id, applicant_id, status)
-      VALUES (${replacementId}, ${user.id}, 'pending')
+      VALUES (${replacementId}, ${applicantId}, 'pending')
     `
     revalidatePath("/dashboard/replacements")
     return { success: true }
@@ -259,38 +275,92 @@ export async function rejectApplication(applicationId: number) {
   }
 
   try {
+    const application = await sql`
+      SELECT ra.replacement_id, ra.applicant_id, r.shift_date, r.shift_type
+      FROM replacement_applications ra
+      JOIN replacements r ON ra.replacement_id = r.id
+      WHERE ra.id = ${applicationId}
+    `
+
+    if (application.length === 0) {
+      return { error: "Candidature non trouvée" }
+    }
+
+    const { replacement_id, applicant_id, shift_date, shift_type } = application[0]
+
     await sql`
       UPDATE replacement_applications
       SET status = 'rejected', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
       WHERE id = ${applicationId}
     `
+
+    const formattedDate = parseLocalDate(shift_date).toLocaleDateString("fr-CA")
+    await createNotification(
+      applicant_id,
+      "Candidature rejetée",
+      `Votre candidature pour le remplacement du ${formattedDate} (${shift_type === "day" ? "Jour" : "Nuit"}) a été rejetée.`,
+      "application_rejected",
+      replacement_id,
+      "replacement",
+    )
+
     revalidatePath("/dashboard/replacements")
     return { success: true }
   } catch (error) {
+    console.error("[v0] Error rejecting application:", error)
     return { error: "Erreur lors du rejet" }
   }
 }
 
-export async function createReplacementFromShift(userId: number, shiftDate: string, shiftType: string, teamId: number) {
+export async function createReplacementFromShift(
+  userId: number,
+  shiftDate: string,
+  shiftType: string,
+  teamId: number,
+  isPartial = false,
+  startTime?: string,
+  endTime?: string,
+) {
   const user = await getSession()
   if (!user?.is_admin) {
     return { error: "Non autorisé" }
   }
 
   try {
-    await sql`
-      INSERT INTO replacements (leave_id, user_id, shift_date, shift_type, team_id, status)
-      VALUES (NULL, ${userId}, ${shiftDate}, ${shiftType}, ${teamId}, 'open')
+    const result = await sql`
+      INSERT INTO replacements (leave_id, user_id, shift_date, shift_type, team_id, status, is_partial, start_time, end_time)
+      VALUES (NULL, ${userId}, ${shiftDate}, ${shiftType}, ${teamId}, 'open', ${isPartial}, ${startTime || null}, ${endTime || null})
+      RETURNING id
     `
 
-    // Create notification for the firefighter being replaced
-    await createNotification(
-      userId,
-      "Demande de remplacement",
-      `Une demande de remplacement a été créée pour votre quart du ${parseLocalDate(shiftDate).toLocaleDateString("fr-CA")}.`,
-      "replacement_created",
-      null,
-      "replacement",
+    const replacementId = result[0].id
+
+    const firefighters = await sql`
+      SELECT u.id, u.first_name, u.last_name
+      FROM users u
+      LEFT JOIN notification_preferences np ON u.id = np.user_id
+      WHERE u.id != ${userId}
+        AND np.enable_email = true
+    `
+
+    const formattedDate = parseLocalDate(shiftDate).toLocaleDateString("fr-CA")
+    const timeInfo = isPartial && startTime && endTime ? ` de ${startTime} à ${endTime}` : ""
+    const message = `Un nouveau remplacement${isPartial ? " partiel" : ""} est disponible pour le ${formattedDate} (${shiftType === "day" ? "Jour" : "Nuit"})${timeInfo}.`
+
+    await Promise.all(
+      firefighters.map((firefighter) =>
+        createNotification(
+          firefighter.id,
+          "Nouveau remplacement disponible",
+          message,
+          "replacement_available",
+          replacementId,
+          "replacement",
+        ).catch((error) => {
+          console.error(`[v0] Failed to create notification for user ${firefighter.id}:`, error)
+          // Continue even if one notification fails
+        }),
+      ),
     )
 
     revalidatePath("/dashboard/replacements")

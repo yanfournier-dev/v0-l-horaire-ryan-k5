@@ -20,10 +20,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
     notify_replacement_available: initialPreferences?.notify_replacement_available ?? true,
     notify_replacement_accepted: initialPreferences?.notify_replacement_accepted ?? true,
     notify_replacement_rejected: initialPreferences?.notify_replacement_rejected ?? true,
-    notify_leave_approved: initialPreferences?.notify_leave_approved ?? true,
-    notify_leave_rejected: initialPreferences?.notify_leave_rejected ?? true,
     notify_schedule_change: initialPreferences?.notify_schedule_change ?? true,
-    notify_shift_reminder: initialPreferences?.notify_shift_reminder ?? true,
   })
 
   const [saving, setSaving] = useState(false)
@@ -143,34 +140,6 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
 
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="notify_leave_approved" className="font-medium">
-                Congé approuvé
-              </Label>
-              <p className="text-sm text-muted-foreground">Quand votre demande de congé est approuvée</p>
-            </div>
-            <Switch
-              id="notify_leave_approved"
-              checked={preferences.notify_leave_approved}
-              onCheckedChange={(checked) => handleToggle("notify_leave_approved", checked)}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="notify_leave_rejected" className="font-medium">
-                Congé refusé
-              </Label>
-              <p className="text-sm text-muted-foreground">Quand votre demande de congé est refusée</p>
-            </div>
-            <Switch
-              id="notify_leave_rejected"
-              checked={preferences.notify_leave_rejected}
-              onCheckedChange={(checked) => handleToggle("notify_leave_rejected", checked)}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
               <Label htmlFor="notify_schedule_change" className="font-medium">
                 Changements d'horaire
               </Label>
@@ -180,20 +149,6 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               id="notify_schedule_change"
               checked={preferences.notify_schedule_change}
               onCheckedChange={(checked) => handleToggle("notify_schedule_change", checked)}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="notify_shift_reminder" className="font-medium">
-                Rappels de quart
-              </Label>
-              <p className="text-sm text-muted-foreground">Rappel 24h avant votre quart</p>
-            </div>
-            <Switch
-              id="notify_shift_reminder"
-              checked={preferences.notify_shift_reminder}
-              onCheckedChange={(checked) => handleToggle("notify_shift_reminder", checked)}
             />
           </div>
         </div>

@@ -306,3 +306,32 @@ export async function addFirefighter(data: {
     }
   }
 }
+
+export async function getAllFirefighters() {
+  try {
+    console.log("[v0] getAllFirefighters called")
+
+    const firefighters = await sql`
+      SELECT 
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.role,
+        t.name as team_name
+      FROM users u
+      LEFT JOIN team_members tm ON u.id = tm.user_id
+      LEFT JOIN teams t ON tm.team_id = t.id
+      WHERE u.role = 'firefighter'
+      ORDER BY u.last_name, u.first_name
+    `
+
+    console.log("[v0] Firefighters found:", firefighters.length)
+    console.log("[v0] First few firefighters:", firefighters.slice(0, 3))
+
+    return firefighters
+  } catch (error) {
+    console.error("[v0] Error getting firefighters:", error)
+    return []
+  }
+}

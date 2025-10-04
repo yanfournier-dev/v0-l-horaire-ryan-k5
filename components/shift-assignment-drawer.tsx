@@ -20,6 +20,9 @@ import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
 import { UserX } from "lucide-react"
 import { toast } from "sonner"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ShiftAssignmentDrawerProps {
   open: boolean
@@ -75,6 +78,9 @@ export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefight
   } | null>(null)
   const [replacements, setReplacements] = useState<ReplacementData[]>([])
   const [loadingReplacements, setLoadingReplacements] = useState(false)
+  const [isPartial, setIsPartial] = useState(false)
+  const [startTime, setStartTime] = useState("07:00")
+  const [endTime, setEndTime] = useState("19:00")
 
   useEffect(() => {
     if (open && shift) {
@@ -94,9 +100,22 @@ export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefight
   const handleCreateReplacement = async () => {
     if (!selectedFirefighter || isLoading) return
 
+    if (isPartial && startTime >= endTime) {
+      toast.error("L'heure de début doit être avant l'heure de fin")
+      return
+    }
+
     setIsLoading(true)
     const shiftDate = shift.date.toISOString().split("T")[0]
-    const result = await createReplacementFromShift(selectedFirefighter.id, shiftDate, shift.shift_type, shift.team_id)
+    const result = await createReplacementFromShift(
+      selectedFirefighter.id,
+      shiftDate,
+      shift.shift_type,
+      shift.team_id,
+      isPartial,
+      isPartial ? startTime : undefined,
+      isPartial ? endTime : undefined,
+    )
 
     if (result.error) {
       toast.error(result.error)
@@ -104,11 +123,13 @@ export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefight
       toast.success("Demande de remplacement créée avec succès")
       const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
       setReplacements(data as ReplacementData[])
-      router.refresh()
     }
 
     setIsLoading(false)
     setSelectedFirefighter(null)
+    setIsPartial(false)
+    setStartTime("07:00")
+    setEndTime("19:00")
   }
 
   const getReplacementForFirefighter = (firefighterId: number) => {
@@ -150,6 +171,17 @@ export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefight
       default:
         return status
     }
+  }
+
+  const generateTimeOptions = () => {
+    const times = []
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const timeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
+        times.push(timeString)
+      }
+    }
+    return times
   }
 
   return (
@@ -261,6 +293,63 @@ export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefight
               pour le quart du {shift.date.toLocaleDateString("fr-CA")} ({getShiftTypeLabel(shift.shift_type)}) ?
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="partial"
+                checked={isPartial}
+                onCheckedChange={(checked) => setIsPartial(checked === true)}
+              />
+              <Label
+                htmlFor="partial"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Remplacement partiel
+              </Label>
+            </div>
+
+            {isPartial && (
+              <div className="space-y-3 pl-6">
+                <div className="space-y-2">
+                  <Label htmlFor="start-time" className="text-sm">
+                    Heure de début
+                  </Label>
+                  <Select value={startTime} onValueChange={setStartTime}>
+                    <SelectTrigger id="start-time">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {generateTimeOptions().map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="end-time" className="text-sm">
+                    Heure de fin
+                  </Label>
+                  <Select value={endTime} onValueChange={setEndTime}>
+                    <SelectTrigger id="end-time">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {generateTimeOptions().map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Annuler</AlertDialogCancel>
             <AlertDialogAction

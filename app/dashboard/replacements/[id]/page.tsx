@@ -9,13 +9,21 @@ import Link from "next/link"
 import { ApproveApplicationButton } from "@/components/approve-application-button"
 import { RejectApplicationButton } from "@/components/reject-application-button"
 import { getRoleLabel } from "@/lib/role-labels"
-import { parseLocalDate } from "@/lib/calendar"
+import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
+import { formatReplacementTime } from "@/lib/replacement-utils"
 
-export default async function ReplacementDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ReplacementDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ returnTo?: string; tab?: string }>
+}) {
   const user = await getSession()
   if (!user?.is_admin) redirect("/dashboard/replacements")
 
   const { id } = await params
+  const { returnTo, tab } = await searchParams
   const replacementId = Number.parseInt(id)
 
   // If the ID is not a valid number, redirect back to replacements page
@@ -43,9 +51,22 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
   }
 
   const replacement = replacementResult[0]
+
+  console.log("[v0] Replacement data:", {
+    id: replacement.id,
+    is_partial: replacement.is_partial,
+    start_time: replacement.start_time,
+    end_time: replacement.end_time,
+  })
+
   const applications = await getReplacementApplications(replacementId)
 
-  const groupedApplications = applications.reduce((acc: any, app: any) => {
+  const filteredApplications = applications.filter((app: any) => {
+    const teamName = app.team_name || ""
+    return !teamName.match(/^Équipe permanente [1-4]$/i)
+  })
+
+  const groupedApplications = filteredApplications.reduce((acc: any, app: any) => {
     const teamKey = app.team_name || "Sans équipe"
     if (!acc[teamKey]) {
       acc[teamKey] = []
@@ -96,7 +117,7 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
   return (
     <div className="p-6">
       <div className="mb-6">
-        <Link href="/dashboard/replacements">
+        <Link href={returnTo ? `/dashboard/replacements?tab=${tab || "all"}#${returnTo}` : "/dashboard/replacements"}>
           <Button variant="ghost" size="sm" className="mb-4">
             ← Retour aux remplacements
           </Button>
@@ -113,17 +134,23 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
               })}
             </CardTitle>
             <CardDescription>
-              Remplace {replacement.first_name} {replacement.last_name} • {replacement.team_name} •{" "}
+              {replacement.first_name} {replacement.last_name} • {replacement.team_name} •{" "}
               {getShiftTypeLabel(replacement.shift_type)}
+              {replacement.is_partial && (
+                <span className="text-orange-600 dark:text-orange-400">
+                  {" • Remplacement partiel "}
+                  {formatReplacementTime(replacement.is_partial, replacement.start_time, replacement.end_time)}
+                </span>
+              )}
             </CardDescription>
           </CardHeader>
         </Card>
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-foreground mb-4">Candidatures ({applications.length})</h2>
+        <h2 className="text-2xl font-bold text-foreground mb-4">Candidatures ({filteredApplications.length})</h2>
 
-        {applications.length === 0 ? (
+        {filteredApplications.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">Aucune candidature pour ce remplacement</p>
@@ -134,47 +161,43 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
             {Object.entries(groupedApplications).map(([teamName, teamApps]: [string, any]) => (
               <div key={teamName}>
                 <h3 className="text-lg font-semibold mb-3 text-foreground">{teamName}</h3>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
                   {teamApps.map((application: any) => (
-                    <Card key={application.id}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">
-                              {application.first_name} {application.last_name}
-                            </CardTitle>
-                            <CardDescription>
-                              {getRoleLabel(application.role)} • {application.email}
-                            </CardDescription>
-                          </div>
-                          <Badge className={getStatusColor(application.status)}>
-                            {getStatusLabel(application.status)}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <p className="text-sm text-muted-foreground">
-                            Postulé le {parseLocalDate(application.applied_at).toLocaleDateString("fr-CA")}
-                          </p>
-
+                    <div
+                      key={application.id}
+                      className="flex items-center gap-4 p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="font-semibold text-foreground">
+                            {application.first_name} {application.last_name}
+                          </span>
+                          <span className="text-sm text-muted-foreground">{getRoleLabel(application.role)}</span>
+                          <span className="text-sm text-muted-foreground">{application.email}</span>
+                          <span className="text-sm text-muted-foreground">
+                            Postulé le {formatLocalDateTime(application.applied_at)}
+                          </span>
                           {application.status !== "pending" && application.reviewer_first_name && (
-                            <p className="text-sm text-muted-foreground">
+                            <span className="text-sm text-muted-foreground">
                               {application.status === "approved" ? "Approuvée" : "Rejetée"} par{" "}
                               {application.reviewer_first_name} {application.reviewer_last_name} le{" "}
                               {parseLocalDate(application.reviewed_at).toLocaleDateString("fr-CA")}
-                            </p>
-                          )}
-
-                          {application.status === "pending" && (
-                            <div className="flex gap-2">
-                              <ApproveApplicationButton applicationId={application.id} />
-                              <RejectApplicationButton applicationId={application.id} />
-                            </div>
+                            </span>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge className={getStatusColor(application.status)}>
+                          {getStatusLabel(application.status)}
+                        </Badge>
+                        {application.status === "pending" && (
+                          <>
+                            <ApproveApplicationButton applicationId={application.id} />
+                            <RejectApplicationButton applicationId={application.id} />
+                          </>
+                        )}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
