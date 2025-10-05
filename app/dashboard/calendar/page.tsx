@@ -9,6 +9,8 @@ import { CalendarCell } from "@/components/calendar-cell"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+export const dynamic = "force-dynamic"
+
 export default async function CalendarPage({
   searchParams,
 }: {
