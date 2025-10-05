@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { CreateShiftDialog } from "@/components/create-shift-dialog"
 import { DeleteShiftButton } from "@/components/delete-shift-button"
 
+export const dynamic = "force-dynamic"
+
 export default async function ManageCalendarPage() {
   const user = await getSession()
 

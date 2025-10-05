@@ -4,6 +4,8 @@ import { getAllEmailTemplates } from "@/app/actions/email-templates"
 import { EmailTemplatesList } from "@/components/email-templates-list"
 import { UpdateTemplatesButton } from "@/components/update-templates-button"
 
+export const dynamic = "force-dynamic"
+
 export default async function EmailTemplatesPage() {
   const user = await getSession()
   if (!user) {

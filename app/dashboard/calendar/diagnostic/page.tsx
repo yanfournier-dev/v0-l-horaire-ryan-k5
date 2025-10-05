@@ -3,6 +3,8 @@ import { getCycleConfig, getAllShiftsWithAssignments } from "@/app/actions/calen
 import { parseLocalDate } from "@/lib/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
+export const dynamic = "force-dynamic"
+
 export default async function DiagnosticPage() {
   const results: { step: string; success: boolean; data?: any; error?: string }[] = []
 

@@ -14,7 +14,7 @@ interface CalendarCellProps {
     cycleDay: number
     dayOfWeek: number
     isToday: boolean
-    isCurrentMonth?: boolean // Added optional property for month view
+    isCurrentMonth?: boolean
   }
   shifts: Array<{
     id: number
@@ -28,10 +28,14 @@ interface CalendarCellProps {
     assigned_count: number
   }>
   isAdmin: boolean
-  getDayOfWeekLabel: (dayOfWeek: number) => string
 }
 
-export function CalendarCell({ day, shifts, isAdmin, getDayOfWeekLabel }: CalendarCellProps) {
+function getDayOfWeekLabel(dayOfWeek: number): string {
+  const days = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"]
+  return days[dayOfWeek]
+}
+
+export function CalendarCell({ day, shifts, isAdmin }: CalendarCellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedShift, setSelectedShift] = useState<any>(null)
   const [teamFirefighters, setTeamFirefighters] = useState<any[]>([])
@@ -40,7 +44,6 @@ export function CalendarCell({ day, shifts, isAdmin, getDayOfWeekLabel }: Calend
   const handleShiftClick = async (shift: any) => {
     if (!isAdmin) return
 
-    // Fetch shift details with assignments
     const shiftDetails = await getShiftWithAssignments(shift.id)
     const firefighters = await getTeamFirefighters(shift.team_id)
 

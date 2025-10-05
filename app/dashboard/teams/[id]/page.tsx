@@ -11,11 +11,13 @@ import { RemoveMemberButton } from "@/components/remove-member-button"
 import { getTeamColor } from "@/lib/colors"
 import { parseLocalDate } from "@/lib/date-utils"
 
+export const dynamic = "force-dynamic"
+
 export default async function TeamDetailPage({ params }: { params: { id: string } }) {
   const user = await getSession()
   if (!user) redirect("/login")
 
-  const { id } = await params
+  const { id } = params
   const teamId = Number.parseInt(id)
 
   const teamResult = await sql`

@@ -8,6 +8,8 @@ import { DeleteNotificationButton } from "@/components/delete-notification-butto
 import { MarkAllAsReadButton } from "@/components/mark-all-as-read-button"
 import { formatLocalDateTime } from "@/lib/date-utils"
 
+export const dynamic = "force-dynamic"
+
 export default async function NotificationsPage() {
   const user = await getSession()
   if (!user) redirect("/login")

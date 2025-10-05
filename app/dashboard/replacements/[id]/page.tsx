@@ -12,6 +12,8 @@ import { getRoleLabel } from "@/lib/role-labels"
 import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 import { formatReplacementTime } from "@/lib/replacement-utils"
 
+export const dynamic = "force-dynamic"
+
 export default async function ReplacementDetailPage({
   params,
   searchParams,

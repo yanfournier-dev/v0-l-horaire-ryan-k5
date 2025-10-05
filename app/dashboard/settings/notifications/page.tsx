@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 import { getUserPreferences } from "@/app/actions/notifications"
 import { NotificationPreferencesForm } from "@/components/notification-preferences-form"
 
+export const dynamic = "force-dynamic"
+
 export default async function NotificationSettingsPage() {
   const user = await getSession()
   if (!user) {

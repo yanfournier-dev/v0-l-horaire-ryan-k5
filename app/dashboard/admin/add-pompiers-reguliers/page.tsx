@@ -4,6 +4,8 @@ import { createTeam } from "@/app/actions/teams"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
+export const dynamic = "force-dynamic"
+
 async function addPompiersReguliers() {
   "use server"
 

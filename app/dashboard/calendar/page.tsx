@@ -17,15 +17,11 @@ export default async function CalendarPage({
   searchParams: { year?: string; month?: string }
 }) {
   try {
-    console.log("[v0] Calendar page: Starting to load")
-
     const user = await getSession()
-    console.log("[v0] Calendar page: User session retrieved", { userId: user?.id, isAdmin: user?.is_admin })
 
     if (!user) redirect("/login")
 
     const cycleConfig = await getCycleConfig()
-    console.log("[v0] Calendar page: Cycle config retrieved", { hasConfig: !!cycleConfig })
 
     if (!cycleConfig) {
       return (
@@ -40,23 +36,17 @@ export default async function CalendarPage({
     }
 
     const cycleStartDate = parseLocalDate(cycleConfig.start_date)
-    console.log("[v0] Calendar page: Cycle start date parsed", { cycleStartDate: cycleStartDate.toISOString() })
 
     const today = new Date()
 
     const selectedYear = searchParams.year ? Number.parseInt(searchParams.year) : today.getFullYear()
     const selectedMonth = searchParams.month ? Number.parseInt(searchParams.month) : today.getMonth()
-    console.log("[v0] Calendar page: Selected date", { selectedYear, selectedMonth })
 
     const currentCycleDay = getCycleDay(today, cycleStartDate)
-    console.log("[v0] Calendar page: Current cycle day", { currentCycleDay })
 
     const days = generateMonthView(selectedYear, selectedMonth, cycleStartDate)
-    console.log("[v0] Calendar page: Month view generated", { daysCount: days.length })
 
-    console.log("[v0] Calendar page: About to fetch all shifts")
     const allShifts = await getAllShiftsWithAssignments()
-    console.log("[v0] Calendar page: All shifts fetched", { shiftsCount: allShifts.length })
 
     const shiftsByCycleDay: Record<number, any[]> = {}
     allShifts.forEach((shift: any) => {
@@ -65,14 +55,6 @@ export default async function CalendarPage({
       }
       shiftsByCycleDay[shift.cycle_day].push(shift)
     })
-    console.log("[v0] Calendar page: Shifts organized by cycle day", {
-      cycleDaysCount: Object.keys(shiftsByCycleDay).length,
-    })
-
-    const getDayOfWeekLabel = (dayOfWeek: number) => {
-      const days = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"]
-      return days[dayOfWeek]
-    }
 
     const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1
     const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear
@@ -80,8 +62,6 @@ export default async function CalendarPage({
     const nextYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear
 
     const yearOptions = Array.from({ length: 11 }, (_, i) => today.getFullYear() - 5 + i)
-
-    console.log("[v0] Calendar page: About to render")
 
     return (
       <div className="p-4 md:p-6">
@@ -177,26 +157,13 @@ export default async function CalendarPage({
           {days.map((day, index) => {
             const shifts = shiftsByCycleDay[day.cycleDay] || []
 
-            return (
-              <CalendarCell
-                key={index}
-                day={day}
-                shifts={shifts}
-                isAdmin={user.is_admin}
-                getDayOfWeekLabel={getDayOfWeekLabel}
-              />
-            )
+            return <CalendarCell key={index} day={day} shifts={shifts} isAdmin={user.is_admin} />
           })}
         </div>
       </div>
     )
   } catch (error) {
     console.error("[v0] Calendar page error:", error)
-    console.error("[v0] Error details:", {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined,
-    })
 
     return (
       <div className="p-4 md:p-6">

@@ -13,6 +13,8 @@ import { CreateReplacementButton } from "@/components/create-replacement-button"
 import { getRoleLabel } from "@/lib/role-labels"
 import { parseLocalDate } from "@/lib/calendar"
 
+export const dynamic = "force-dynamic"
+
 export default async function ManageReplacementsPage({
   searchParams,
 }: {
