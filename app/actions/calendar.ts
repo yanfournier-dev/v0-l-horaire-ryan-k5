@@ -104,26 +104,32 @@ export async function deleteShift(shiftId: number) {
 }
 
 export async function getAllShiftsWithAssignments() {
-  const shifts = await sql`
-    SELECT 
-      s.id,
-      s.team_id,
-      s.cycle_day,
-      s.shift_type,
-      s.start_time,
-      s.end_time,
-      t.name as team_name,
-      t.type as team_type,
-      t.color as team_color,
-      COUNT(sa.id) as assigned_count
-    FROM shifts s
-    JOIN teams t ON s.team_id = t.id
-    LEFT JOIN shift_assignments sa ON s.id = sa.shift_id
-    GROUP BY s.id, s.team_id, s.cycle_day, s.shift_type, s.start_time, s.end_time, t.name, t.type, t.color
-    ORDER BY s.cycle_day, t.name
-  `
-
-  return shifts
+  console.log("[v0] getAllShiftsWithAssignments: Starting query")
+  try {
+    const shifts = await sql`
+      SELECT 
+        s.id,
+        s.team_id,
+        s.cycle_day,
+        s.shift_type,
+        s.start_time,
+        s.end_time,
+        t.name as team_name,
+        t.type as team_type,
+        t.color as team_color,
+        COUNT(sa.id) as assigned_count
+      FROM shifts s
+      JOIN teams t ON s.team_id = t.id
+      LEFT JOIN shift_assignments sa ON s.id = sa.shift_id
+      GROUP BY s.id, s.team_id, s.cycle_day, s.shift_type, s.start_time, s.end_time, t.name, t.type, t.color
+      ORDER BY s.cycle_day, t.name
+    `
+    console.log("[v0] getAllShiftsWithAssignments: Query successful", { shiftsCount: shifts.length })
+    return shifts
+  } catch (error) {
+    console.error("[v0] getAllShiftsWithAssignments: Query failed", error)
+    throw error
+  }
 }
 
 export async function getShiftWithAssignments(shiftId: number) {
