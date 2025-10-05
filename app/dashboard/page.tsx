@@ -8,6 +8,8 @@ import { getUnreadCount } from "@/app/actions/notifications"
 import { Badge } from "@/components/ui/badge"
 import { getRoleLabel } from "@/lib/role-labels"
 
+export const dynamic = "force-dynamic"
+
 export default async function DashboardPage() {
   const user = await getSession()
 

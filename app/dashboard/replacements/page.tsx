@@ -5,6 +5,8 @@ import { redirect } from "next/navigation"
 import { ScrollToReplacement } from "@/components/scroll-to-replacement"
 import { ReplacementsTabs } from "@/components/replacements-tabs"
 
+export const dynamic = "force-dynamic"
+
 export default async function ReplacementsPage({
   searchParams,
 }: {

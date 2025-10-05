@@ -9,6 +9,8 @@ import { AddFirefighterDialog } from "@/components/add-firefighter-dialog"
 import { ResetPasswordDialog } from "@/components/reset-password-dialog"
 import { sql } from "@/lib/db"
 
+export const dynamic = "force-dynamic"
+
 export default async function FirefightersPage() {
   const user = await getSession()
   if (!user) redirect("/login")

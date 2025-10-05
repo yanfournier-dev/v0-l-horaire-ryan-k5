@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { getTeamColor } from "@/lib/colors"
 
+export const dynamic = "force-dynamic"
+
 export default async function TeamsPage() {
   const user = await getSession()
   if (!user) redirect("/login")

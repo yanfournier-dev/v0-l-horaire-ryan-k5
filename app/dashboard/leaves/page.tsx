@@ -10,6 +10,8 @@ import { RejectLeaveButton } from "@/components/reject-leave-button"
 import { DeleteLeaveButton } from "@/components/delete-leave-button"
 import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 
+export const dynamic = "force-dynamic"
+
 export default async function LeavesPage() {
   const user = await getSession()
   if (!user) redirect("/login")
