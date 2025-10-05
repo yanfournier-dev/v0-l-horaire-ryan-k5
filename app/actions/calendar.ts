@@ -122,6 +122,7 @@ export async function getAllShiftsWithAssignments() {
     GROUP BY s.id, s.team_id, s.cycle_day, s.shift_type, s.start_time, s.end_time, t.name, t.type, t.color
     ORDER BY s.cycle_day, t.name
   `
+
   return shifts
 }
 
