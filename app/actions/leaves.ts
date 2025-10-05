@@ -170,7 +170,7 @@ export async function deleteLeave(leaveId: number) {
 
   // Check if user owns this leave or is admin
   const leave = await sql`
-    SELECT user_id FROM leaves WHERE id = ${leaveId}
+    SELECT user_id, status FROM leaves WHERE id = ${leaveId}
   `
 
   if (leave.length === 0) {
@@ -182,12 +182,73 @@ export async function deleteLeave(leaveId: number) {
   }
 
   try {
+    if (leave[0].status === "approved") {
+      await sql`
+        DELETE FROM replacements WHERE leave_id = ${leaveId}
+      `
+    }
+
     await sql`
       DELETE FROM leaves WHERE id = ${leaveId}
     `
     revalidatePath("/dashboard/leaves")
+    revalidatePath("/dashboard/calendar")
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de la suppression" }
+  }
+}
+
+export async function updateLeave(
+  leaveId: number,
+  startDate: string,
+  endDate: string,
+  leaveType: string,
+  reason: string,
+  startTime?: string,
+  endTime?: string,
+) {
+  const user = await getSession()
+  if (!user) {
+    return { error: "Non authentifié" }
+  }
+
+  // Check if user owns this leave or is admin
+  const leaveResult = await sql`
+    SELECT user_id, status FROM leaves WHERE id = ${leaveId}
+  `
+
+  if (leaveResult.length === 0) {
+    return { error: "Demande non trouvée" }
+  }
+
+  const leave = leaveResult[0]
+
+  if (leave.user_id !== user.id && !user.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  // Only allow editing pending leaves
+  if (leave.status !== "pending") {
+    return { error: "Seules les demandes en attente peuvent être modifiées" }
+  }
+
+  try {
+    await sql`
+      UPDATE leaves
+      SET 
+        start_date = ${startDate},
+        end_date = ${endDate},
+        leave_type = ${leaveType},
+        reason = ${reason || null},
+        start_time = ${startTime || null},
+        end_time = ${endTime || null},
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${leaveId}
+    `
+    revalidatePath("/dashboard/leaves")
+    return { success: true }
+  } catch (error) {
+    return { error: "Erreur lors de la modification" }
   }
 }

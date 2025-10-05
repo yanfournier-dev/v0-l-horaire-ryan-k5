@@ -85,6 +85,25 @@ export async function deleteNotification(notificationId: number) {
   }
 }
 
+export async function deleteAllNotifications() {
+  const user = await getSession()
+  if (!user) {
+    return { error: "Non authentifié" }
+  }
+
+  try {
+    await sql`
+      DELETE FROM notifications
+      WHERE user_id = ${user.id}
+    `
+    revalidatePath("/dashboard/notifications")
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] Delete all notifications error:", error)
+    return { error: "Erreur lors de la suppression" }
+  }
+}
+
 export async function createNotification(
   userId: number,
   title: string,

@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
+import { EditReplacementAssignmentButton } from "@/components/edit-replacement-assignment-button"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { parseLocalDate } from "@/lib/date-utils"
 import { formatReplacementTime } from "@/lib/replacement-utils"
@@ -121,6 +122,12 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
                       Voir les candidatures ({replacement.application_count || 0})
                     </Button>
                   </Link>
+                  {replacement.status === "assigned" && replacement.assigned_first_name && (
+                    <EditReplacementAssignmentButton
+                      replacementId={replacement.id}
+                      currentFirefighterName={`${replacement.assigned_first_name} ${replacement.assigned_last_name}`}
+                    />
+                  )}
                   <DeleteReplacementButton replacementId={replacement.id} />
                 </div>
               </div>

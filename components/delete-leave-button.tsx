@@ -7,14 +7,20 @@ import { useRouter } from "next/navigation"
 
 interface DeleteLeaveButtonProps {
   leaveId: number
+  status: string
 }
 
-export function DeleteLeaveButton({ leaveId }: DeleteLeaveButtonProps) {
+export function DeleteLeaveButton({ leaveId, status }: DeleteLeaveButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
   const handleDelete = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette demande?")) {
+    const message =
+      status === "approved"
+        ? "Êtes-vous sûr de vouloir supprimer cette demande approuvée? Cette action est irréversible."
+        : "Êtes-vous sûr de vouloir supprimer cette demande?"
+
+    if (!confirm(message)) {
       return
     }
 

@@ -8,6 +8,7 @@ import Link from "next/link"
 import { ApproveLeaveButton } from "@/components/approve-leave-button"
 import { RejectLeaveButton } from "@/components/reject-leave-button"
 import { DeleteLeaveButton } from "@/components/delete-leave-button"
+import { EditLeaveButton } from "@/components/edit-leave-button"
 import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 
 export const dynamic = "force-dynamic"
@@ -59,9 +60,9 @@ export default async function LeavesPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Demandes d'absence</h1>
+          <h1 className="text-3xl font-bold text-foreground">Demandes de congé</h1>
           <p className="text-muted-foreground">
-            {user.is_admin ? "Gérez toutes les demandes d'absence" : "Vos demandes d'absence"}
+            {user.is_admin ? "Gérez toutes les demandes de congé" : "Vos demandes de congé"}
           </p>
         </div>
 
@@ -74,7 +75,7 @@ export default async function LeavesPage() {
         {leaves.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">Aucune demande d'absence</p>
+              <p className="text-muted-foreground">Aucune demande de congé</p>
             </CardContent>
           </Card>
         ) : (
@@ -123,9 +124,23 @@ export default async function LeavesPage() {
                         <RejectLeaveButton leaveId={leave.id} />
                       </>
                     )}
-                    {(leave.user_id === user.id || user.is_admin) && leave.status === "pending" && (
-                      <DeleteLeaveButton leaveId={leave.id} />
-                    )}
+                    {(leave.user_id === user.id || user.is_admin) &&
+                      (leave.status === "pending" || leave.status === "approved") && (
+                        <>
+                          {leave.status === "pending" && (
+                            <EditLeaveButton
+                              leaveId={leave.id}
+                              startDate={leave.start_date}
+                              endDate={leave.end_date}
+                              leaveType={leave.leave_type}
+                              reason={leave.reason}
+                              startTime={leave.start_time}
+                              endTime={leave.end_time}
+                            />
+                          )}
+                          <DeleteLeaveButton leaveId={leave.id} status={leave.status} />
+                        </>
+                      )}
                   </div>
                 </div>
               </CardContent>

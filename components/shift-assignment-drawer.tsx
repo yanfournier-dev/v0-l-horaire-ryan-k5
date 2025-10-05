@@ -52,12 +52,17 @@ interface ShiftAssignmentDrawerProps {
     last_name: string
     role: string
   }>
+  leaves: Array<any>
+  dateStr: string
 }
 
 type ReplacementData = {
   replacement_id: number
   user_id: number
   replacement_status: string
+  is_partial?: boolean
+  start_time?: string
+  end_time?: string
   applications: Array<{
     id: number
     applicant_id: number
@@ -68,7 +73,21 @@ type ReplacementData = {
   }>
 }
 
-export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefighters }: ShiftAssignmentDrawerProps) {
+function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
+  return leaves.find(
+    (leave: any) =>
+      leave.user_id === firefighterId && new Date(leave.start_date) <= date && new Date(leave.end_date) >= date,
+  )
+}
+
+export function ShiftAssignmentDrawer({
+  open,
+  onOpenChange,
+  shift,
+  teamFirefighters,
+  leaves,
+  dateStr,
+}: ShiftAssignmentDrawerProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
@@ -87,7 +106,17 @@ export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefight
       const fetchReplacements = async () => {
         setLoadingReplacements(true)
         const shiftDate = shift.date.toISOString().split("T")[0]
+        console.log("[v0] ShiftAssignmentDrawer fetching replacements for:", {
+          shiftDate,
+          shift_type: shift.shift_type,
+          team_id: shift.team_id,
+          fullDate: shift.date,
+        })
+
         const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
+
+        console.log("[v0] ShiftAssignmentDrawer received replacements:", data)
+
         setReplacements(data as ReplacementData[])
         setLoadingReplacements(false)
       }
@@ -212,6 +241,11 @@ export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefight
               const replacement = getReplacementForFirefighter(firefighter.id)
               const hasReplacement = !!replacement
 
+              const firefighterLeave = getFirefighterLeaveForDate(firefighter.id, shift.date, leaves)
+              const hasPartialLeave = firefighterLeave && firefighterLeave.start_time && firefighterLeave.end_time
+
+              const hasPartialReplacement = replacement?.is_partial && replacement?.start_time && replacement?.end_time
+
               return (
                 <Card key={firefighter.id}>
                   <CardContent className="p-4">
@@ -221,6 +255,22 @@ export function ShiftAssignmentDrawer({ open, onOpenChange, shift, teamFirefight
                           {firefighter.first_name} {firefighter.last_name}
                         </p>
                         <p className="text-xs text-muted-foreground">{firefighter.email}</p>
+                        {hasPartialLeave && (
+                          <div className="mt-2">
+                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
+                              Congé partiel: {firefighterLeave.start_time.slice(0, 5)} -{" "}
+                              {firefighterLeave.end_time.slice(0, 5)}
+                            </Badge>
+                          </div>
+                        )}
+                        {hasPartialReplacement && (
+                          <div className="mt-2">
+                            <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs">
+                              Remplacement partiel: {replacement.start_time!.slice(0, 5)} -{" "}
+                              {replacement.end_time!.slice(0, 5)}
+                            </Badge>
+                          </div>
+                        )}
                         {hasReplacement && replacement.applications.length > 0 && (
                           <div className="mt-2 space-y-1">
                             <p className="text-xs font-medium text-orange-600">

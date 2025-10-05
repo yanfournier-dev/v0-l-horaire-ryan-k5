@@ -1,5 +1,11 @@
 import { getSession } from "@/lib/auth"
-import { getRecentReplacements, getAllReplacements, getUserApplications } from "@/app/actions/replacements"
+import {
+  getRecentReplacements,
+  getAllReplacements,
+  getUserApplications,
+  getPendingReplacementRequests,
+  getUserReplacementRequests,
+} from "@/app/actions/replacements"
 import { getAllFirefighters } from "@/app/actions/teams"
 import { redirect } from "next/navigation"
 import { ScrollToReplacement } from "@/components/scroll-to-replacement"
@@ -19,6 +25,8 @@ export default async function ReplacementsPage({
   const userApplications = await getUserApplications(user.id)
   const allReplacements = user.is_admin ? await getAllReplacements() : []
   const firefighters = user.is_admin ? await getAllFirefighters() : []
+  const pendingRequests = user.is_admin ? await getPendingReplacementRequests() : []
+  const userRequests = await getUserReplacementRequests(user.id)
 
   const initialTab = searchParams.tab || "open"
 
@@ -36,7 +44,10 @@ export default async function ReplacementsPage({
         userApplications={userApplications}
         allReplacements={allReplacements}
         firefighters={firefighters}
+        pendingRequests={pendingRequests}
+        userRequests={userRequests}
         isAdmin={user.is_admin}
+        userId={user.id}
         initialTab={initialTab}
       />
     </div>

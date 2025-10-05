@@ -19,27 +19,55 @@ import {
 
 export function DeleteReplacementButton({ replacementId }: { replacementId: number }) {
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
 
   const handleDelete = async () => {
-    setIsDeleting(true)
-    const result = await deleteReplacement(replacementId)
+    if (isDeleting) return
 
-    if (result.error) {
-      alert(result.error)
-      setIsDeleting(false)
-    } else {
-      router.push("/dashboard/replacements")
-      router.refresh()
+    setIsDeleting(true)
+    setIsOpen(false)
+
+    try {
+      const result = await deleteReplacement(replacementId)
+
+      if (result.error) {
+        if (result.isRateLimit) {
+          alert("Trop de requêtes. Veuillez attendre 5 secondes avant de supprimer un autre remplacement.")
+          setTimeout(() => {
+            setIsDeleting(false)
+          }, 5000)
+          return
+        }
+        alert(result.error)
+        setIsDeleting(false)
+      } else {
+        router.refresh()
+        setTimeout(() => {
+          setIsDeleting(false)
+        }, 2000)
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      if (errorMessage.includes("Too Many")) {
+        alert("Trop de requêtes. Veuillez attendre 5 secondes avant de supprimer un autre remplacement.")
+        setTimeout(() => {
+          setIsDeleting(false)
+        }, 5000)
+      } else {
+        alert("Une erreur est survenue lors de la suppression")
+        setIsDeleting(false)
+      }
     }
   }
 
   return (
-    <AlertDialog>
+    <AlertDialog open={isOpen} onOpenChange={(open) => !isDeleting && setIsOpen(open)}>
       <AlertDialogTrigger asChild>
         <Button variant="destructive" size="sm" disabled={isDeleting}>
           <Trash2 className="h-4 w-4 mr-2" />
-          Supprimer
+          {isDeleting ? "Suppression..." : "Supprimer"}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -51,9 +79,13 @@ export function DeleteReplacementButton({ replacementId }: { replacementId: numb
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Annuler</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDelete}
+            onClick={(e) => {
+              e.preventDefault()
+              handleDelete()
+            }}
+            disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {isDeleting ? "Suppression..." : "Supprimer"}

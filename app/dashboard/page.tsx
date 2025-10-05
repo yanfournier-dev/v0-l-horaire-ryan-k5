@@ -53,7 +53,7 @@ export default async function DashboardPage() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg md:text-xl">Demandes d'absence</CardTitle>
+                  <CardTitle className="text-lg md:text-xl">Demandes de congé</CardTitle>
                   <CardDescription className="text-sm">Gérez vos congés et absences</CardDescription>
                 </div>
                 {pendingLeaves.length > 0 && (

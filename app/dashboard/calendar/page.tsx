@@ -1,5 +1,10 @@
 import { getSession } from "@/lib/auth"
-import { getCycleConfig, getAllShiftsWithAssignments } from "@/app/actions/calendar"
+import {
+  getCycleConfig,
+  getAllShiftsWithAssignments,
+  getReplacementsForDateRange,
+  getLeavesForDateRange,
+} from "@/app/actions/calendar"
 import { redirect } from "next/navigation"
 import { generateMonthView, getCycleDay, getMonthName, parseLocalDate } from "@/lib/calendar"
 import { Card, CardContent } from "@/components/ui/card"
@@ -47,6 +52,52 @@ export default async function CalendarPage({
     const days = generateMonthView(selectedYear, selectedMonth, cycleStartDate)
 
     const allShifts = await getAllShiftsWithAssignments()
+
+    const firstDay = days[0]?.date
+    const lastDay = days[days.length - 1]?.date
+
+    const replacements =
+      firstDay && lastDay
+        ? await getReplacementsForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
+        : []
+
+    console.log("[v0] Calendar page - calling getLeavesForDateRange with:", {
+      firstDay: firstDay?.toISOString().split("T")[0],
+      lastDay: lastDay?.toISOString().split("T")[0],
+    })
+
+    const leaves =
+      firstDay && lastDay
+        ? await getLeavesForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
+        : []
+
+    console.log("[v0] Calendar page - getLeavesForDateRange returned:", leaves.length, "leaves")
+    console.log("[v0] Calendar page - leaves data:", JSON.stringify(leaves, null, 2))
+
+    const replacementMap: Record<string, any[]> = {}
+    replacements.forEach((repl: any) => {
+      const dateOnly = new Date(repl.shift_date).toISOString().split("T")[0]
+      const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
+      if (!replacementMap[key]) {
+        replacementMap[key] = []
+      }
+      replacementMap[key].push(repl)
+    })
+
+    const leaveMap: Record<string, any[]> = {}
+    leaves.forEach((leave: any) => {
+      const startDate = new Date(leave.start_date)
+      const endDate = new Date(leave.end_date)
+
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split("T")[0]
+        const key = `${dateStr}_${leave.user_id}`
+        if (!leaveMap[key]) {
+          leaveMap[key] = []
+        }
+        leaveMap[key].push(leave)
+      }
+    })
 
     const shiftsByCycleDay: Record<number, any[]> = {}
     allShifts.forEach((shift: any) => {
@@ -144,20 +195,40 @@ export default async function CalendarPage({
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-2 md:gap-3">
+          <div className="grid grid-cols-7 gap-1 md:gap-3">
             {["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => (
-              <div key={day} className="text-center text-sm font-semibold text-muted-foreground py-2">
+              <div
+                key={day}
+                className="text-center text-xs md:text-sm font-semibold text-muted-foreground py-1 md:py-2"
+              >
                 {day}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="grid gap-2 md:gap-3 grid-cols-7">
+        <div className="grid gap-1 md:gap-3 grid-cols-7">
           {days.map((day, index) => {
             const shifts = shiftsByCycleDay[day.cycleDay] || []
 
-            return <CalendarCell key={index} day={day} shifts={shifts} isAdmin={user.is_admin} />
+            const dateStr = day.date.toISOString().split("T")[0]
+            const dayReplacements = shifts.map((shift: any) => {
+              const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+              return replacementMap[key] || []
+            })
+
+            return (
+              <CalendarCell
+                key={index}
+                day={day}
+                shifts={shifts}
+                replacements={dayReplacements}
+                leaves={leaves}
+                leaveMap={leaveMap}
+                dateStr={dateStr}
+                isAdmin={user.is_admin}
+              />
+            )
           })}
         </div>
       </div>

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { MarkAsReadButton } from "@/components/mark-as-read-button"
 import { DeleteNotificationButton } from "@/components/delete-notification-button"
 import { MarkAllAsReadButton } from "@/components/mark-all-as-read-button"
+import { DeleteAllNotificationsButton } from "@/components/delete-all-notifications-button"
 import { formatLocalDateTime } from "@/lib/date-utils"
 
 export const dynamic = "force-dynamic"
@@ -58,7 +59,10 @@ export default async function NotificationsPage() {
           </p>
         </div>
 
-        {unreadCount > 0 && <MarkAllAsReadButton />}
+        <div className="flex gap-2">
+          {unreadCount > 0 && <MarkAllAsReadButton />}
+          {notifications.length > 0 && <DeleteAllNotificationsButton />}
+        </div>
       </div>
 
       <div className="space-y-3">

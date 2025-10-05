@@ -4,8 +4,13 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Eye, EyeOff } from "lucide-react"
 import { AvailableReplacementsTab } from "@/components/available-replacements-tab"
 import { AllReplacementsTab } from "@/components/all-replacements-tab"
+import { PendingRequestsTab } from "@/components/pending-requests-tab"
+import { UserRequestsTab } from "@/components/user-requests-tab"
+import { WithdrawApplicationButton } from "@/components/withdraw-application-button"
 import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 
@@ -14,7 +19,10 @@ interface ReplacementsTabsProps {
   userApplications: any[]
   allReplacements: any[]
   firefighters: any[]
+  pendingRequests: any[]
+  userRequests: any[]
   isAdmin: boolean
+  userId: number
   initialTab?: string
 }
 
@@ -23,10 +31,14 @@ export function ReplacementsTabs({
   userApplications,
   allReplacements,
   firefighters,
+  pendingRequests,
+  userRequests,
   isAdmin,
+  userId,
   initialTab = "open",
 }: ReplacementsTabsProps) {
   const [activeTab, setActiveTab] = useState(initialTab)
+  const [showCompletedApplications, setShowCompletedApplications] = useState(false)
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -77,6 +89,10 @@ export function ReplacementsTabs({
   const sortedRecentReplacements = sortReplacements(recentReplacements)
   const groupedReplacements = groupByShift(sortedRecentReplacements)
 
+  const filteredApplications = showCompletedApplications
+    ? userApplications
+    : userApplications.filter((app: any) => app.status === "pending")
+
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
       <TabsList>
@@ -84,6 +100,8 @@ export function ReplacementsTabs({
           Disponibles ({recentReplacements.filter((r) => r.status === "open").length})
         </TabsTrigger>
         <TabsTrigger value="my-applications">Mes candidatures ({userApplications.length})</TabsTrigger>
+        <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
+        {isAdmin && <TabsTrigger value="pending">Demandes en attente ({pendingRequests.length})</TabsTrigger>}
         {isAdmin && <TabsTrigger value="all">Gestion des remplacements</TabsTrigger>}
       </TabsList>
 
@@ -93,18 +111,44 @@ export function ReplacementsTabs({
           userApplications={userApplications}
           isAdmin={isAdmin}
           firefighters={firefighters}
+          userId={userId}
         />
       </TabsContent>
 
       <TabsContent value="my-applications" className="space-y-4">
-        {userApplications.length === 0 ? (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCompletedApplications(!showCompletedApplications)}
+            className="gap-2"
+          >
+            {showCompletedApplications ? (
+              <>
+                <EyeOff className="h-4 w-4" />
+                Masquer les candidatures traitées
+              </>
+            ) : (
+              <>
+                <Eye className="h-4 w-4" />
+                Afficher les candidatures traitées
+              </>
+            )}
+          </Button>
+        </div>
+
+        {filteredApplications.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">Vous n'avez pas encore postulé pour des remplacements</p>
+              <p className="text-muted-foreground">
+                {showCompletedApplications
+                  ? "Vous n'avez pas encore postulé pour des remplacements"
+                  : "Vous n'avez aucune candidature en attente"}
+              </p>
             </CardContent>
           </Card>
         ) : (
-          userApplications.map((application: any) => (
+          filteredApplications.map((application: any) => (
             <Card key={application.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -130,14 +174,23 @@ export function ReplacementsTabs({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-sm text-muted-foreground">
-                  <p>Postulé le {formatLocalDateTime(application.applied_at)}</p>
-                  {application.status !== "pending" && application.reviewer_first_name && (
-                    <p>
-                      {application.status === "approved" ? "Approuvée" : "Rejetée"} par{" "}
-                      {application.reviewer_first_name} {application.reviewer_last_name} le{" "}
-                      {parseLocalDate(application.reviewed_at).toLocaleDateString("fr-CA")}
-                    </p>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="text-sm text-muted-foreground">
+                    <p>Postulé le {formatLocalDateTime(application.applied_at)}</p>
+                    {application.status !== "pending" && application.reviewer_first_name && (
+                      <p>
+                        {application.status === "approved" ? "Approuvée" : "Rejetée"} par{" "}
+                        {application.reviewer_first_name} {application.reviewer_last_name} le{" "}
+                        {parseLocalDate(application.reviewed_at).toLocaleDateString("fr-CA")}
+                      </p>
+                    )}
+                  </div>
+                  {application.status === "pending" && application.replacement_status === "open" && (
+                    <WithdrawApplicationButton
+                      applicationId={application.id}
+                      shiftDate={application.shift_date}
+                      shiftType={application.shift_type}
+                    />
                   )}
                 </div>
               </CardContent>
@@ -145,6 +198,16 @@ export function ReplacementsTabs({
           ))
         )}
       </TabsContent>
+
+      <TabsContent value="my-requests">
+        <UserRequestsTab userRequests={userRequests} userId={userId} />
+      </TabsContent>
+
+      {isAdmin && (
+        <TabsContent value="pending">
+          <PendingRequestsTab pendingRequests={pendingRequests} />
+        </TabsContent>
+      )}
 
       {isAdmin && (
         <TabsContent value="all">
