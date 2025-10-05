@@ -46,12 +46,12 @@ export default async function CalendarPage({
 
     const allShifts = await getAllShiftsWithAssignments()
 
-    const shiftsByCycleDay = new Map()
+    const shiftsByCycleDay: Record<number, any[]> = {}
     allShifts.forEach((shift: any) => {
-      if (!shiftsByCycleDay.has(shift.cycle_day)) {
-        shiftsByCycleDay.set(shift.cycle_day, [])
+      if (!shiftsByCycleDay[shift.cycle_day]) {
+        shiftsByCycleDay[shift.cycle_day] = []
       }
-      shiftsByCycleDay.get(shift.cycle_day).push(shift)
+      shiftsByCycleDay[shift.cycle_day].push(shift)
     })
 
     const getDayOfWeekLabel = (dayOfWeek: number) => {
@@ -158,7 +158,7 @@ export default async function CalendarPage({
 
         <div className="grid gap-2 md:gap-3 grid-cols-7">
           {days.map((day, index) => {
-            const shifts = shiftsByCycleDay.get(day.cycleDay) || []
+            const shifts = shiftsByCycleDay[day.cycleDay] || []
 
             return (
               <CalendarCell
