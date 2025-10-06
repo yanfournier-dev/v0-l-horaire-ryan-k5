@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { getShiftTypeColor, getShiftTypeLabel, getTeamColor } from "@/lib/colors"
+import { getShiftTypeLabel } from "@/lib/colors"
 import { ShiftAssignmentDrawer } from "@/components/shift-assignment-drawer"
 import { getShiftWithAssignments } from "@/app/actions/calendar"
 import { getTeamFirefighters } from "@/app/actions/shift-assignments"
@@ -38,6 +38,11 @@ interface CalendarCellProps {
 function getDayOfWeekLabel(dayOfWeek: number): string {
   const days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
   return days[dayOfWeek]
+}
+
+function getMonthLabel(month: number): string {
+  const months = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
+  return months[month]
 }
 
 function getFirefighterLeave(userId: number, dateStr: string, leaveMap: Record<string, any[]>) {
@@ -78,17 +83,46 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
 
   const isCurrentMonth = day.isCurrentMonth !== undefined ? day.isCurrentMonth : true
 
+  const getTeamBackgroundColor = (teamName: string, teamColor?: string) => {
+    if (teamColor) {
+      return `${teamColor}15` // Increased from 08 to 15 (8% to ~21% opacity)
+    }
+
+    // Fallback for teams without color
+    if (teamName.includes("1")) return "rgba(58, 175, 74, 0.15)" // #3aaf4a with 15% opacity
+    if (teamName.includes("2")) return "rgb(59, 130, 246, 0.08)" // blue with 8% opacity
+    if (teamName.includes("3")) return "rgba(254, 197, 46, 0.15)" // #fec52e with 15% opacity
+    if (teamName.includes("4")) return "rgb(239, 68, 68, 0.08)" // red with 8% opacity
+    return "transparent"
+  }
+
+  const getTeamBorderColor = (teamName: string, teamColor?: string) => {
+    if (teamColor) {
+      return `${teamColor}40` // Increased from 20 to 40 (~25% to ~50% opacity)
+    }
+
+    // Fallback for teams without color
+    if (teamName.includes("1")) return "rgba(58, 175, 74, 0.4)" // #3aaf4a with 40% opacity
+    if (teamName.includes("2")) return "rgb(59, 130, 246, 0.25)" // blue
+    if (teamName.includes("3")) return "rgba(254, 197, 46, 0.4)" // #fec52e with 40% opacity
+    if (teamName.includes("4")) return "rgb(239, 68, 68, 0.25)" // red
+    return "rgb(229, 231, 235, 0.5)"
+  }
+
   return (
     <>
       <Card
-        className={`${day.isToday ? "ring-2 ring-red-600" : ""} ${!isCurrentMonth ? "opacity-50" : ""} hover:shadow-md transition-shadow`}
+        className={`${day.isToday ? "ring-1 ring-blue-400/50 shadow-md" : ""} ${!isCurrentMonth ? "opacity-40" : ""} hover:shadow-md transition-all duration-200 h-full border-border/50`}
       >
-        <CardHeader className="pb-0.5 md:pb-1 p-1 md:p-2">
-          <CardTitle className="text-[10px] md:text-xs font-medium text-muted-foreground">
-            {getDayOfWeekLabel(day.dayOfWeek)}, {day.date.getDate()}
+        <CardHeader className="pb-1.5 p-2.5 border-b border-border/30">
+          <CardTitle className="text-sm font-semibold text-foreground/90 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground/80 font-normal">{getDayOfWeekLabel(day.dayOfWeek)}</span>
+            <span className="text-base font-bold">
+              {day.date.getDate()} {getMonthLabel(day.date.getMonth())}
+            </span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-1 md:p-2 pt-0 space-y-1 md:space-y-1.5">
+        <CardContent className="p-2 space-y-1.5">
           {shifts.length > 0 ? (
             shifts.map((shift, shiftIndex) => {
               const shiftReplacements = replacements[shiftIndex] || []
@@ -127,19 +161,43 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
               return (
                 <div
                   key={shift.id}
-                  className={`space-y-0.5 p-1 md:p-1.5 rounded border ${isAdmin ? "cursor-pointer hover:bg-accent" : ""}`}
+                  className={`space-y-1 p-2 rounded-md border ${isAdmin ? "cursor-pointer hover:bg-accent/30" : ""} transition-colors`}
+                  style={{
+                    backgroundColor: getTeamBackgroundColor(shift.team_name, shift.team_color),
+                    borderColor: getTeamBorderColor(shift.team_name, shift.team_color),
+                  }}
                   onClick={() => handleShiftClick(shift)}
                 >
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <Badge className={`${getShiftTypeColor(shift.shift_type)} text-[10px] md:text-xs`}>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] font-medium px-1.5 py-0"
+                      style={{
+                        backgroundColor:
+                          shift.shift_type === "full_24h"
+                            ? "rgba(0, 70, 65, 0.12)" // #004641 with 12% opacity
+                            : shift.shift_type === "day"
+                              ? "rgb(186, 230, 253)" // sky-200
+                              : "rgb(254, 205, 211)", // rose-200
+                        color:
+                          shift.shift_type === "full_24h"
+                            ? "#004641" // Custom forest green
+                            : shift.shift_type === "day"
+                              ? "rgb(7, 89, 133)" // sky-800
+                              : "rgb(159, 18, 57)", // rose-800
+                        borderColor:
+                          shift.shift_type === "full_24h"
+                            ? "rgba(0, 70, 65, 0.4)" // #004641 with 40% opacity
+                            : shift.shift_type === "day"
+                              ? "rgb(56, 189, 248)" // sky-400
+                              : "rgb(251, 113, 133)", // rose-400
+                      }}
+                    >
                       {getShiftTypeLabel(shift.shift_type).split(" ")[0]}
-                    </Badge>
-                    <Badge className={`${getTeamColor(shift.team_name, shift.team_color)} text-[10px] md:text-xs`}>
-                      {shift.team_name}
                     </Badge>
                   </div>
                   {firefighters.length > 0 ? (
-                    <div className="text-[10px] md:text-xs leading-tight text-foreground space-y-0">
+                    <div className="text-xs leading-relaxed text-foreground/80 space-y-0">
                       {firefighters.map((firefighter, index) => {
                         if (day.date.getDate() === 24 && day.date.getMonth() === 9) {
                           console.log("[v0] Checking firefighter:", firefighter)
@@ -205,46 +263,46 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
                         return (
                           <div
                             key={index}
-                            className={`truncate ${
+                            className={`truncate py-0.5 ${
                               isPendingReplacement && hasPartialReplacement
-                                ? "font-bold bg-red-100 dark:bg-red-900 px-1 rounded"
+                                ? "font-medium bg-red-50 dark:bg-red-950/20 px-1.5 rounded text-red-700 dark:text-red-300"
                                 : isPendingReplacement
-                                  ? "font-bold bg-red-100 dark:bg-red-900 px-1 rounded"
+                                  ? "font-medium bg-red-50 dark:bg-red-950/20 px-1.5 rounded text-red-700 dark:text-red-300"
                                   : isApprovedNotAssigned && hasPartialReplacement
-                                    ? "font-bold bg-red-100 dark:bg-red-900 px-1 rounded"
+                                    ? "font-medium bg-red-50 dark:bg-red-950/20 px-1.5 rounded text-red-700 dark:text-red-300"
                                     : isApprovedNotAssigned
-                                      ? "font-bold bg-red-100 dark:bg-red-900 px-1 rounded"
+                                      ? "font-medium bg-red-50 dark:bg-red-950/20 px-1.5 rounded text-red-700 dark:text-red-300"
                                       : isAssignedReplacement && hasPartialReplacement
-                                        ? "font-bold bg-yellow-100 dark:bg-yellow-900 px-1 rounded"
+                                        ? "font-medium bg-amber-50 dark:bg-amber-950/20 px-1.5 rounded text-amber-700 dark:text-amber-300"
                                         : isAssignedReplacement
-                                          ? "font-bold bg-yellow-100 dark:bg-yellow-900 px-1 rounded"
+                                          ? "font-medium bg-amber-50 dark:bg-amber-950/20 px-1.5 rounded text-amber-700 dark:text-amber-300"
                                           : ""
-                            } ${hasPartialLeave && !replacement ? "bg-blue-100 dark:bg-blue-900 px-1 rounded" : ""}`}
+                            } ${hasPartialLeave && !replacement ? "bg-blue-50 dark:bg-blue-950/20 px-1.5 rounded text-blue-700 dark:text-blue-300" : ""}`}
                           >
                             {isPendingReplacement && (
-                              <span className="text-red-700 dark:text-red-300 font-bold mr-0.5">?</span>
+                              <span className="text-red-500 dark:text-red-400 font-bold mr-1">?</span>
                             )}
                             {isAssignedReplacement && hasPartialReplacement && (
-                              <span className="text-yellow-700 dark:text-yellow-300 font-bold mr-0.5">*</span>
+                              <span className="text-amber-500 dark:text-amber-400 font-bold mr-1">*</span>
                             )}
                             {formatFirefighterName(displayFirstName, displayLastName)}
                             {isPendingReplacement && hasPartialReplacement && (
-                              <span className="ml-1 text-[9px] md:text-[10px] font-semibold text-red-700 dark:text-red-300">
+                              <span className="ml-1 text-[10px] font-normal text-red-600 dark:text-red-400">
                                 ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
                               </span>
                             )}
                             {isApprovedNotAssigned && hasPartialReplacement && (
-                              <span className="ml-1 text-[9px] md:text-[10px] font-semibold text-red-700 dark:text-red-300">
+                              <span className="ml-1 text-[10px] font-normal text-red-600 dark:text-red-400">
                                 ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
                               </span>
                             )}
                             {isAssignedReplacement && hasPartialReplacement && (
-                              <span className="ml-1 text-[9px] md:text-[10px] font-semibold text-yellow-700 dark:text-yellow-300">
+                              <span className="ml-1 text-[10px] font-normal text-amber-600 dark:text-amber-400">
                                 ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
                               </span>
                             )}
                             {hasPartialLeave && (
-                              <span className="ml-1 text-[9px] md:text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+                              <span className="ml-1 text-[10px] font-normal text-blue-600 dark:text-blue-400">
                                 ({firefighterLeave.start_time.slice(0, 5)}-{firefighterLeave.end_time.slice(0, 5)})
                               </span>
                             )}
@@ -253,13 +311,13 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
                       })}
                     </div>
                   ) : (
-                    <p className="text-[10px] md:text-xs text-muted-foreground italic">Aucun pompier assigné</p>
+                    <p className="text-xs text-muted-foreground/60 italic">Aucun pompier assigné</p>
                   )}
                 </div>
               )
             })
           ) : (
-            <p className="text-[10px] md:text-xs text-muted-foreground">Aucun quart</p>
+            <p className="text-xs text-muted-foreground/60 text-center py-4">Aucun quart</p>
           )}
         </CardContent>
       </Card>

@@ -99,6 +99,20 @@ export default async function CalendarPage({
       shiftsByCycleDay[shift.cycle_day].push(shift)
     })
 
+    const shiftTypeOrder: Record<string, number> = {
+      full_24h: 1,
+      day: 2,
+      night: 3,
+    }
+
+    Object.keys(shiftsByCycleDay).forEach((cycleDay) => {
+      shiftsByCycleDay[Number(cycleDay)].sort((a, b) => {
+        const orderA = shiftTypeOrder[a.shift_type] || 999
+        const orderB = shiftTypeOrder[b.shift_type] || 999
+        return orderA - orderB
+      })
+    })
+
     const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1
     const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear
     const nextMonth = selectedMonth === 11 ? 0 : selectedMonth + 1
@@ -114,9 +128,6 @@ export default async function CalendarPage({
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 {getMonthName(selectedMonth)} {selectedYear}
               </h1>
-              <p className="text-sm md:text-base text-muted-foreground">
-                Aujourd'hui: Jour {currentCycleDay} du cycle • Début: {cycleStartDate.toLocaleDateString("fr-CA")}
-              </p>
             </div>
 
             <div className="flex gap-2">
