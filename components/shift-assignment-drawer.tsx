@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -23,6 +22,7 @@ import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 
 interface ShiftAssignmentDrawerProps {
   open: boolean
@@ -98,24 +98,17 @@ export function ShiftAssignmentDrawer({
   const [replacements, setReplacements] = useState<ReplacementData[]>([])
   const [loadingReplacements, setLoadingReplacements] = useState(false)
   const [isPartial, setIsPartial] = useState(false)
-  const [startTime, setStartTime] = useState("07:00")
-  const [endTime, setEndTime] = useState("19:00")
+  const defaultTimes = shift ? getDefaultReplacementTimes(shift.shift_type) : { startTime: "07:00", endTime: "17:00" }
+  const [startTime, setStartTime] = useState(defaultTimes.startTime)
+  const [endTime, setEndTime] = useState(defaultTimes.endTime)
 
   useEffect(() => {
     if (open && shift) {
       const fetchReplacements = async () => {
         setLoadingReplacements(true)
         const shiftDate = shift.date.toISOString().split("T")[0]
-        console.log("[v0] ShiftAssignmentDrawer fetching replacements for:", {
-          shiftDate,
-          shift_type: shift.shift_type,
-          team_id: shift.team_id,
-          fullDate: shift.date,
-        })
 
         const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
-
-        console.log("[v0] ShiftAssignmentDrawer received replacements:", data)
 
         setReplacements(data as ReplacementData[])
         setLoadingReplacements(false)
@@ -135,6 +128,7 @@ export function ShiftAssignmentDrawer({
     }
 
     setIsLoading(true)
+
     const shiftDate = shift.date.toISOString().split("T")[0]
     const result = await createReplacementFromShift(
       selectedFirefighter.id,
@@ -148,17 +142,31 @@ export function ShiftAssignmentDrawer({
 
     if (result.error) {
       toast.error(result.error)
-    } else {
-      toast.success("Demande de remplacement créée avec succès")
-      const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
-      setReplacements(data as ReplacementData[])
+      setIsLoading(false)
+      return
     }
+
+    toast.success("Demande de remplacement créée avec succès")
+
+    const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
+    setReplacements(data as ReplacementData[])
 
     setIsLoading(false)
     setSelectedFirefighter(null)
     setIsPartial(false)
-    setStartTime("07:00")
-    setEndTime("19:00")
+    const times = getDefaultReplacementTimes(shift.shift_type)
+    setStartTime(times.startTime)
+    setEndTime(times.endTime)
+
+    router.refresh()
+  }
+
+  const handleCancel = () => {
+    setSelectedFirefighter(null)
+    setIsPartial(false)
+    const times = getDefaultReplacementTimes(shift.shift_type)
+    setStartTime(times.startTime)
+    setEndTime(times.endTime)
   }
 
   const getReplacementForFirefighter = (firefighterId: number) => {
@@ -215,7 +223,7 @@ export function ShiftAssignmentDrawer({
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Pompiers assignés au quart</SheetTitle>
@@ -331,8 +339,11 @@ export function ShiftAssignmentDrawer({
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={!!selectedFirefighter} onOpenChange={(open) => !open && setSelectedFirefighter(null)}>
-        <AlertDialogContent>
+      <AlertDialog open={!!selectedFirefighter}>
+        <AlertDialogContent
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Créer une demande de remplacement</AlertDialogTitle>
             <AlertDialogDescription>
@@ -349,7 +360,9 @@ export function ShiftAssignmentDrawer({
               <Checkbox
                 id="partial"
                 checked={isPartial}
-                onCheckedChange={(checked) => setIsPartial(checked === true)}
+                onCheckedChange={(checked) => {
+                  setIsPartial(checked === true)
+                }}
               />
               <Label
                 htmlFor="partial"
@@ -401,7 +414,9 @@ export function ShiftAssignmentDrawer({
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Annuler</AlertDialogCancel>
+            <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
+              Annuler
+            </Button>
             <AlertDialogAction
               onClick={handleCreateReplacement}
               disabled={isLoading}

@@ -61,18 +61,10 @@ export default async function CalendarPage({
         ? await getReplacementsForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
         : []
 
-    console.log("[v0] Calendar page - calling getLeavesForDateRange with:", {
-      firstDay: firstDay?.toISOString().split("T")[0],
-      lastDay: lastDay?.toISOString().split("T")[0],
-    })
-
     const leaves =
       firstDay && lastDay
         ? await getLeavesForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
         : []
-
-    console.log("[v0] Calendar page - getLeavesForDateRange returned:", leaves.length, "leaves")
-    console.log("[v0] Calendar page - leaves data:", JSON.stringify(leaves, null, 2))
 
     const replacementMap: Record<string, any[]> = {}
     replacements.forEach((repl: any) => {

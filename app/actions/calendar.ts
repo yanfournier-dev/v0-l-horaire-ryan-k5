@@ -144,19 +144,7 @@ export async function getAllShiftsWithAssignments() {
     `
     return shifts
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-
-    if (
-      errorMessage.includes("Too Many Requests") ||
-      errorMessage.includes("Too Many R") ||
-      errorMessage.includes("not valid JSON")
-    ) {
-      console.error("[v0] getAllShiftsWithAssignments: Rate limit hit, returning empty array")
-      return []
-    }
-
-    console.error("[v0] getAllShiftsWithAssignments: Query failed", error)
-    // Return empty array instead of throwing to prevent page crash
+    console.error("[v0] getAllShiftsWithAssignments: Query failed, returning empty array", error)
     return []
   }
 }
@@ -187,34 +175,15 @@ export async function getReplacementsForDateRange(startDate: string, endDate: st
       WHERE r.shift_date >= ${startDate}
         AND r.shift_date <= ${endDate}
     `
-
-    console.log("[v0] getReplacementsForDateRange returned:", replacements.length, "replacements")
-    console.log("[v0] Replacement details:", JSON.stringify(replacements, null, 2))
-
     return replacements
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-
-    // Check if it's a rate limiting error
-    if (
-      errorMessage.includes("Too Many Requests") ||
-      errorMessage.includes("Too Many R") ||
-      errorMessage.includes("not valid JSON")
-    ) {
-      console.error("[v0] getReplacementsForDateRange: Rate limit hit, returning empty array")
-      return []
-    }
-
-    console.error("[v0] getReplacementsForDateRange: Query failed", error)
-    // Return empty array instead of throwing to prevent page crash
+    console.error("[v0] getReplacementsForDateRange: Query failed, returning empty array", error)
     return []
   }
 }
 
 export async function getLeavesForDateRange(startDate: string, endDate: string) {
   try {
-    console.log("[v0] getLeavesForDateRange called with:", { startDate, endDate })
-
     const leaves = await sql`
       SELECT 
         l.id,
@@ -232,28 +201,9 @@ export async function getLeavesForDateRange(startDate: string, endDate: string) 
         AND l.start_date <= ${endDate}
         AND l.end_date >= ${startDate}
     `
-
-    console.log("[v0] getLeavesForDateRange returned:", leaves.length, "leaves")
-    console.log("[v0] Leaves details:", JSON.stringify(leaves, null, 2))
-
     return leaves
   } catch (error) {
-    console.error("[v0] getLeavesForDateRange ERROR:", error)
-    console.error("[v0] Error message:", error instanceof Error ? error.message : String(error))
-    console.error("[v0] Error stack:", error instanceof Error ? error.stack : "No stack trace")
-
-    const errorMessage = error instanceof Error ? error.message : String(error)
-
-    if (
-      errorMessage.includes("Too Many Requests") ||
-      errorMessage.includes("Too Many R") ||
-      errorMessage.includes("not valid JSON")
-    ) {
-      console.error("[v0] getLeavesForDateRange: Rate limit hit, returning empty array")
-      return []
-    }
-
-    console.error("[v0] getLeavesForDateRange: Query failed, returning empty array")
+    console.error("[v0] getLeavesForDateRange: Query failed, returning empty array", error)
     return []
   }
 }

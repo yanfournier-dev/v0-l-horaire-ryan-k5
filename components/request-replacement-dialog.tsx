@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { requestReplacement } from "@/app/actions/replacements"
 import { getUserAssignedShifts } from "@/app/actions/shift-assignments"
 import { useRouter } from "next/navigation"
+import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 
 interface RequestReplacementDialogProps {
   open: boolean
@@ -65,6 +66,17 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
       setEndTime("")
     }
   }, [open])
+
+  useEffect(() => {
+    if (isPartial && selectedShiftId) {
+      const selectedShift = assignedShifts.find((s) => s.id.toString() === selectedShiftId)
+      if (selectedShift) {
+        const { startTime: defaultStart, endTime: defaultEnd } = getDefaultReplacementTimes(selectedShift.shift_type)
+        setStartTime(defaultStart)
+        setEndTime(defaultEnd)
+      }
+    }
+  }, [isPartial, selectedShiftId, assignedShifts])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

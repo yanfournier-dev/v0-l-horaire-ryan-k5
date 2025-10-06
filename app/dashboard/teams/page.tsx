@@ -1,7 +1,6 @@
 import { getSession } from "@/lib/auth"
 import { getTeams } from "@/app/actions/teams"
 import { redirect } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { getTeamColor } from "@/lib/colors"
@@ -49,34 +48,22 @@ export default async function TeamsPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-2">
         {teams.map((team: any) => (
           <Link key={team.id} href={`/dashboard/teams/${team.id}`}>
-            <Card
-              className={`hover:shadow-lg transition-shadow cursor-pointer h-full border-2 ${getTeamColor(team.name, team.color)}`}
+            <div
+              className={`flex items-center justify-between p-4 rounded-lg border-2 hover:shadow-md transition-shadow cursor-pointer ${
+                team.type === "permanent" ? getTeamColor(team.name, team.color) : "border-border bg-background"
+              }`}
             >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-xl">{team.name}</CardTitle>
-                  <Badge className={getTeamTypeColor(team.type)}>{getTeamTypeLabel(team.type)}</Badge>
-                </div>
-                <CardDescription>
-                  {team.capacity >= 999
-                    ? `${team.member_count} membres (illimité)`
-                    : `${team.member_count} / ${team.capacity} membres`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {team.capacity < 999 && (
-                  <div className="w-full bg-secondary rounded-full h-2">
-                    <div
-                      className="bg-red-600 h-2 rounded-full transition-all"
-                      style={{ width: `${Math.min((team.member_count / team.capacity) * 100, 100)}%` }}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-semibold">{team.name}</h3>
+                <Badge className={getTeamTypeColor(team.type)}>{getTeamTypeLabel(team.type)}</Badge>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {team.member_count} {team.member_count === 1 ? "membre" : "membres"}
+              </div>
+            </div>
           </Link>
         ))}
       </div>

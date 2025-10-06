@@ -173,7 +173,9 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
 
                         const isAssignedReplacement =
                           replacement?.status === "assigned" && replacement?.replacement_first_name
-                        const isPendingReplacement = replacement && replacement?.status !== "assigned"
+                        const isPendingReplacement = replacement?.status === "pending"
+                        const isApprovedNotAssigned =
+                          replacement && replacement?.status !== "assigned" && replacement?.status !== "pending"
 
                         const displayFirstName = isAssignedReplacement
                           ? replacement.replacement_first_name
@@ -208,11 +210,15 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
                                 ? "font-bold bg-red-100 dark:bg-red-900 px-1 rounded"
                                 : isPendingReplacement
                                   ? "font-bold bg-red-100 dark:bg-red-900 px-1 rounded"
-                                  : isAssignedReplacement && hasPartialReplacement
-                                    ? "font-bold bg-yellow-100 dark:bg-yellow-900 px-1 rounded"
-                                    : isAssignedReplacement
-                                      ? "font-bold bg-yellow-100 dark:bg-yellow-900 px-1 rounded"
-                                      : ""
+                                  : isApprovedNotAssigned && hasPartialReplacement
+                                    ? "font-bold bg-red-100 dark:bg-red-900 px-1 rounded"
+                                    : isApprovedNotAssigned
+                                      ? "font-bold bg-red-100 dark:bg-red-900 px-1 rounded"
+                                      : isAssignedReplacement && hasPartialReplacement
+                                        ? "font-bold bg-yellow-100 dark:bg-yellow-900 px-1 rounded"
+                                        : isAssignedReplacement
+                                          ? "font-bold bg-yellow-100 dark:bg-yellow-900 px-1 rounded"
+                                          : ""
                             } ${hasPartialLeave && !replacement ? "bg-blue-100 dark:bg-blue-900 px-1 rounded" : ""}`}
                           >
                             {isPendingReplacement && (
@@ -223,6 +229,11 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
                             )}
                             {formatFirefighterName(displayFirstName, displayLastName)}
                             {isPendingReplacement && hasPartialReplacement && (
+                              <span className="ml-1 text-[9px] md:text-[10px] font-semibold text-red-700 dark:text-red-300">
+                                ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
+                              </span>
+                            )}
+                            {isApprovedNotAssigned && hasPartialReplacement && (
                               <span className="ml-1 text-[9px] md:text-[10px] font-semibold text-red-700 dark:text-red-300">
                                 ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
                               </span>

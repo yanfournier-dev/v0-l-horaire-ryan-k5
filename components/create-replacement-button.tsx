@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { createReplacementFromShift } from "@/app/actions/replacements"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -19,6 +19,7 @@ import { parseLocalDate } from "@/lib/date-utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 
 interface CreateReplacementButtonProps {
   userId: number
@@ -40,8 +41,23 @@ export function CreateReplacementButton({
   const [isLoading, setIsLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [isPartial, setIsPartial] = useState(false)
-  const [startTime, setStartTime] = useState("07:00")
-  const [endTime, setEndTime] = useState("19:00")
+  const defaultTimes = getDefaultReplacementTimes(shiftType)
+  const [startTime, setStartTime] = useState(defaultTimes.startTime)
+  const [endTime, setEndTime] = useState(defaultTimes.endTime)
+
+  console.log("[v0] CreateReplacementButton - shiftType:", shiftType)
+  console.log("[v0] CreateReplacementButton - defaultTimes:", defaultTimes)
+  console.log("[v0] CreateReplacementButton - current startTime:", startTime)
+  console.log("[v0] CreateReplacementButton - current endTime:", endTime)
+
+  useEffect(() => {
+    console.log("[v0] useEffect triggered - isPartial:", isPartial)
+    if (isPartial) {
+      console.log("[v0] useEffect - setting times to:", defaultTimes)
+      setStartTime(defaultTimes.startTime)
+      setEndTime(defaultTimes.endTime)
+    }
+  }, [isPartial])
 
   const handleCreate = async () => {
     if (isLoading) return
@@ -90,8 +106,8 @@ export function CreateReplacementButton({
         })
         setOpen(false)
         setIsPartial(false)
-        setStartTime("07:00")
-        setEndTime("19:00")
+        setStartTime(defaultTimes.startTime)
+        setEndTime(defaultTimes.endTime)
         router.refresh()
       }
     } catch (error) {
@@ -117,11 +133,10 @@ export function CreateReplacementButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Créer une demande de remplacement</AlertDialogTitle>
           <AlertDialogDescription>
-            Voulez-vous créer une demande de remplacement pour <strong>{userName}</strong> le{" "}
-            <strong>{parseLocalDate(shiftDate).toLocaleDateString("fr-CA")}</strong> ?
-            <br />
-            <br />
-            Les autres pompiers pourront postuler pour ce remplacement.
+            Voulez-vous créer une demande de remplacement pour <strong>{userName}</strong> pour le quart du{" "}
+            <strong>{parseLocalDate(shiftDate).toLocaleDateString("fr-CA")}</strong> (
+            {shiftType === "day" ? "Jour" : shiftType === "full_24h" ? "24h" : "Nuit"} (
+            {shiftType === "day" ? "7h-17h" : shiftType === "full_24h" ? "7h-7h" : "17h-7h"})) ?
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -130,7 +145,10 @@ export function CreateReplacementButton({
             <Checkbox
               id="partial"
               checked={isPartial}
-              onCheckedChange={(checked) => setIsPartial(checked as boolean)}
+              onCheckedChange={(checked) => {
+                console.log("[v0] Checkbox changed - isPartial:", checked)
+                setIsPartial(checked as boolean)
+              }}
             />
             <Label
               htmlFor="partial"
@@ -173,7 +191,7 @@ export function CreateReplacementButton({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoading}>Annuler</AlertDialogCancel>
           <Button onClick={handleCreate} disabled={isLoading} className="bg-red-600 hover:bg-red-700">
-            {isLoading ? "Création..." : "Créer"}
+            {isLoading ? "Création..." : "Créer la demande"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
