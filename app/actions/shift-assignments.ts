@@ -45,7 +45,7 @@ export async function assignFirefighterToShift(shiftId: number, userId: number) 
   try {
     // Check if shift already has 8 firefighters
     const count = await sql`
-      SELECT COUNT(*) as count FROM shift_assignments WHERE shift_id = ${shiftId}
+      SELECT COUNT(*) as count FROM shift_assignments WHERE shift_id = ${shiftId} AND is_extra = false
     `
 
     if (count[0].count >= 8) {
@@ -53,8 +53,8 @@ export async function assignFirefighterToShift(shiftId: number, userId: number) 
     }
 
     await sql`
-      INSERT INTO shift_assignments (shift_id, user_id)
-      VALUES (${shiftId}, ${userId})
+      INSERT INTO shift_assignments (shift_id, user_id, is_extra)
+      VALUES (${shiftId}, ${userId}, false)
       ON CONFLICT (shift_id, user_id) DO NOTHING
     `
 
@@ -62,6 +62,49 @@ export async function assignFirefighterToShift(shiftId: number, userId: number) 
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de l'assignation" }
+  }
+}
+
+export async function addExtraFirefighterToShift(
+  shiftId: number,
+  userId: number,
+  isPartial = false,
+  startTime?: string,
+  endTime?: string,
+) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    // Check if this firefighter is already assigned (regular or extra)
+    const existing = await sql`
+      SELECT COUNT(*) as count FROM shift_assignments 
+      WHERE shift_id = ${shiftId} AND user_id = ${userId}
+    `
+
+    if (existing[0].count > 0) {
+      return { error: "Ce pompier est déjà assigné à ce quart" }
+    }
+
+    await sql`
+      INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_partial, start_time, end_time)
+      VALUES (
+        ${shiftId}, 
+        ${userId}, 
+        true, 
+        ${isPartial},
+        ${isPartial && startTime ? startTime : null},
+        ${isPartial && endTime ? endTime : null}
+      )
+    `
+
+    revalidatePath("/dashboard/calendar")
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] Error adding extra firefighter:", error)
+    return { error: "Erreur lors de l'ajout du pompier supplémentaire" }
   }
 }
 
@@ -95,6 +138,34 @@ export async function getTeamFirefighters(teamId: number) {
     FROM team_members tm
     JOIN users u ON tm.user_id = u.id
     WHERE tm.team_id = ${teamId}
+    ORDER BY 
+      CASE u.role 
+        WHEN 'captain' THEN 1 
+        WHEN 'lieutenant' THEN 2 
+        WHEN 'pp1' THEN 3
+        WHEN 'pp2' THEN 4
+        WHEN 'pp3' THEN 5
+        WHEN 'pp4' THEN 6
+        WHEN 'pp5' THEN 7
+        WHEN 'pp6' THEN 8
+        WHEN 'firefighter' THEN 9 
+        ELSE 10
+      END,
+      u.last_name
+  `
+  return firefighters
+}
+
+export async function getAllFirefighters() {
+  const firefighters = await sql`
+    SELECT 
+      u.id,
+      u.first_name,
+      u.last_name,
+      u.role,
+      u.email
+    FROM users u
+    WHERE u.is_admin = false
     ORDER BY 
       CASE u.role 
         WHEN 'captain' THEN 1 

@@ -28,7 +28,7 @@ export default async function ReplacementsPage({
   const pendingRequests = user.is_admin ? await getPendingReplacementRequests() : []
   const userRequests = await getUserReplacementRequests(user.id)
 
-  const initialTab = searchParams.tab || "open"
+  const initialTab = searchParams.tab || (user.is_admin ? "all" : "open")
 
   return (
     <div className="p-6">

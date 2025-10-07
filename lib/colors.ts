@@ -8,7 +8,7 @@ export function getTeamColor(teamName: string, color?: string) {
   if (teamName.includes("1")) return getColorClasses("custom-green") // Yellow-green, distinct from blue
   if (teamName.includes("2")) return getColorClasses("blue") // Pure blue
   if (teamName.includes("3")) return getColorClasses("custom-yellow") // Custom yellow #fec52e
-  if (teamName.includes("4")) return getColorClasses("red")
+  if (teamName.includes("4")) return getColorClasses("custom-red")
   return getColorClasses("gray")
 }
 
@@ -31,6 +31,7 @@ export function getColorClasses(color: string) {
     "custom-green": "bg-[#3aaf4a]/10 text-[#3aaf4a] dark:bg-[#3aaf4a]/20 dark:text-[#3aaf4a] border-[#3aaf4a]/30",
     "custom-yellow": "bg-[#fec52e]/10 text-[#fec52e] dark:bg-[#fec52e]/20 dark:text-[#fec52e] border-[#fec52e]/30",
     "custom-forest": "bg-[#004641]/10 text-[#004641] dark:bg-[#004641]/20 dark:text-[#004641] border-[#004641]/30",
+    "custom-red": "bg-[#E30613]/10 text-[#E30613] dark:bg-[#E30613]/20 dark:text-[#E30613] border-[#E30613]/30",
   }
   return colorMap[color] || colorMap.gray
 }

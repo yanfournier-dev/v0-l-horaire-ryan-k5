@@ -131,11 +131,6 @@ export default async function CalendarPage({
             </div>
 
             <div className="flex gap-2">
-              <Link href="/dashboard/calendar/daily">
-                <Button variant="outline" className="w-full sm:w-auto bg-transparent">
-                  Vue quotidienne
-                </Button>
-              </Link>
               {user.is_admin && (
                 <Link href="/dashboard/calendar/manage">
                   <Button className="bg-red-600 hover:bg-red-700 w-full sm:w-auto">Gérer les quarts</Button>

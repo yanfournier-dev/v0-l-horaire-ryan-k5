@@ -96,14 +96,24 @@ export function ReplacementsTabs({
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
       <TabsList>
+        {isAdmin && (
+          <TabsTrigger value="all" className="font-semibold">
+            Gestion des remplacements
+          </TabsTrigger>
+        )}
         <TabsTrigger value="open">
           Disponibles ({recentReplacements.filter((r) => r.status === "open").length})
         </TabsTrigger>
         <TabsTrigger value="my-applications">Mes candidatures ({userApplications.length})</TabsTrigger>
         <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
         {isAdmin && <TabsTrigger value="pending">Demandes en attente ({pendingRequests.length})</TabsTrigger>}
-        {isAdmin && <TabsTrigger value="all">Gestion des remplacements</TabsTrigger>}
       </TabsList>
+
+      {isAdmin && (
+        <TabsContent value="all">
+          <AllReplacementsTab allReplacements={allReplacements} />
+        </TabsContent>
+      )}
 
       <TabsContent value="open">
         <AvailableReplacementsTab
@@ -206,12 +216,6 @@ export function ReplacementsTabs({
       {isAdmin && (
         <TabsContent value="pending">
           <PendingRequestsTab pendingRequests={pendingRequests} />
-        </TabsContent>
-      )}
-
-      {isAdmin && (
-        <TabsContent value="all">
-          <AllReplacementsTab allReplacements={allReplacements} />
         </TabsContent>
       )}
     </Tabs>

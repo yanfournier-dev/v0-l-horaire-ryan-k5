@@ -211,7 +211,20 @@ export async function approveApplication(applicationId: number) {
     const { replacement_id, applicant_id } = application[0]
 
     const replacementResult = await sql`
-      SELECT shift_date, shift_type FROM replacements WHERE id = ${replacement_id}
+      SELECT r.*, s.id as shift_id
+      FROM replacements r
+      LEFT JOIN shifts s ON s.team_id = r.team_id 
+        AND s.shift_type = r.shift_type
+        AND s.cycle_day = (
+          SELECT (
+            (r.shift_date::date - ci.start_date::date) % ci.cycle_length_days
+          ) + 1
+          FROM cycle_config ci
+          WHERE ci.is_active = true
+          LIMIT 1
+        )
+      WHERE r.id = ${replacement_id}
+      LIMIT 1
     `
     const replacement = replacementResult[0]
 
@@ -241,6 +254,33 @@ export async function approveApplication(applicationId: number) {
       WHERE id = ${replacement_id}
     `
 
+    if (replacement.user_id === null && replacement.shift_id) {
+      console.log("[v0] Creating shift_assignment for extra firefighter:", {
+        shift_id: replacement.shift_id,
+        applicant_id,
+        is_partial: replacement.is_partial,
+        start_time: replacement.start_time,
+        end_time: replacement.end_time,
+      })
+
+      await sql`
+        INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_partial, start_time, end_time)
+        VALUES (
+          ${replacement.shift_id},
+          ${applicant_id},
+          true,
+          ${replacement.is_partial || false},
+          ${replacement.is_partial && replacement.start_time ? replacement.start_time : null},
+          ${replacement.is_partial && replacement.end_time ? replacement.end_time : null}
+        )
+        ON CONFLICT (shift_id, user_id) DO UPDATE
+        SET is_extra = true,
+            is_partial = ${replacement.is_partial || false},
+            start_time = ${replacement.is_partial && replacement.start_time ? replacement.start_time : null},
+            end_time = ${replacement.is_partial && replacement.end_time ? replacement.end_time : null}
+      `
+    }
+
     await createNotification(
       applicant_id,
       "Candidature approuvée",
@@ -266,6 +306,7 @@ export async function approveApplication(applicationId: number) {
     revalidatePath("/dashboard")
     return { success: true }
   } catch (error) {
+    console.error("[v0] Error approving application:", error)
     return { error: "Erreur lors de l'approbation" }
   }
 }
@@ -782,7 +823,7 @@ export async function approveReplacementRequest(replacementId: number) {
     await createNotification(
       requester_id,
       "Demande de remplacement approuvée",
-      `Votre demande de remplacement${is_partial ? " partiel" : ""} pour le ${formattedDate} (${shift_type === "day" ? "Jour" : "Nuit"})${timeInfo} a été approuvée.`,
+      `Votre demande de remplacement${is_partial ? " partiel" : ""} pour le ${formattedDate} (${shift_type === "day" ? "Jour" : shift_type === "night" ? "Nuit" : "24h"})${timeInfo} a été approuvée.`,
       "replacement_approved",
       replacementId,
       "replacement",
@@ -797,7 +838,7 @@ export async function approveReplacementRequest(replacementId: number) {
         AND np.enable_email = true
     `
 
-    const message = `Un nouveau remplacement${is_partial ? " partiel" : ""} est disponible pour le ${formattedDate} (${shift_type === "day" ? "Jour" : "Nuit"})${timeInfo}.`
+    const message = `Un nouveau remplacement${is_partial ? " partiel" : ""} est disponible pour le ${formattedDate} (${shift_type === "day" ? "Jour" : shift_type === "night" ? "Nuit" : "24h"})${timeInfo}.`
 
     await Promise.all(
       firefighters.map((firefighter) =>
@@ -859,7 +900,7 @@ export async function rejectReplacementRequest(replacementId: number, reason?: s
     await createNotification(
       requester_id,
       "Demande de remplacement rejetée",
-      `Votre demande de remplacement${is_partial ? " partiel" : ""} pour le ${formattedDate} (${shift_type === "day" ? "Jour" : "Nuit"})${timeInfo} a été rejetée.${reasonText}`,
+      `Votre demande de remplacement${is_partial ? " partiel" : ""} pour le ${formattedDate} (${shift_type === "day" ? "Jour" : shift_type === "night" ? "Nuit" : "24h"})${timeInfo} a été rejetée.${reasonText}`,
       "replacement_rejected",
       replacementId,
       "replacement",
@@ -1041,5 +1082,64 @@ export async function getAvailableFirefighters(replacementId: number) {
   } catch (error) {
     console.error("[v0] Error getting available firefighters:", error)
     return { error: "Erreur lors de la récupération des pompiers" }
+  }
+}
+
+// Function to create an extra firefighter replacement
+export async function createExtraFirefighterReplacement(
+  shiftDate: string,
+  shiftType: string,
+  teamId: number,
+  isPartial = false,
+  startTime?: string,
+  endTime?: string,
+) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    const result = await sql`
+      INSERT INTO replacements (user_id, shift_date, shift_type, team_id, status, is_partial, start_time, end_time)
+      VALUES (NULL, ${shiftDate}, ${shiftType}, ${teamId}, 'open', ${isPartial}, ${startTime || null}, ${endTime || null})
+      RETURNING id
+    `
+
+    const replacementId = result[0].id
+
+    const firefighters = await sql`
+      SELECT u.id, u.first_name, u.last_name
+      FROM users u
+      LEFT JOIN notification_preferences np ON u.id = np.user_id
+      WHERE np.enable_email = true
+    `
+
+    const formattedDate = parseLocalDate(shiftDate).toLocaleDateString("fr-CA")
+    const timeInfo = isPartial && startTime && endTime ? ` de ${startTime} à ${endTime}` : ""
+    const message = `Un poste de pompier supplémentaire${isPartial ? " partiel" : ""} est disponible pour le ${formattedDate} (${shiftType === "day" ? "Jour" : shiftType === "night" ? "Nuit" : "24h"})${timeInfo}.`
+
+    await Promise.all(
+      firefighters.map((firefighter) =>
+        createNotification(
+          firefighter.id,
+          "Poste de pompier supplémentaire disponible",
+          message,
+          "replacement_available",
+          replacementId,
+          "replacement",
+        ).catch((error) => {
+          console.error(`[v0] Failed to create notification for user ${firefighter.id}:`, error)
+        }),
+      ),
+    )
+
+    revalidatePath("/dashboard/replacements")
+    revalidatePath("/dashboard/calendar")
+    revalidatePath("/dashboard")
+    return { success: true, replacementId }
+  } catch (error) {
+    console.error("[v0] Error creating extra firefighter replacement:", error)
+    return { error: "Erreur lors de la création de la demande" }
   }
 }

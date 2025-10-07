@@ -1,4 +1,6 @@
-import { neon } from "@neondatabase/serverless"
+import { neon, neonConfig } from "@neondatabase/serverless"
+
+neonConfig.disableWarningInBrowsers = true
 
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL
 

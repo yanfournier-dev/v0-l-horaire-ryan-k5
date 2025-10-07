@@ -82,6 +82,7 @@ export function AvailableReplacementsTab({
                   {filteredReplacements.map((replacement: any) => {
                     const hasApplied = userApplications.some((app: any) => app.replacement_id === replacement.id)
                     const isAssigned = replacement.status === "assigned"
+                    const isExtraFirefighterRequest = !replacement.user_id
 
                     return (
                       <div
@@ -90,7 +91,13 @@ export function AvailableReplacementsTab({
                       >
                         <div className="text-sm">
                           <p className="font-medium">
-                            {replacement.first_name} {replacement.last_name}
+                            {isExtraFirefighterRequest ? (
+                              <span className="text-amber-600 dark:text-amber-400">Pompier supplémentaire</span>
+                            ) : (
+                              <>
+                                {replacement.first_name} {replacement.last_name}
+                              </>
+                            )}
                           </p>
                           <p className="text-muted-foreground">{replacement.team_name}</p>
                           {replacement.is_partial && (

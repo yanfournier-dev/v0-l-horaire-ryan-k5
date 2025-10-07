@@ -85,7 +85,17 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
                     })}
                   </CardTitle>
                   <CardDescription>
-                    {replacement.first_name} {replacement.last_name} • {replacement.team_name}
+                    {replacement.user_id === null ? (
+                      <>
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">Pompier supplémentaire</span>
+                        {" • "}
+                        {replacement.team_name}
+                      </>
+                    ) : (
+                      <>
+                        {replacement.first_name} {replacement.last_name} • {replacement.team_name}
+                      </>
+                    )}
                     {replacement.is_partial && (
                       <span className="text-orange-600 dark:text-orange-400">
                         {" • Remplacement partiel"}
