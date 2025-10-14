@@ -25,7 +25,7 @@ export default async function DashboardLayout({
         <div className="container mx-auto px-4 py-3 md:py-4">
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <div className="flex items-center gap-3">
-              <MobileNav userName={`${user.first_name} ${user.last_name}`} />
+              <MobileNav userName={`${user.first_name} ${user.last_name}`} isAdmin={user.isAdmin} />
 
               <div className="w-8 h-8 md:w-10 md:h-10 bg-red-600 rounded-full flex items-center justify-center">
                 <svg className="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,6 +68,11 @@ export default async function DashboardLayout({
                 Remplacements
               </Button>
             </Link>
+            <Link href="/dashboard/exchanges">
+              <Button variant="ghost" size="sm">
+                Échanges
+              </Button>
+            </Link>
             <Link href="/dashboard/notifications">
               <Button variant="ghost" size="sm" className="relative">
                 Notifications
@@ -91,6 +96,13 @@ export default async function DashboardLayout({
                 Paramètres
               </Button>
             </Link>
+            {user.isAdmin && (
+              <Link href="/dashboard/admin/run-scripts">
+                <Button variant="ghost" size="sm">
+                  Scripts SQL
+                </Button>
+              </Link>
+            )}
           </nav>
         </div>
       </header>

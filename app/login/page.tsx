@@ -1,7 +1,6 @@
 "use client"
 
 import { login } from "@/app/actions/auth"
-import { setupAdminUser } from "@/app/actions/setup-admin"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,33 +21,7 @@ function SubmitButton() {
 }
 
 export default function LoginPage() {
-  const [setupMessage, setSetupMessage] = useState("")
-  const [isSettingUp, setIsSettingUp] = useState(false)
   const [loginError, setLoginError] = useState("")
-
-  async function setupAdmin() {
-    setIsSettingUp(true)
-    setSetupMessage("")
-
-    try {
-      const result = await setupAdminUser()
-
-      if (result.success) {
-        setSetupMessage(
-          "✅ " + result.message + " - Vous pouvez maintenant vous connecter avec admin@caserne.ca / admin123",
-        )
-      } else {
-        setSetupMessage("❌ Erreur: " + result.error)
-      }
-    } catch (error) {
-      console.error("[v0] Setup error:", error)
-      setSetupMessage(
-        "❌ Erreur lors de la configuration: " + (error instanceof Error ? error.message : "Erreur inconnue"),
-      )
-    } finally {
-      setIsSettingUp(false)
-    }
-  }
 
   async function handleLogin(formData: FormData) {
     setLoginError("")
@@ -79,12 +52,6 @@ export default function LoginPage() {
           <CardDescription className="text-center">Connectez-vous à votre compte</CardDescription>
         </CardHeader>
         <CardContent>
-          {setupMessage && (
-            <Alert className="mb-4">
-              <AlertDescription>{setupMessage}</AlertDescription>
-            </Alert>
-          )}
-
           {loginError && (
             <Alert className="mb-4 border-red-200 bg-red-50">
               <AlertDescription className="text-red-800">{loginError}</AlertDescription>
@@ -102,18 +69,6 @@ export default function LoginPage() {
             </div>
             <SubmitButton />
           </form>
-
-          <div className="mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full bg-transparent"
-              onClick={setupAdmin}
-              disabled={isSettingUp}
-            >
-              {isSettingUp ? "Configuration..." : "🔧 Configurer l'admin"}
-            </Button>
-          </div>
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
             Pas encore de compte?{" "}

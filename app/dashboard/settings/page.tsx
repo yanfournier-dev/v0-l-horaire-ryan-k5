@@ -61,6 +61,21 @@ export default async function SettingsPage() {
         </svg>
       ),
     })
+    settingsOptions.push({
+      title: "Scripts SQL",
+      description: "Exécuter des scripts SQL pour mettre à jour la base de données",
+      href: "/dashboard/admin/run-scripts",
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+          />
+        </svg>
+      ),
+    })
   }
 
   return (

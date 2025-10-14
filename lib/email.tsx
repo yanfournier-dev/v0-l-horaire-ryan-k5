@@ -30,8 +30,20 @@ export async function sendEmail({
     return { success: false, error: "Email service not configured" }
   }
 
+  const verifiedEmail = process.env.RESEND_VERIFIED_EMAIL
+  if (verifiedEmail && to !== verifiedEmail) {
+    console.log("[v0] Resend is in test mode - skipping email send")
+    console.log("[v0] Verified email:", verifiedEmail)
+    console.log("[v0] Email would have been sent to:", to)
+    console.log("[v0] To send emails to all users, verify a domain at resend.com/domains")
+    return {
+      success: false,
+      error: "Test mode restriction - email not sent",
+      isTestModeRestriction: true,
+    }
+  }
+
   try {
-    console.log("[v0] Sending email via Resend...")
     const { data, error } = await resend.emails.send({
       from: "L'horaire Ryan <notifications@resend.dev>",
       to,
@@ -40,9 +52,12 @@ export async function sendEmail({
     })
 
     if (error) {
+      // Check if this is a test mode restriction (403 error)
       if (error.statusCode === 403 && error.message?.includes("testing emails")) {
-        console.log("[v0] Resend test mode restriction - email not sent to:", to)
-        return { success: false, error, isTestModeRestriction: true }
+        console.log("[v0] Resend is in test mode - emails can only be sent to:", verifiedEmail || "your verified email")
+        console.log("[v0] Email would have been sent to:", to)
+        console.log("[v0] To send emails to all users, verify a domain at resend.com/domains")
+        return { success: false, error: "Test mode restriction", isTestModeRestriction: true }
       }
       console.error("[v0] Email error:", error)
       return { success: false, error }
@@ -136,6 +151,55 @@ function getFallbackTemplate(type: string, variables: Record<string, string>) {
           ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Remplacement partiel :</strong> ${variables.partialHours}</p>` : ""}
         </div>
         <a href="${appUrl}/dashboard/replacements" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les remplacements disponibles</a>
+      `,
+    },
+    exchange_request: {
+      subject: "Demande d'échange de quart",
+      body: `
+        <h2 style="color: #1f2937;">Demande d'échange de quart</h2>
+        <p>Bonjour ${variables.targetName},</p>
+        <p>${variables.requesterName} souhaite échanger de quart avec vous :</p>
+        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Date du requester :</strong> ${variables.requesterDate}</p>
+          <p style="margin: 5px 0;"><strong>Type de quart du requester :</strong> ${variables.requesterShiftType}</p>
+          <p style="margin: 5px 0;"><strong>Date du target :</strong> ${variables.targetDate}</p>
+          <p style="margin: 5px 0;"><strong>Type de quart du target :</strong> ${variables.targetShiftType}</p>
+          ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Échange partiel :</strong> ${variables.requesterPartialHours} <-> ${variables.targetPartialHours}</p>` : ""}
+        </div>
+        <a href="${appUrl}/dashboard/exchanges" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les demandes d'échange</a>
+      `,
+    },
+    exchange_approved: {
+      subject: "Échange de quart approuvé",
+      body: `
+        <h2 style="color: #10b981;">Échange de quart approuvé</h2>
+        <p>Bonjour ${variables.name},</p>
+        <p>L'échange de quart avec ${variables.otherName} a été approuvé :</p>
+        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Votre date :</strong> ${variables.yourDate}</p>
+          <p style="margin: 5px 0;"><strong>Votre type de quart :</strong> ${variables.yourShiftType}</p>
+          <p style="margin: 5px 0;"><strong>Date de l'autre :</strong> ${variables.otherDate}</p>
+          <p style="margin: 5px 0;"><strong>Type de quart de l'autre :</strong> ${variables.otherShiftType}</p>
+          ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Échange partiel :</strong> ${variables.yourPartialHours} <-> ${variables.otherPartialHours}</p>` : ""}
+        </div>
+        <a href="${appUrl}/dashboard" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir mon horaire</a>
+      `,
+    },
+    exchange_rejected: {
+      subject: "Échange de quart refusé",
+      body: `
+        <h2 style="color: #ef4444;">Échange de quart refusé</h2>
+        <p>Bonjour ${variables.name},</p>
+        <p>L'échange de quart avec ${variables.otherName} a été refusé pour la raison suivante :</p>
+        <p style="margin: 20px 0; color: #ef4444;"><strong>Raison :</strong> ${variables.reason}</p>
+        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Votre date :</strong> ${variables.yourDate}</p>
+          <p style="margin: 5px 0;"><strong>Votre type de quart :</strong> ${variables.yourShiftType}</p>
+          <p style="margin: 5px 0;"><strong>Date de l'autre :</strong> ${variables.otherDate}</p>
+          <p style="margin: 5px 0;"><strong>Type de quart de l'autre :</strong> ${variables.otherShiftType}</p>
+          ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Échange partiel :</strong> ${variables.yourPartialHours} <-> ${variables.otherPartialHours}</p>` : ""}
+        </div>
+        <a href="${appUrl}/dashboard/exchanges" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les demandes d'échange</a>
       `,
     },
   }
@@ -263,5 +327,88 @@ export async function getApplicationRejectedEmail(
     firefighterToReplace,
     isPartial: isPartial ? "true" : "",
     partialHours: partialHours || "",
+  })
+}
+
+export async function getExchangeRequestEmail(
+  targetName: string,
+  requesterName: string,
+  requesterDate: string,
+  requesterShiftType: string,
+  targetDate: string,
+  targetShiftType: string,
+  isPartial?: boolean,
+  requesterPartialHours?: string,
+  targetPartialHours?: string,
+) {
+  const translatedRequesterShiftType = translateShiftType(requesterShiftType)
+  const translatedTargetShiftType = translateShiftType(targetShiftType)
+
+  return await getEmailFromTemplate("exchange_request", {
+    targetName,
+    requesterName,
+    requesterDate,
+    requesterShiftType: translatedRequesterShiftType,
+    targetDate,
+    targetShiftType: translatedTargetShiftType,
+    isPartial: isPartial ? "true" : "",
+    requesterPartialHours: requesterPartialHours || "",
+    targetPartialHours: targetPartialHours || "",
+  })
+}
+
+export async function getExchangeApprovedEmail(
+  name: string,
+  otherName: string,
+  yourDate: string,
+  yourShiftType: string,
+  otherDate: string,
+  otherShiftType: string,
+  isPartial?: boolean,
+  yourPartialHours?: string,
+  otherPartialHours?: string,
+) {
+  const translatedYourShiftType = translateShiftType(yourShiftType)
+  const translatedOtherShiftType = translateShiftType(otherShiftType)
+
+  return await getEmailFromTemplate("exchange_approved", {
+    name,
+    otherName,
+    yourDate,
+    yourShiftType: translatedYourShiftType,
+    otherDate,
+    otherShiftType: translatedOtherShiftType,
+    isPartial: isPartial ? "true" : "",
+    yourPartialHours: yourPartialHours || "",
+    otherPartialHours: otherPartialHours || "",
+  })
+}
+
+export async function getExchangeRejectedEmail(
+  name: string,
+  otherName: string,
+  yourDate: string,
+  yourShiftType: string,
+  otherDate: string,
+  otherShiftType: string,
+  reason?: string,
+  isPartial?: boolean,
+  yourPartialHours?: string,
+  otherPartialHours?: string,
+) {
+  const translatedYourShiftType = translateShiftType(yourShiftType)
+  const translatedOtherShiftType = translateShiftType(otherShiftType)
+
+  return await getEmailFromTemplate("exchange_rejected", {
+    name,
+    otherName,
+    yourDate,
+    yourShiftType: translatedYourShiftType,
+    otherDate,
+    otherShiftType: translatedOtherShiftType,
+    reason: reason || "",
+    isPartial: isPartial ? "true" : "",
+    yourPartialHours: yourPartialHours || "",
+    otherPartialHours: otherPartialHours || "",
   })
 }

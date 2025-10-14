@@ -8,9 +8,10 @@ import { usePathname } from "next/navigation"
 
 interface MobileNavProps {
   userName: string
+  isAdmin?: boolean
 }
 
-export function MobileNav({ userName }: MobileNavProps) {
+export function MobileNav({ userName, isAdmin }: MobileNavProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -18,10 +19,12 @@ export function MobileNav({ userName }: MobileNavProps) {
     { href: "/dashboard", label: "Tableau de bord" },
     { href: "/dashboard/calendar", label: "Calendrier" },
     { href: "/dashboard/replacements", label: "Remplacements" },
+    { href: "/dashboard/exchanges", label: "Échanges" },
     { href: "/dashboard/notifications", label: "Notifications" },
     { href: "/dashboard/teams", label: "Équipes" },
     { href: "/dashboard/firefighters", label: "Pompiers" },
     { href: "/dashboard/settings", label: "Paramètres" },
+    ...(isAdmin ? [{ href: "/dashboard/admin/run-scripts", label: "Scripts SQL" }] : []),
   ]
 
   return (
