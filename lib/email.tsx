@@ -69,23 +69,9 @@ function replaceVariables(template: string, variables: Record<string, string>): 
 }
 
 function getAppUrl(): string {
-  // Check if we have a production URL set
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL
-
-  // If the env URL is localhost or not set, try to detect production URL
-  if (!envUrl || envUrl.includes("localhost")) {
-    // Check if we're on Vercel
-    const vercelUrl = process.env.VERCEL_URL
-    if (vercelUrl) {
-      const productionUrl = `https://${vercelUrl}`
-      console.log("[v0] Using Vercel URL in email template:", productionUrl)
-      return productionUrl
-    }
-  }
-
-  const finalUrl = envUrl || "http://localhost:3000"
-  console.log("[v0] Using APP_URL in email template:", finalUrl)
-  return finalUrl
+  const productionUrl = "https://v0-l-horaire-ryan.vercel.app"
+  console.log("[v0] Using production URL in email template:", productionUrl)
+  return productionUrl
 }
 
 function getFallbackTemplate(type: string, variables: Record<string, string>) {
