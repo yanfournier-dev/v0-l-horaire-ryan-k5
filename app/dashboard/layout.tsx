@@ -63,11 +63,6 @@ export default async function DashboardLayout({
                 Calendrier
               </Button>
             </Link>
-            <Link href="/dashboard/leaves">
-              <Button variant="ghost" size="sm">
-                Absences
-              </Button>
-            </Link>
             <Link href="/dashboard/replacements">
               <Button variant="ghost" size="sm">
                 Remplacements

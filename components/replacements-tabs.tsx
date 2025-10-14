@@ -5,12 +5,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Plus, Settings } from "lucide-react"
 import { AvailableReplacementsTab } from "@/components/available-replacements-tab"
 import { AllReplacementsTab } from "@/components/all-replacements-tab"
 import { PendingRequestsTab } from "@/components/pending-requests-tab"
 import { UserRequestsTab } from "@/components/user-requests-tab"
 import { WithdrawApplicationButton } from "@/components/withdraw-application-button"
+import { RequestReplacementDialog } from "@/components/request-replacement-dialog"
 import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 
@@ -35,10 +36,11 @@ export function ReplacementsTabs({
   userRequests,
   isAdmin,
   userId,
-  initialTab = "open",
+  initialTab = "available",
 }: ReplacementsTabsProps) {
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showCompletedApplications, setShowCompletedApplications] = useState(false)
+  const [showRequestDialog, setShowRequestDialog] = useState(false)
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -95,18 +97,37 @@ export function ReplacementsTabs({
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList>
+      <div className="flex justify-end gap-2 mb-4">
         {isAdmin && (
-          <TabsTrigger value="all" className="font-semibold">
+          <Button onClick={() => setActiveTab("all")} variant="outline" className="gap-2">
+            <Settings className="h-4 w-4" />
             Gestion des remplacements
-          </TabsTrigger>
+          </Button>
         )}
-        <TabsTrigger value="open">
+        <Button onClick={() => setShowRequestDialog(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Demander un remplacement
+        </Button>
+      </div>
+
+      <TabsList>
+        <TabsTrigger value="available">
           Disponibles ({recentReplacements.filter((r) => r.status === "open").length})
         </TabsTrigger>
         <TabsTrigger value="my-applications">Mes candidatures ({userApplications.length})</TabsTrigger>
         <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
-        {isAdmin && <TabsTrigger value="pending">Demandes en attente ({pendingRequests.length})</TabsTrigger>}
+        {isAdmin && (
+          <TabsTrigger
+            value="pending"
+            className={
+              pendingRequests.length > 0
+                ? "data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
+                : ""
+            }
+          >
+            Demandes en attente ({pendingRequests.length})
+          </TabsTrigger>
+        )}
       </TabsList>
 
       {isAdmin && (
@@ -115,7 +136,7 @@ export function ReplacementsTabs({
         </TabsContent>
       )}
 
-      <TabsContent value="open">
+      <TabsContent value="available">
         <AvailableReplacementsTab
           groupedReplacements={groupedReplacements}
           userApplications={userApplications}
@@ -218,6 +239,8 @@ export function ReplacementsTabs({
           <PendingRequestsTab pendingRequests={pendingRequests} />
         </TabsContent>
       )}
+
+      <RequestReplacementDialog open={showRequestDialog} onOpenChange={setShowRequestDialog} userId={userId} />
     </Tabs>
   )
 }

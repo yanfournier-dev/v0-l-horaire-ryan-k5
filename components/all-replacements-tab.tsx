@@ -1,8 +1,8 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-
 import { useState } from "react"
+
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -53,6 +53,16 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
 
   const filteredReplacements = showAssigned ? allReplacements : allReplacements.filter((r) => r.status !== "assigned")
 
+  const shiftGroups: Record<string, any[]> = {}
+  filteredReplacements.forEach((replacement: any) => {
+    const dateStr = parseLocalDate(replacement.shift_date).toISOString().split("T")[0]
+    const shiftKey = `${dateStr}_${replacement.shift_type}_${replacement.team_id}`
+    if (!shiftGroups[shiftKey]) {
+      shiftGroups[shiftKey] = []
+    }
+    shiftGroups[shiftKey].push(replacement)
+  })
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end gap-2">
@@ -71,79 +81,98 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
           </CardContent>
         </Card>
       ) : (
-        filteredReplacements.map((replacement: any) => (
-          <Card key={replacement.id} id={`replacement-${replacement.id}`}>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">
-                    {parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA", {
+        Object.entries(shiftGroups).map(([shiftKey, shiftReplacements]) => {
+          const firstReplacement = shiftReplacements[0]
+
+          return (
+            <div key={shiftKey} className="space-y-2">
+              <div className="flex items-center justify-between px-4 py-2 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Badge className={getShiftTypeColor(firstReplacement.shift_type)}>
+                    {getShiftTypeLabel(firstReplacement.shift_type).split(" ")[0]}
+                  </Badge>
+                  <span className="font-medium">
+                    {parseLocalDate(firstReplacement.shift_date).toLocaleDateString("fr-CA", {
                       weekday: "long",
                       year: "numeric",
                       month: "long",
                       day: "numeric",
                     })}
-                  </CardTitle>
-                  <CardDescription>
-                    {replacement.user_id === null ? (
-                      <>
-                        <span className="text-amber-600 dark:text-amber-400 font-medium">Pompier supplémentaire</span>
-                        {" • "}
-                        {replacement.team_name}
-                      </>
-                    ) : (
-                      <>
-                        {replacement.first_name} {replacement.last_name} • {replacement.team_name}
-                      </>
-                    )}
-                    {replacement.is_partial && (
-                      <span className="text-orange-600 dark:text-orange-400">
-                        {" • Remplacement partiel"}
-                        {formatReplacementTime(replacement.is_partial, replacement.start_time, replacement.end_time)}
-                      </span>
-                    )}
-                  </CardDescription>
-                </div>
-                <div className="flex flex-col gap-2 items-end">
-                  <Badge className={getShiftTypeColor(replacement.shift_type)}>
-                    {getShiftTypeLabel(replacement.shift_type).split(" ")[0]}
-                  </Badge>
-                  <Badge className={getReplacementStatusColor(replacement.status)}>
-                    {getReplacementStatusLabel(replacement.status)}
-                  </Badge>
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {shiftReplacements.length} remplacement{shiftReplacements.length > 1 ? "s" : ""}
+                  </span>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  {replacement.status === "assigned" && replacement.assigned_first_name && (
-                    <p>
-                      Assigné à {replacement.assigned_first_name} {replacement.assigned_last_name}
-                    </p>
-                  )}
-                </div>
 
-                <div className="flex gap-2">
-                  <Link
-                    href={`/dashboard/replacements/${replacement.id}?tab=all&returnTo=replacement-${replacement.id}`}
-                  >
-                    <Button variant="outline" size="sm">
-                      Voir les candidatures ({replacement.application_count || 0})
-                    </Button>
-                  </Link>
-                  {replacement.status === "assigned" && replacement.assigned_first_name && (
-                    <EditReplacementAssignmentButton
-                      replacementId={replacement.id}
-                      currentFirefighterName={`${replacement.assigned_first_name} ${replacement.assigned_last_name}`}
-                    />
-                  )}
-                  <DeleteReplacementButton replacementId={replacement.id} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))
+              {shiftReplacements.map((replacement: any) => (
+                <Card key={replacement.id} id={`replacement-${replacement.id}`} className="ml-4">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-base">
+                          {replacement.user_id === null ? (
+                            <span className="text-amber-600 dark:text-amber-400 font-medium">
+                              Pompier supplémentaire
+                            </span>
+                          ) : (
+                            <>
+                              {replacement.first_name} {replacement.last_name}
+                            </>
+                          )}
+                        </CardTitle>
+                        <CardDescription>
+                          {replacement.team_name}
+                          {replacement.is_partial && (
+                            <span className="text-orange-600 dark:text-orange-400">
+                              {" • Remplacement partiel"}
+                              {formatReplacementTime(
+                                replacement.is_partial,
+                                replacement.start_time,
+                                replacement.end_time,
+                              )}
+                            </span>
+                          )}
+                        </CardDescription>
+                      </div>
+                      <Badge className={getReplacementStatusColor(replacement.status)}>
+                        {getReplacementStatusLabel(replacement.status)}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        {replacement.status === "assigned" && replacement.assigned_first_name && (
+                          <p>
+                            Assigné à {replacement.assigned_first_name} {replacement.assigned_last_name}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/dashboard/replacements/${replacement.id}?tab=all&returnTo=replacement-${replacement.id}`}
+                        >
+                          <Button variant="outline" size="sm">
+                            Assigner ({replacement.application_count || 0})
+                          </Button>
+                        </Link>
+                        {replacement.status === "assigned" && replacement.assigned_first_name && (
+                          <EditReplacementAssignmentButton
+                            replacementId={replacement.id}
+                            currentFirefighterName={`${replacement.assigned_first_name} ${replacement.assigned_last_name}`}
+                          />
+                        )}
+                        <DeleteReplacementButton replacementId={replacement.id} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )
+        })
       )}
     </div>
   )

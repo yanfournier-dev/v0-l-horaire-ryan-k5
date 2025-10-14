@@ -10,6 +10,7 @@ import {
   getApplicationApprovedEmail,
 } from "@/lib/email"
 import { parseLocalDate } from "@/lib/date-utils"
+// crypto is available globally in Node.js
 
 export async function getUserNotifications(userId: number) {
   const notifications = await sql`
@@ -81,6 +82,7 @@ export async function deleteNotification(notificationId: number) {
     revalidatePath("/dashboard/notifications")
     return { success: true }
   } catch (error) {
+    console.error("[v0] Delete all notifications error:", error)
     return { error: "Erreur lors de la suppression" }
   }
 }
@@ -157,6 +159,7 @@ export async function createNotification(
       schedule_change: "notify_schedule_change",
       application_approved: "notify_replacement_accepted",
       application_rejected: "notify_replacement_rejected",
+      replacement_approved: "notify_replacement_accepted",
     }
 
     const prefKey = notificationTypeMap[type]
@@ -170,7 +173,7 @@ export async function createNotification(
 
     if (user.enable_email === true && user.email) {
       console.log("[v0] Sending email notification to:", user.email)
-      await sendEmailNotification(type, user.email, fullName, message, relatedId)
+      await sendEmailNotification(type, user.email, fullName, message, relatedId, userId)
     } else {
       console.log("[v0] Email not sent - enable_email:", user.enable_email, "has email:", !!user.email)
     }
@@ -182,14 +185,32 @@ export async function createNotification(
   }
 }
 
-async function sendEmailNotification(type: string, email: string, name: string, message: string, relatedId?: number) {
-  console.log("[v0] sendEmailNotification called - type:", type, "email:", email, "relatedId:", relatedId)
+async function sendEmailNotification(
+  type: string,
+  email: string,
+  name: string,
+  message: string,
+  relatedId?: number,
+  userId?: number,
+) {
+  console.log(
+    "[v0] sendEmailNotification called - type:",
+    type,
+    "email:",
+    email,
+    "relatedId:",
+    relatedId,
+    "userId:",
+    userId,
+  )
 
   let emailContent
+  let applyToken: string | undefined
 
   switch (type) {
     case "replacement_available":
-      if (relatedId) {
+      if (relatedId && userId) {
+        console.log("[v0] Fetching replacement details for relatedId:", relatedId)
         const replacement = await sql`
           SELECT 
             r.shift_date, 
@@ -199,27 +220,56 @@ async function sendEmailNotification(type: string, email: string, name: string, 
             r.end_time,
             u.first_name || ' ' || u.last_name as firefighter_to_replace
           FROM replacements r
-          JOIN users u ON r.user_id = u.id
+          LEFT JOIN users u ON r.user_id = u.id
           WHERE r.id = ${relatedId}
         `
+        console.log("[v0] Replacement found:", replacement.length > 0)
+
         if (replacement.length > 0) {
           const r = replacement[0]
           const partialHours =
             r.is_partial && r.start_time && r.end_time
               ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
               : null
+
+          applyToken = crypto.randomUUID()
+          console.log("[v0] Generated applyToken:", applyToken)
+
+          const expiresAt = new Date()
+          expiresAt.setDate(expiresAt.getDate() + 7) // Token valid for 7 days
+          console.log("[v0] Token expires at:", expiresAt)
+
+          try {
+            console.log("[v0] Inserting token into database...")
+            await sql`
+              INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
+              VALUES (${applyToken}, ${relatedId}, ${userId}, ${expiresAt})
+              ON CONFLICT (user_id, replacement_id) 
+              DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
+            `
+            console.log("[v0] Token inserted successfully")
+          } catch (error) {
+            console.error("[v0] Error creating application token:", error)
+            applyToken = undefined
+          }
+
+          console.log("[v0] Calling getReplacementAvailableEmail with applyToken:", applyToken)
           emailContent = await getReplacementAvailableEmail(
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
             r.shift_type,
-            r.firefighter_to_replace,
+            r.firefighter_to_replace || "Pompier supplémentaire",
             r.is_partial,
             partialHours,
+            applyToken,
           )
         }
+      } else {
+        console.log("[v0] Missing relatedId or userId - cannot generate token")
       }
       break
 
+    case "replacement_approved":
     case "application_approved":
       if (relatedId) {
         const replacement = await sql`
@@ -231,7 +281,7 @@ async function sendEmailNotification(type: string, email: string, name: string, 
             r.end_time,
             u.first_name || ' ' || u.last_name as firefighter_to_replace
           FROM replacements r
-          JOIN users u ON r.user_id = u.id
+          LEFT JOIN users u ON r.user_id = u.id
           WHERE r.id = ${relatedId}
         `
         if (replacement.length > 0) {
@@ -244,7 +294,7 @@ async function sendEmailNotification(type: string, email: string, name: string, 
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
             r.shift_type,
-            r.firefighter_to_replace,
+            r.firefighter_to_replace || "Pompier supplémentaire",
             r.is_partial,
             partialHours,
           )
@@ -252,6 +302,7 @@ async function sendEmailNotification(type: string, email: string, name: string, 
       }
       break
 
+    case "replacement_rejected":
     case "application_rejected":
       if (relatedId) {
         const replacement = await sql`
@@ -263,7 +314,7 @@ async function sendEmailNotification(type: string, email: string, name: string, 
             r.end_time,
             u.first_name || ' ' || u.last_name as firefighter_to_replace
           FROM replacements r
-          JOIN users u ON r.user_id = u.id
+          LEFT JOIN users u ON r.user_id = u.id
           WHERE r.id = ${relatedId}
         `
         if (replacement.length > 0) {
@@ -276,39 +327,7 @@ async function sendEmailNotification(type: string, email: string, name: string, 
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
             r.shift_type,
-            r.firefighter_to_replace,
-            r.is_partial,
-            partialHours,
-          )
-        }
-      }
-      break
-
-    case "replacement_rejected":
-      if (relatedId) {
-        const replacement = await sql`
-          SELECT 
-            r.shift_date, 
-            r.shift_type, 
-            r.is_partial, 
-            r.start_time, 
-            r.end_time,
-            u.first_name || ' ' || u.last_name as firefighter_to_replace
-          FROM replacements r
-          JOIN users u ON r.user_id = u.id
-          WHERE r.id = ${relatedId}
-        `
-        if (replacement.length > 0) {
-          const r = replacement[0]
-          const partialHours =
-            r.is_partial && r.start_time && r.end_time
-              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
-              : null
-          emailContent = await getApplicationRejectedEmail(
-            name,
-            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
-            r.shift_type,
-            r.firefighter_to_replace,
+            r.firefighter_to_replace || "Pompier supplémentaire",
             r.is_partial,
             partialHours,
           )

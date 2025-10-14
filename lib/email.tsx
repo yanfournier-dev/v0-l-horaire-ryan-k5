@@ -68,8 +68,28 @@ function replaceVariables(template: string, variables: Record<string, string>): 
   return result
 }
 
+function getAppUrl(): string {
+  // Check if we have a production URL set
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL
+
+  // If the env URL is localhost or not set, try to detect production URL
+  if (!envUrl || envUrl.includes("localhost")) {
+    // Check if we're on Vercel
+    const vercelUrl = process.env.VERCEL_URL
+    if (vercelUrl) {
+      const productionUrl = `https://${vercelUrl}`
+      console.log("[v0] Using Vercel URL in email template:", productionUrl)
+      return productionUrl
+    }
+  }
+
+  const finalUrl = envUrl || "http://localhost:3000"
+  console.log("[v0] Using APP_URL in email template:", finalUrl)
+  return finalUrl
+}
+
 function getFallbackTemplate(type: string, variables: Record<string, string>) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  const appUrl = getAppUrl()
 
   const templates: Record<string, { subject: string; body: string }> = {
     replacement_available: {
@@ -84,6 +104,21 @@ function getFallbackTemplate(type: string, variables: Record<string, string>) {
           <p style="margin: 5px 0;"><strong>Pompier à remplacer :</strong> ${variables.firefighterToReplace}</p>
           ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Remplacement partiel :</strong> ${variables.partialHours}</p>` : ""}
         </div>
+        ${
+          variables.applyToken
+            ? `
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${appUrl}/apply-replacement?token=${variables.applyToken}" 
+               style="display: inline-block; background-color: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+              Postuler maintenant
+            </a>
+            <p style="margin-top: 10px; font-size: 14px; color: #6b7280;">
+              Cliquez sur ce bouton pour postuler directement
+            </p>
+          </div>
+        `
+            : ""
+        }
         <a href="${appUrl}/dashboard/replacements" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les remplacements</a>
       `,
     },
@@ -151,7 +186,7 @@ async function getEmailFromTemplate(type: string, variables: Record<string, stri
     return getFallbackTemplate(type, variables)
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  const appUrl = getAppUrl()
   const allVariables = { ...variables, appUrl }
 
   const subject = replaceVariables(template.subject, allVariables)
@@ -193,6 +228,7 @@ export async function getReplacementAvailableEmail(
   firefighterToReplace: string,
   isPartial?: boolean,
   partialHours?: string,
+  applyToken?: string,
 ) {
   const translatedShiftType = translateShiftType(shiftType)
   return await getEmailFromTemplate("replacement_available", {
@@ -202,6 +238,7 @@ export async function getReplacementAvailableEmail(
     firefighterToReplace,
     isPartial: isPartial ? "true" : "",
     partialHours: partialHours || "",
+    applyToken: applyToken || "",
   })
 }
 

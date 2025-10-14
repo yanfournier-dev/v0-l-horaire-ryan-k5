@@ -2,12 +2,8 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
 import { parseLocalDate } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
-import { RequestReplacementDialog } from "@/components/request-replacement-dialog"
-import { useState } from "react"
 
 interface UserRequestsTabProps {
   userRequests: any[]
@@ -15,8 +11,6 @@ interface UserRequestsTabProps {
 }
 
 export function UserRequestsTab({ userRequests, userId }: UserRequestsTabProps) {
-  const [showDialog, setShowDialog] = useState(false)
-
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
@@ -41,13 +35,6 @@ export function UserRequestsTab({ userRequests, userId }: UserRequestsTabProps) 
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={() => setShowDialog(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Demander un remplacement
-        </Button>
-      </div>
-
       {userRequests.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -86,8 +73,6 @@ export function UserRequestsTab({ userRequests, userId }: UserRequestsTabProps) 
           </Card>
         ))
       )}
-
-      <RequestReplacementDialog open={showDialog} onOpenChange={setShowDialog} userId={userId} />
     </div>
   )
 }

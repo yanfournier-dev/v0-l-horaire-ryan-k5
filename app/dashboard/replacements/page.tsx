@@ -28,7 +28,7 @@ export default async function ReplacementsPage({
   const pendingRequests = user.is_admin ? await getPendingReplacementRequests() : []
   const userRequests = await getUserReplacementRequests(user.id)
 
-  const initialTab = searchParams.tab || (user.is_admin ? "all" : "open")
+  const initialTab = searchParams.tab || "available"
 
   return (
     <div className="p-6">
@@ -36,7 +36,7 @@ export default async function ReplacementsPage({
 
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground">Remplacements</h1>
-        <p className="text-muted-foreground">Postulez pour des quarts de remplacement disponibles</p>
+        <p className="text-muted-foreground">Postulez pour des remplacements disponibles</p>
       </div>
 
       <ReplacementsTabs

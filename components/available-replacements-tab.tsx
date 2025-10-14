@@ -5,16 +5,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Users } from "lucide-react"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
+import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { parseLocalDate } from "@/lib/calendar"
-import { formatReplacementTime } from "@/lib/replacement-utils"
+import Link from "next/link"
 
 interface AvailableReplacementsTabProps {
   groupedReplacements: Record<string, any[]>
   userApplications: any[]
   isAdmin: boolean
   firefighters: any[]
+  userId: number
 }
 
 export function AvailableReplacementsTab({
@@ -22,8 +26,18 @@ export function AvailableReplacementsTab({
   userApplications,
   isAdmin,
   firefighters,
+  userId,
 }: AvailableReplacementsTabProps) {
   const [showAssigned, setShowAssigned] = useState(false)
+
+  const allReplacements: any[] = []
+  Object.entries(groupedReplacements).forEach(([dateKey, replacements]) => {
+    replacements.forEach((replacement: any) => {
+      allReplacements.push(replacement)
+    })
+  })
+
+  const filteredReplacements = showAssigned ? allReplacements : allReplacements.filter((r) => r.status !== "assigned")
 
   return (
     <div className="space-y-4">
@@ -38,28 +52,24 @@ export function AvailableReplacementsTab({
         </Label>
       </div>
 
-      {Object.keys(groupedReplacements).length === 0 ? (
+      {filteredReplacements.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">Aucun remplacement disponible pour le moment</p>
           </CardContent>
         </Card>
       ) : (
-        Object.entries(groupedReplacements).map(([key, replacements]) => {
-          const filteredReplacements = showAssigned ? replacements : replacements.filter((r) => r.status !== "assigned")
-
-          // Skip this group if all replacements are filtered out
-          if (filteredReplacements.length === 0) return null
-
-          const firstReplacement = filteredReplacements[0]
+        filteredReplacements.map((replacement: any) => {
+          const hasApplied = userApplications.some((app: any) => app.replacement_id === replacement.id)
+          const candidateCount = Number.parseInt(replacement.application_count) || 0
 
           return (
-            <Card key={key} id={`replacement-card-${key}`}>
+            <Card key={replacement.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-lg">
-                      {parseLocalDate(firstReplacement.shift_date).toLocaleDateString("fr-CA", {
+                      {parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA", {
                         weekday: "long",
                         year: "numeric",
                         month: "long",
@@ -67,72 +77,62 @@ export function AvailableReplacementsTab({
                       })}
                     </CardTitle>
                     <CardDescription>
-                      {filteredReplacements.length} remplacement{filteredReplacements.length > 1 ? "s" : ""}{" "}
-                      {showAssigned ? "" : "disponible"}
-                      {filteredReplacements.length > 1 && !showAssigned ? "s" : ""}
+                      {replacement.user_id === null ? (
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">Pompier supplémentaire</span>
+                      ) : (
+                        <>
+                          {replacement.first_name} {replacement.last_name} • {replacement.team_name}
+                        </>
+                      )}
+                      {replacement.is_partial && (
+                        <span className="text-orange-600 dark:text-orange-400">
+                          {" • Remplacement partiel "}({replacement.start_time?.slice(0, 5)} à{" "}
+                          {replacement.end_time?.slice(0, 5)})
+                        </span>
+                      )}
                     </CardDescription>
                   </div>
-                  <Badge className={getShiftTypeColor(firstReplacement.shift_type)}>
-                    {getShiftTypeLabel(firstReplacement.shift_type)}
+                  <Badge className={getShiftTypeColor(replacement.shift_type)}>
+                    {getShiftTypeLabel(replacement.shift_type)}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {filteredReplacements.map((replacement: any) => {
-                    const hasApplied = userApplications.some((app: any) => app.replacement_id === replacement.id)
-                    const isAssigned = replacement.status === "assigned"
-                    const isExtraFirefighterRequest = !replacement.user_id
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      {replacement.status === "assigned" && replacement.assigned_first_name && (
+                        <p className="text-blue-600 dark:text-blue-400">
+                          Assigné à {replacement.assigned_first_name} {replacement.assigned_last_name}
+                        </p>
+                      )}
+                    </div>
 
-                    return (
-                      <div
-                        key={replacement.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                      >
-                        <div className="text-sm">
-                          <p className="font-medium">
-                            {isExtraFirefighterRequest ? (
-                              <span className="text-amber-600 dark:text-amber-400">Pompier supplémentaire</span>
-                            ) : (
-                              <>
-                                {replacement.first_name} {replacement.last_name}
-                              </>
-                            )}
-                          </p>
-                          <p className="text-muted-foreground">{replacement.team_name}</p>
-                          {replacement.is_partial && (
-                            <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
-                              Remplacement partiel
-                              {formatReplacementTime(
-                                replacement.is_partial,
-                                replacement.start_time,
-                                replacement.end_time,
-                              )}
-                            </p>
-                          )}
-                          {isAssigned && replacement.assigned_first_name && (
-                            <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                              Assigné à {replacement.assigned_first_name} {replacement.assigned_last_name}
-                            </p>
-                          )}
-                        </div>
-                        {isAssigned ? (
-                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            Assigné
-                          </Badge>
-                        ) : hasApplied ? (
-                          <Badge variant="outline">Candidature soumise</Badge>
-                        ) : (
-                          <ApplyForReplacementButton
-                            replacementId={replacement.id}
-                            cardId={`replacement-card-${key}`}
-                            isAdmin={isAdmin}
-                            firefighters={firefighters}
-                          />
-                        )}
-                      </div>
-                    )
-                  })}
+                    {replacement.status === "assigned" ? (
+                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Assigné</Badge>
+                    ) : hasApplied ? (
+                      <Badge variant="outline">Candidature soumise</Badge>
+                    ) : (
+                      <ApplyForReplacementButton
+                        replacementId={replacement.id}
+                        isAdmin={isAdmin}
+                        firefighters={firefighters}
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Link href={`/dashboard/replacements/${replacement.id}`} className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full bg-transparent">
+                        <Users className="mr-2 h-4 w-4" />
+                        Voir les candidats
+                        <Badge variant="secondary" className="ml-2">
+                          {candidateCount}
+                        </Badge>
+                      </Button>
+                    </Link>
+                    {isAdmin && <DeleteReplacementButton replacementId={replacement.id} />}
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -19,10 +19,14 @@ import {
   getReplacementsForShift,
   createExtraFirefighterReplacement,
 } from "@/app/actions/replacements"
-import { addExtraFirefighterToShift, getAllFirefighters } from "@/app/actions/shift-assignments"
+import {
+  addExtraFirefighterToShift,
+  getAllFirefighters,
+  removeFirefighterFromShift,
+} from "@/app/actions/shift-assignments"
 import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
-import { UserX, UserPlus } from "lucide-react"
+import { UserX, UserPlus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -118,6 +122,8 @@ export function ShiftAssignmentDrawer({
   const [isExtraPartial, setIsExtraPartial] = useState(false)
   const [extraStartTime, setExtraStartTime] = useState(defaultTimes.startTime)
   const [extraEndTime, setExtraEndTime] = useState(defaultTimes.endTime)
+  const [extraFirefighters, setExtraFirefighters] = useState<number[]>([])
+  const [removedExtraFirefighters, setRemovedExtraFirefighters] = useState<number[]>([]) // Track removed extra firefighters by user_id to hide them immediately
 
   useEffect(() => {
     if (open && shift) {
@@ -328,7 +334,28 @@ export function ShiftAssignmentDrawer({
     router.refresh()
   }
 
+  const handleRemoveExtraFirefighter = async (userId: number, firefighterName: string) => {
+    setIsLoading(true)
+
+    const result = await removeFirefighterFromShift(shift.id, userId)
+
+    if (result.error) {
+      toast.error(result.error)
+      setIsLoading(false)
+      return
+    }
+
+    toast.success("Pompier supplémentaire retiré avec succès")
+
+    setRemovedExtraFirefighters((prev) => [...prev, userId])
+
+    setIsLoading(false)
+    router.refresh()
+  }
+
   const availableFirefighters = allFirefighters.filter((ff) => !currentAssignments.find((a) => a.user_id === ff.id))
+
+  const displayedAssignments = currentAssignments.filter((a) => !removedExtraFirefighters.includes(a.user_id))
 
   return (
     <>
@@ -366,7 +393,7 @@ export function ShiftAssignmentDrawer({
           </div>
 
           <div className="mt-6 space-y-3">
-            {currentAssignments.map((assignment) => {
+            {displayedAssignments.map((assignment) => {
               const replacement = getReplacementForFirefighter(assignment.user_id)
               const hasReplacement = !!replacement
 
@@ -449,6 +476,17 @@ export function ShiftAssignmentDrawer({
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={getRoleBadgeColor(assignment.role)}>{getRoleLabel(assignment.role)}</Badge>
+                        {assignment.is_extra && !isExtraRequest && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRemoveExtraFirefighter(assignment.user_id, displayName)}
+                            disabled={isLoading || loadingReplacements}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                         {!hasReplacement && !assignment.is_extra && !isExtraRequest && (
                           <Button
                             size="sm"
@@ -474,7 +512,7 @@ export function ShiftAssignmentDrawer({
               )
             })}
 
-            {currentAssignments.length === 0 && (
+            {displayedAssignments.length === 0 && (
               <Card>
                 <CardContent className="py-8 text-center">
                   <p className="text-muted-foreground">Aucun pompier assigné à ce quart</p>

@@ -17,7 +17,6 @@ export function MobileNav({ userName }: MobileNavProps) {
   const navItems = [
     { href: "/dashboard", label: "Tableau de bord" },
     { href: "/dashboard/calendar", label: "Calendrier" },
-    { href: "/dashboard/leaves", label: "Absences" },
     { href: "/dashboard/replacements", label: "Remplacements" },
     { href: "/dashboard/notifications", label: "Notifications" },
     { href: "/dashboard/teams", label: "Équipes" },

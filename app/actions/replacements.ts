@@ -36,15 +36,20 @@ export async function getRecentReplacements() {
       t.name as team_name,
       t.type as team_type,
       assigned_user.first_name as assigned_first_name,
-      assigned_user.last_name as assigned_last_name
+      assigned_user.last_name as assigned_last_name,
+      COUNT(DISTINCT ra.id) as application_count
     FROM replacements r
     LEFT JOIN leaves l ON r.leave_id = l.id
     LEFT JOIN users leave_user ON l.user_id = leave_user.id
     LEFT JOIN users direct_user ON r.user_id = direct_user.id
     JOIN teams t ON r.team_id = t.id
-    LEFT JOIN replacement_applications ra ON r.id = ra.replacement_id AND ra.status = 'approved'
-    LEFT JOIN users assigned_user ON ra.applicant_id = assigned_user.id
+    LEFT JOIN replacement_applications ra_approved ON r.id = ra_approved.replacement_id AND ra_approved.status = 'approved'
+    LEFT JOIN users assigned_user ON ra_approved.applicant_id = assigned_user.id
+    LEFT JOIN replacement_applications ra ON r.id = ra.replacement_id
     WHERE r.status IN ('open', 'assigned')
+    GROUP BY r.id, l.user_id, leave_user.first_name, leave_user.last_name,
+             direct_user.first_name, direct_user.last_name, t.name, t.type,
+             assigned_user.first_name, assigned_user.last_name
     ORDER BY 
       CASE r.status 
         WHEN 'open' THEN 1 
@@ -228,6 +233,25 @@ export async function approveApplication(applicationId: number) {
     `
     const replacement = replacementResult[0]
 
+    const existingAssignment = await sql`
+      SELECT r.id, r.user_id
+      FROM replacements r
+      JOIN replacement_applications ra ON r.id = ra.replacement_id
+      WHERE r.shift_date = ${replacement.shift_date}
+        AND r.shift_type = ${replacement.shift_type}
+        AND r.team_id = ${replacement.team_id}
+        AND r.id != ${replacement_id}
+        AND ra.applicant_id = ${applicant_id}
+        AND ra.status = 'approved'
+        AND r.status = 'assigned'
+    `
+
+    if (existingAssignment.length > 0) {
+      return {
+        error: "Ce pompier est déjà assigné à un autre remplacement pour ce quart",
+      }
+    }
+
     // Approve this application
     await sql`
       UPDATE replacement_applications
@@ -240,7 +264,6 @@ export async function approveApplication(applicationId: number) {
       WHERE replacement_id = ${replacement_id} AND id != ${applicationId} AND status = 'pending'
     `
 
-    // Reject all other applications for this replacement
     await sql`
       UPDATE replacement_applications
       SET status = 'rejected', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
@@ -504,6 +527,12 @@ export async function cancelReplacement(replacementId: number) {
   }
 
   try {
+    await sql`
+      UPDATE replacement_applications
+      SET status = 'rejected', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
+      WHERE replacement_id = ${replacementId} AND status = 'approved'
+    `
+
     await sql`
       UPDATE replacements
       SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
@@ -884,7 +913,7 @@ export async function rejectReplacementRequest(replacementId: number, reason?: s
       return { error: "Demande non trouvée ou déjà traitée" }
     }
 
-    const { shift_date, shift_type, is_partial, start_time, end_time, requester_id } = replacement[0]
+    const { shift_date, shift_type, is_partial, start_time, endTime, requester_id } = replacement[0]
 
     // Update status to 'rejected'
     await sql`
@@ -895,7 +924,7 @@ export async function rejectReplacementRequest(replacementId: number, reason?: s
 
     // Notify the requester
     const formattedDate = parseLocalDate(shift_date).toLocaleDateString("fr-CA")
-    const timeInfo = is_partial && start_time && end_time ? ` de ${start_time} à ${end_time}` : ""
+    const timeInfo = is_partial && start_time && endTime ? ` de ${start_time} à ${endTime}` : ""
     const reasonText = reason ? ` Raison: ${reason}` : ""
     await createNotification(
       requester_id,

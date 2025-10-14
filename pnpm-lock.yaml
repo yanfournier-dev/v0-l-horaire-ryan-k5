@@ -97,7 +97,7 @@ importers:
         version: 1.1.6(@types/react-dom@18.0.0)(@types/react@18.0.0)(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
       '@react-email/render':
         specifier: latest
-        version: 1.3.1(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
+        version: 1.3.2(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
       '@vercel/analytics':
         specifier: 1.3.1
         version: 1.3.1(next@14.2.16(react-dom@18.0.0(react@18.0.0))(react@18.0.0))(react@18.0.0)
@@ -157,7 +157,7 @@ importers:
         version: 2.15.4(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
       resend:
         specifier: latest
-        version: 6.1.2(@react-email/render@1.3.1(react-dom@18.0.0(react@18.0.0))(react@18.0.0))
+        version: 6.1.2(@react-email/render@1.3.2(react-dom@18.0.0(react@18.0.0))(react@18.0.0))
       sonner:
         specifier: latest
         version: 2.0.7(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
@@ -167,6 +167,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.1.9)
+      tw-animate-css:
+        specifier: latest
+        version: 1.4.0
       twilio:
         specifier: 5.10.2
         version: 5.10.2
@@ -195,9 +198,6 @@ importers:
       tailwindcss:
         specifier: ^4.1.9
         version: 4.1.9
-      tw-animate-css:
-        specifier: 1.3.3
-        version: 1.3.3
       typescript:
         specifier: ^5
         version: 5.0.2
@@ -1189,8 +1189,8 @@ packages:
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
 
-  '@react-email/render@1.3.1':
-    resolution: {integrity: sha512-BOc/kanieEVyiuldFFvceriiBGBBVhe4JWWXCXE2ehLIqz+gSWD4rgCoXAGbJRnnVyyp4joPqK62bSfa88yonA==}
+  '@react-email/render@1.3.2':
+    resolution: {integrity: sha512-oq8/BD/I/YspeuBjjdLJG6xaf9tsPYk+VWu8/mX9xWbRN0t0ExKSVm9sEBL6RsCpndQA2jbY2VgPEreIrzUgqw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^18.0 || ^19.0 || ^19.0.0-rc
@@ -2098,8 +2098,8 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
-  tw-animate-css@1.3.3:
-    resolution: {integrity: sha512-tXE2TRWrskc4TU3RDd7T8n8Np/wCfoeH9gz22c7PzYqNPQ9FBGFbWWzwL0JyHcFp+jHozmF76tbHfPAx22ua2Q==}
+  tw-animate-css@1.4.0:
+    resolution: {integrity: sha512-7bziOlRqH0hJx80h/3mbicLW7o8qLsH5+RaLR2t+OHM3D0JlWGODQKQ4cxbK7WlvmUxpcj6Kgu6EKqjrGFe3QQ==}
 
   twilio@5.10.2:
     resolution: {integrity: sha512-pkMdXK0PJHR0elu3GmaDlYt4DDWPkkmuJLVUQjnctehu01IgbAp+VZ2ctbUSh1anDuqKqimAIuMnW9xmKith6w==}
@@ -3130,7 +3130,7 @@ snapshots:
 
   '@radix-ui/rect@1.1.1': {}
 
-  '@react-email/render@1.3.1(react-dom@18.0.0(react@18.0.0))(react@18.0.0)':
+  '@react-email/render@1.3.2(react-dom@18.0.0(react@18.0.0))(react@18.0.0)':
     dependencies:
       html-to-text: 9.0.5
       prettier: 3.6.2
@@ -3898,9 +3898,9 @@ snapshots:
       tiny-invariant: 1.3.3
       victory-vendor: 36.9.2
 
-  resend@6.1.2(@react-email/render@1.3.1(react-dom@18.0.0(react@18.0.0))(react@18.0.0)):
+  resend@6.1.2(@react-email/render@1.3.2(react-dom@18.0.0(react@18.0.0))(react@18.0.0)):
     optionalDependencies:
-      '@react-email/render': 1.3.1(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
+      '@react-email/render': 1.3.2(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
 
   safe-buffer@5.2.1: {}
 
@@ -3982,7 +3982,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tw-animate-css@1.3.3: {}
+  tw-animate-css@1.4.0: {}
 
   twilio@5.10.2:
     dependencies:
