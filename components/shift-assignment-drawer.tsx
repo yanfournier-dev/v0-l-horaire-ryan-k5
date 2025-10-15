@@ -46,6 +46,7 @@ interface ShiftAssignmentDrawerProps {
     team_color?: string
     team_id: number
     date: Date
+    exchanges?: Array<any> // Add exchanges to shift type
   } | null
   teamFirefighters: Array<{
     id: number
@@ -67,23 +68,6 @@ interface ShiftAssignmentDrawerProps {
   }>
   leaves: Array<any>
   dateStr: string
-}
-
-type ReplacementData = {
-  replacement_id: number
-  user_id: number
-  replacement_status: string
-  is_partial?: boolean
-  start_time?: string
-  end_time?: string
-  applications: Array<{
-    id: number
-    applicant_id: number
-    first_name: string
-    last_name: string
-    status: string
-    applied_at: string
-  }>
 }
 
 function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
@@ -109,7 +93,7 @@ export function ShiftAssignmentDrawer({
     first_name: string
     last_name: string
   } | null>(null)
-  const [replacements, setReplacements] = useState<ReplacementData[]>([])
+  const [replacements, setReplacements] = useState<any[]>([])
   const [loadingReplacements, setLoadingReplacements] = useState(false)
   const [isPartial, setIsPartial] = useState(false)
   const defaultTimes = shift ? getDefaultReplacementTimes(shift.shift_type) : { startTime: "07:00", endTime: "17:00" }
@@ -133,7 +117,7 @@ export function ShiftAssignmentDrawer({
 
         const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
 
-        setReplacements(data as ReplacementData[])
+        setReplacements(data)
         setLoadingReplacements(false)
       }
       fetchReplacements()
@@ -178,7 +162,7 @@ export function ShiftAssignmentDrawer({
     toast.success("Demande de remplacement créée avec succès")
 
     const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
-    setReplacements(data as ReplacementData[])
+    setReplacements(data)
 
     setIsLoading(false)
     setSelectedFirefighter(null)
@@ -357,6 +341,22 @@ export function ShiftAssignmentDrawer({
 
   const displayedAssignments = currentAssignments.filter((a) => !removedExtraFirefighters.includes(a.user_id))
 
+  const getExchangeForFirefighter = (firefighterId: number, firstName: string, lastName: string, role: string) => {
+    if (!shift?.exchanges) return null
+
+    return shift.exchanges.find((ex: any) => {
+      if (ex.type === "requester") {
+        // This is the requester's original shift, so target is taking their place
+        return (
+          ex.requester_first_name === firstName && ex.requester_last_name === lastName && ex.requester_role === role
+        )
+      } else {
+        // This is the target's original shift, so requester is taking their place
+        return ex.target_first_name === firstName && ex.target_last_name === lastName && ex.target_role === role
+      }
+    })
+  }
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
@@ -403,12 +403,49 @@ export function ShiftAssignmentDrawer({
               const hasPartialReplacement = replacement?.is_partial && replacement?.start_time && replacement?.end_time
 
               const isExtraRequest = assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire"
+
+              const exchange = getExchangeForFirefighter(
+                assignment.user_id,
+                assignment.first_name,
+                assignment.last_name,
+                assignment.role,
+              )
+              const hasExchange = !!exchange
+
               const displayName = isExtraRequest
                 ? "Pompier supplémentaire"
                 : `${assignment.first_name} ${assignment.last_name}`
 
+              let exchangePartner = null
+              let exchangePartialTimes = null
+
+              if (hasExchange) {
+                if (exchange.type === "requester") {
+                  // Target is taking requester's place
+                  exchangePartner = `${exchange.target_first_name} ${exchange.target_last_name}`
+                  if (exchange.is_partial && exchange.requester_start_time && exchange.requester_end_time) {
+                    exchangePartialTimes = `${exchange.requester_start_time.slice(0, 5)}-${exchange.requester_end_time.slice(0, 5)}`
+                  }
+                } else {
+                  // Requester is taking target's place
+                  exchangePartner = `${exchange.requester_first_name} ${exchange.requester_last_name}`
+                  if (exchange.is_partial && exchange.target_start_time && exchange.target_end_time) {
+                    exchangePartialTimes = `${exchange.target_start_time.slice(0, 5)}-${exchange.target_end_time.slice(0, 5)}`
+                  }
+                }
+              }
+
               return (
-                <Card key={assignment.id} className={assignment.is_extra ? "border-amber-300 bg-amber-50/30" : ""}>
+                <Card
+                  key={assignment.id}
+                  className={
+                    assignment.is_extra
+                      ? "border-amber-300 bg-amber-50/30"
+                      : hasExchange
+                        ? "border-purple-300 bg-purple-50/30"
+                        : ""
+                  }
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1">
@@ -436,6 +473,14 @@ export function ShiftAssignmentDrawer({
                         {!isExtraRequest && assignment.email && (
                           <p className="text-xs text-muted-foreground">{assignment.email}</p>
                         )}
+                        {hasExchange && (
+                          <div className="mt-2">
+                            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs">
+                              ↔ Échange avec {exchangePartner}
+                              {exchangePartialTimes && ` (${exchangePartialTimes})`}
+                            </Badge>
+                          </div>
+                        )}
                         {hasPartialLeave && (
                           <div className="mt-2">
                             <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
@@ -446,7 +491,22 @@ export function ShiftAssignmentDrawer({
                         )}
                         {hasPartialReplacement && (
                           <div className="mt-2">
-                            <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs">
+                            <Badge
+                              className={`${
+                                replacement.status === "assigned"
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                  : replacement.status === "pending"
+                                    ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                              } text-xs`}
+                            >
+                              {replacement.status === "assigned" ? (
+                                <span className="text-green-700 mr-1">✓</span>
+                              ) : replacement.status === "pending" ? (
+                                <span className="mr-1">?</span>
+                              ) : (
+                                <span className="mr-1">⏳</span>
+                              )}
                               Remplacement partiel: {replacement.start_time!.slice(0, 5)} -{" "}
                               {replacement.end_time!.slice(0, 5)}
                             </Badge>
@@ -454,7 +514,7 @@ export function ShiftAssignmentDrawer({
                         )}
                         {hasReplacement && replacement.applications.length > 0 && (
                           <div className="mt-2 space-y-1">
-                            <p className="text-xs font-medium text-orange-600">
+                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                               Remplacement demandé ({replacement.applications.length}{" "}
                               {replacement.applications.length === 1 ? "candidat" : "candidats"})
                             </p>
@@ -471,7 +531,9 @@ export function ShiftAssignmentDrawer({
                           </div>
                         )}
                         {hasReplacement && replacement.applications.length === 0 && (
-                          <p className="text-xs text-orange-600 mt-2">Remplacement demandé (aucun candidat)</p>
+                          <p className="text-xs text-gray-700 dark:text-gray-300 mt-2">
+                            Remplacement demandé (aucun candidat)
+                          </p>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
@@ -487,7 +549,7 @@ export function ShiftAssignmentDrawer({
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
-                        {!hasReplacement && !assignment.is_extra && !isExtraRequest && (
+                        {!hasReplacement && !assignment.is_extra && !isExtraRequest && !hasExchange && (
                           <Button
                             size="sm"
                             variant="outline"

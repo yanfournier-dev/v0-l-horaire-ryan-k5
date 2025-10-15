@@ -1,0 +1,169 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { CalendarCell } from "@/components/calendar-cell"
+import { Button } from "@/components/ui/button"
+import { ChevronUp, ChevronDown } from "lucide-react"
+import { generateMonthView, getMonthName } from "@/lib/calendar"
+
+interface CalendarViewProps {
+  initialMonths: Array<{
+    year: number
+    month: number
+    days: any[]
+  }>
+  shiftsByCycleDay: Record<number, any[]>
+  replacementMap: Record<string, any[]>
+  exchangeMap: Record<string, any[]>
+  leaves: any[]
+  leaveMap: Record<string, any[]>
+  isAdmin: boolean
+  cycleStartDate: Date
+  currentYear: number
+  currentMonth: number
+}
+
+export function CalendarView({
+  initialMonths,
+  shiftsByCycleDay,
+  replacementMap,
+  exchangeMap,
+  leaves,
+  leaveMap,
+  isAdmin,
+  cycleStartDate,
+  currentYear,
+  currentMonth,
+}: CalendarViewProps) {
+  const [months, setMonths] = useState(initialMonths)
+  const [hasScrolled, setHasScrolled] = useState(false)
+
+  const today = new Date()
+  const todayStr = today.toISOString().split("T")[0]
+
+  useEffect(() => {
+    if (!hasScrolled) {
+      setTimeout(() => {
+        const todayElement = document.getElementById(`day-${todayStr}`)
+        if (todayElement) {
+          todayElement.scrollIntoView({
+            behavior: "instant",
+            block: "center",
+          })
+        }
+        setHasScrolled(true)
+      }, 100)
+    }
+  }, [hasScrolled, todayStr])
+
+  const loadPreviousMonths = () => {
+    const firstMonth = months[0]
+    const newMonths = []
+
+    for (let i = 3; i > 0; i--) {
+      const targetMonth = firstMonth.month - i
+      const targetYear = firstMonth.year + Math.floor(targetMonth / 12)
+      const normalizedMonth = ((targetMonth % 12) + 12) % 12
+
+      newMonths.push({
+        year: targetYear,
+        month: normalizedMonth,
+        days: generateMonthView(targetYear, normalizedMonth, cycleStartDate),
+      })
+    }
+
+    setMonths([...newMonths, ...months])
+  }
+
+  const loadNextMonths = () => {
+    const lastMonth = months[months.length - 1]
+    const newMonths = []
+
+    for (let i = 1; i <= 3; i++) {
+      const targetMonth = lastMonth.month + i
+      const targetYear = lastMonth.year + Math.floor(targetMonth / 12)
+      const normalizedMonth = targetMonth % 12
+
+      newMonths.push({
+        year: targetYear,
+        month: normalizedMonth,
+        days: generateMonthView(targetYear, normalizedMonth, cycleStartDate),
+      })
+    }
+
+    setMonths([...months, ...newMonths])
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex justify-center">
+        <Button onClick={loadPreviousMonths} variant="outline" className="gap-2 bg-transparent">
+          <ChevronUp className="h-4 w-4" />
+          Charger les mois précédents
+        </Button>
+      </div>
+
+      {months.map(({ year, month, days }) => {
+        const isCurrentMonth = year === currentYear && month === currentMonth
+
+        return (
+          <div key={`${year}-${month}`} className="flex flex-col gap-4">
+            <h2 className="text-xl md:text-2xl font-semibold text-foreground">
+              {getMonthName(month)} {year}
+              {isCurrentMonth && <span className="ml-2 text-sm font-normal text-muted-foreground">(Mois actuel)</span>}
+            </h2>
+
+            <div className="grid grid-cols-7 gap-1 md:gap-3">
+              {["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => (
+                <div
+                  key={day}
+                  className="text-center text-xs md:text-sm font-semibold text-muted-foreground py-1 md:py-2"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-1 md:gap-3 grid-cols-7">
+              {days.map((day, index) => {
+                const shifts = shiftsByCycleDay[day.cycleDay] || []
+
+                const dateStr = day.date.toISOString().split("T")[0]
+                const dayReplacements = shifts.map((shift: any) => {
+                  const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+                  return replacementMap[key] || []
+                })
+
+                const dayExchanges = shifts.map((shift: any) => {
+                  const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+                  return exchangeMap[key] || []
+                })
+
+                return (
+                  <CalendarCell
+                    key={index}
+                    day={day}
+                    shifts={shifts}
+                    replacements={dayReplacements}
+                    exchanges={dayExchanges}
+                    leaves={leaves}
+                    leaveMap={leaveMap}
+                    dateStr={dateStr}
+                    isAdmin={isAdmin}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+
+      <div className="flex justify-center">
+        <Button onClick={loadNextMonths} variant="outline" className="gap-2 bg-transparent">
+          Charger les mois suivants
+          <ChevronDown className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}

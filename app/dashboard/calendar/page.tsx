@@ -4,15 +4,15 @@ import {
   getAllShiftsWithAssignments,
   getReplacementsForDateRange,
   getLeavesForDateRange,
+  getExchangesForDateRange,
 } from "@/app/actions/calendar"
 import { redirect } from "next/navigation"
-import { generateMonthView, getCycleDay, getMonthName, parseLocalDate } from "@/lib/calendar"
+import { generateMonthView, getCycleDay, parseLocalDate } from "@/lib/calendar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { CalendarCell } from "@/components/calendar-cell"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CalendarView } from "@/components/calendar-view"
+import { TodayButton } from "@/components/today-button"
 
 export const dynamic = "force-dynamic"
 
@@ -49,12 +49,37 @@ export default async function CalendarPage({
 
     const currentCycleDay = getCycleDay(today, cycleStartDate)
 
-    const days = generateMonthView(selectedYear, selectedMonth, cycleStartDate)
+    const monthsToDisplay = [
+      {
+        year: selectedMonth - 2 < 0 ? selectedYear - 1 : selectedYear,
+        month: (selectedMonth - 2 + 12) % 12,
+      },
+      {
+        year: selectedMonth - 1 < 0 ? selectedYear - 1 : selectedYear,
+        month: (selectedMonth - 1 + 12) % 12,
+      },
+      { year: selectedYear, month: selectedMonth },
+      {
+        year: selectedMonth + 1 > 11 ? selectedYear + 1 : selectedYear,
+        month: (selectedMonth + 1) % 12,
+      },
+      {
+        year: selectedMonth + 2 > 11 ? selectedYear + 1 : selectedYear,
+        month: (selectedMonth + 2) % 12,
+      },
+    ]
+
+    const allMonthsDays = monthsToDisplay.map(({ year, month }) => ({
+      year,
+      month,
+      days: generateMonthView(year, month, cycleStartDate),
+    }))
 
     const allShifts = await getAllShiftsWithAssignments()
 
-    const firstDay = days[0]?.date
-    const lastDay = days[days.length - 1]?.date
+    const firstDay = allMonthsDays[0].days[0]?.date
+    const lastDay =
+      allMonthsDays[allMonthsDays.length - 1].days[allMonthsDays[allMonthsDays.length - 1].days.length - 1]?.date
 
     const replacements =
       firstDay && lastDay
@@ -66,6 +91,11 @@ export default async function CalendarPage({
         ? await getLeavesForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
         : []
 
+    const exchanges =
+      firstDay && lastDay
+        ? await getExchangesForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
+        : []
+
     const replacementMap: Record<string, any[]> = {}
     replacements.forEach((repl: any) => {
       const dateOnly = new Date(repl.shift_date).toISOString().split("T")[0]
@@ -74,6 +104,29 @@ export default async function CalendarPage({
         replacementMap[key] = []
       }
       replacementMap[key].push(repl)
+    })
+
+    const exchangeMap: Record<string, any[]> = {}
+    exchanges.forEach((exchange: any) => {
+      const requesterDateOnly = new Date(exchange.requester_shift_date).toISOString().split("T")[0]
+      const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
+      if (!exchangeMap[requesterKey]) {
+        exchangeMap[requesterKey] = []
+      }
+      exchangeMap[requesterKey].push({
+        ...exchange,
+        type: "requester",
+      })
+
+      const targetDateOnly = new Date(exchange.target_shift_date).toISOString().split("T")[0]
+      const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
+      if (!exchangeMap[targetKey]) {
+        exchangeMap[targetKey] = []
+      }
+      exchangeMap[targetKey].push({
+        ...exchange,
+        type: "target",
+      })
     })
 
     const leaveMap: Record<string, any[]> = {}
@@ -113,21 +166,13 @@ export default async function CalendarPage({
       })
     })
 
-    const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1
-    const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear
-    const nextMonth = selectedMonth === 11 ? 0 : selectedMonth + 1
-    const nextYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear
-
-    const yearOptions = Array.from({ length: 11 }, (_, i) => today.getFullYear() - 5 + i)
-
     return (
       <div className="p-4 md:p-6">
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                {getMonthName(selectedMonth)} {selectedYear}
-              </h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Calendrier des quarts</h1>
+              <TodayButton />
             </div>
 
             <div className="flex gap-2">
@@ -138,97 +183,20 @@ export default async function CalendarPage({
               )}
             </div>
           </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Link href={`/dashboard/calendar?year=${prevYear}&month=${prevMonth}`}>
-                <Button variant="outline" size="icon">
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href={`/dashboard/calendar?year=${today.getFullYear()}&month=${today.getMonth()}`}>
-                <Button variant="outline" className="px-4 bg-transparent">
-                  Aujourd'hui
-                </Button>
-              </Link>
-              <Link href={`/dashboard/calendar?year=${nextYear}&month=${nextMonth}`}>
-                <Button variant="outline" size="icon">
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-
-            <div className="flex gap-2 flex-1 sm:flex-initial">
-              <form method="GET" className="flex gap-2 flex-1">
-                <Select name="month" defaultValue={selectedMonth.toString()}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => (
-                      <SelectItem key={i} value={i.toString()}>
-                        {getMonthName(i)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select name="year" defaultValue={selectedYear.toString()}>
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {yearOptions.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Button type="submit" variant="outline">
-                  Aller
-                </Button>
-              </form>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 md:gap-3">
-            {["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => (
-              <div
-                key={day}
-                className="text-center text-xs md:text-sm font-semibold text-muted-foreground py-1 md:py-2"
-              >
-                {day}
-              </div>
-            ))}
-          </div>
         </div>
 
-        <div className="grid gap-1 md:gap-3 grid-cols-7">
-          {days.map((day, index) => {
-            const shifts = shiftsByCycleDay[day.cycleDay] || []
-
-            const dateStr = day.date.toISOString().split("T")[0]
-            const dayReplacements = shifts.map((shift: any) => {
-              const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-              return replacementMap[key] || []
-            })
-
-            return (
-              <CalendarCell
-                key={index}
-                day={day}
-                shifts={shifts}
-                replacements={dayReplacements}
-                leaves={leaves}
-                leaveMap={leaveMap}
-                dateStr={dateStr}
-                isAdmin={user.is_admin}
-              />
-            )
-          })}
-        </div>
+        <CalendarView
+          initialMonths={allMonthsDays}
+          shiftsByCycleDay={shiftsByCycleDay}
+          replacementMap={replacementMap}
+          exchangeMap={exchangeMap}
+          leaves={leaves}
+          leaveMap={leaveMap}
+          isAdmin={user.is_admin}
+          cycleStartDate={cycleStartDate}
+          currentYear={selectedYear}
+          currentMonth={selectedMonth}
+        />
       </div>
     )
   } catch (error) {

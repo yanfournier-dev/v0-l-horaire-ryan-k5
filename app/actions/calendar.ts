@@ -518,3 +518,48 @@ export async function getShiftWithAssignments(shiftId: number) {
     return null
   }
 }
+
+export async function getExchangesForDateRange(startDate: string, endDate: string) {
+  try {
+    const exchanges = await sql`
+      SELECT 
+        se.id,
+        se.requester_id,
+        se.target_id,
+        se.requester_shift_date,
+        se.requester_shift_type,
+        se.requester_team_id,
+        se.target_shift_date,
+        se.target_shift_type,
+        se.target_team_id,
+        se.is_partial,
+        se.requester_start_time,
+        se.requester_end_time,
+        se.target_start_time,
+        se.target_end_time,
+        req.first_name as requester_first_name,
+        req.last_name as requester_last_name,
+        req.role as requester_role,
+        tgt.first_name as target_first_name,
+        tgt.last_name as target_last_name,
+        tgt.role as target_role
+      FROM shift_exchanges se
+      JOIN users req ON se.requester_id = req.id
+      JOIN users tgt ON se.target_id = tgt.id
+      WHERE se.status = 'approved'
+        AND (
+          (se.requester_shift_date >= ${startDate} AND se.requester_shift_date <= ${endDate})
+          OR (se.target_shift_date >= ${startDate} AND se.target_shift_date <= ${endDate})
+        )
+    `
+    return exchanges
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error)
+    if (errorMessage.includes("Too Many")) {
+      console.error("[v0] getExchangesForDateRange: Rate limit exceeded, please wait a moment")
+    } else {
+      console.error("[v0] getExchangesForDateRange: Query failed", errorMessage)
+    }
+    return []
+  }
+}

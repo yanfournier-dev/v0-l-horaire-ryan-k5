@@ -29,6 +29,7 @@ interface CalendarCellProps {
     assigned_firefighters?: string
   }>
   replacements: Array<any[]>
+  exchanges: Array<any[]> // Add exchanges prop
   leaves: Array<any>
   leaveMap: Record<string, any[]>
   dateStr: string
@@ -51,7 +52,16 @@ function getFirefighterLeave(userId: number, dateStr: string, leaveMap: Record<s
   return dayLeaves.find((leave) => leave.start_time && leave.end_time) // Only return if it's a partial leave
 }
 
-export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, dateStr, isAdmin }: CalendarCellProps) {
+export function CalendarCell({
+  day,
+  shifts,
+  replacements,
+  exchanges,
+  leaves,
+  leaveMap,
+  dateStr,
+  isAdmin,
+}: CalendarCellProps) {
   if (day.date.getDate() === 24 && day.date.getMonth() === 9) {
     console.log("[v0] CalendarCell Oct 24 - leaves prop:", JSON.stringify(leaves, null, 2))
     console.log("[v0] CalendarCell Oct 24 - leaveMap prop:", JSON.stringify(leaveMap, null, 2))
@@ -72,9 +82,13 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
     const shiftDetails = await getShiftWithAssignments(shift.id)
     const firefighters = await getTeamFirefighters(shift.team_id)
 
+    const shiftIndex = shifts.findIndex((s) => s.id === shift.id)
+    const shiftExchanges = exchanges[shiftIndex] || []
+
     setSelectedShift({
       ...shiftDetails,
       date: day.date,
+      exchanges: shiftExchanges,
     })
     setTeamFirefighters(firefighters)
     setCurrentAssignments(shiftDetails?.assignments || [])
@@ -91,7 +105,7 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
     // Fallback for teams without color
     if (teamName.includes("1")) return "rgba(58, 175, 74, 0.15)" // #3aaf4a with 15% opacity
     if (teamName.includes("2")) return "rgb(59, 130, 246, 0.15)" // blue with 15% opacity (was 0.08)
-    if (teamName.includes("3")) return "rgba(254, 197, 46, 0.15)" // #fec52e with 15% opacity
+    if (teamName.includes("3")) return "rgba(254, 197, 46, 0.25)" // #fec52e with 25% opacity
     if (teamName.includes("4")) return "rgba(227, 6, 19, 0.15)" // #E30613 with 15% opacity
     return "transparent"
   }
@@ -104,7 +118,7 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
     // Fallback for teams without color
     if (teamName.includes("1")) return "rgba(58, 175, 74, 0.4)" // #3aaf4a with 40% opacity
     if (teamName.includes("2")) return "rgb(59, 130, 246, 0.4)" // blue with 40% opacity (was 0.25)
-    if (teamName.includes("3")) return "rgba(254, 197, 46, 0.4)" // #fec52e with 40% opacity
+    if (teamName.includes("3")) return "rgba(254, 197, 46, 0.5)" // #fec52e with 50% opacity
     if (teamName.includes("4")) return "rgba(227, 6, 19, 0.4)" // #E30613 with 40% opacity
     return "rgb(229, 231, 235, 0.5)"
   }
@@ -112,6 +126,7 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
   return (
     <>
       <Card
+        id={day.isToday ? `day-${dateStr}` : undefined}
         className={`${day.isToday ? "ring-1 ring-blue-400/50 shadow-md" : ""} ${!isCurrentMonth ? "opacity-40" : ""} hover:shadow-md transition-all duration-200 h-full border-border/50`}
       >
         <CardHeader className="pb-1.5 p-2.5 border-b border-border/30">
@@ -126,6 +141,7 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
           {shifts.length > 0 ? (
             shifts.map((shift, shiftIndex) => {
               const shiftReplacements = replacements[shiftIndex] || []
+              const shiftExchanges = exchanges[shiftIndex] || [] // Get exchanges for this shift
 
               if (day.date.getDate() === 24 && day.date.getMonth() === 9) {
                 // October 24
@@ -187,22 +203,22 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
                       style={{
                         backgroundColor:
                           shift.shift_type === "full_24h"
-                            ? "rgba(0, 70, 65, 0.12)" // #004641 with 12% opacity
+                            ? "rgba(0, 70, 65, 0.12)"
                             : shift.shift_type === "day"
-                              ? "rgb(186, 230, 253)" // sky-200
-                              : "rgb(254, 205, 211)", // rose-200
+                              ? "rgb(186, 230, 253)"
+                              : "rgb(254, 205, 211)",
                         color:
                           shift.shift_type === "full_24h"
-                            ? "#004641" // Custom forest green
+                            ? "#004641"
                             : shift.shift_type === "day"
-                              ? "rgb(7, 89, 133)" // sky-800
-                              : "rgb(159, 18, 57)", // rose-800
+                              ? "rgb(7, 89, 133)"
+                              : "rgb(159, 18, 57)",
                         borderColor:
                           shift.shift_type === "full_24h"
-                            ? "rgba(0, 70, 65, 0.4)" // #004641 with 40% opacity
+                            ? "rgba(0, 70, 65, 0.4)"
                             : shift.shift_type === "day"
-                              ? "rgb(56, 189, 248)" // sky-400
-                              : "rgb(251, 113, 133)", // rose-400
+                              ? "rgb(56, 189, 248)"
+                              : "rgb(251, 113, 133)",
                       }}
                     >
                       {getShiftTypeLabel(shift.shift_type).split(" ")[0]}
@@ -211,11 +227,6 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
                   {firefighters.length > 0 ? (
                     <div className="text-xs leading-relaxed text-foreground/80 space-y-0">
                       {firefighters.map((firefighter, index) => {
-                        if (day.date.getDate() === 24 && day.date.getMonth() === 9) {
-                          console.log("[v0] Checking firefighter:", firefighter)
-                          console.log("[v0] Looking for replacement in:", shiftReplacements)
-                        }
-
                         const replacement = shiftReplacements.find(
                           (r: any) =>
                             r.replaced_first_name === firefighter.firstName &&
@@ -223,9 +234,23 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
                             r.replaced_role === firefighter.role,
                         )
 
-                        if (day.date.getDate() === 24 && day.date.getMonth() === 9) {
-                          console.log("[v0] Replacement found:", replacement)
-                        }
+                        const exchange = shiftExchanges.find((ex: any) => {
+                          if (ex.type === "requester") {
+                            // This is the requester's original shift, so target is taking their place
+                            return (
+                              ex.requester_first_name === firefighter.firstName &&
+                              ex.requester_last_name === firefighter.lastName &&
+                              ex.requester_role === firefighter.role
+                            )
+                          } else {
+                            // This is the target's original shift, so requester is taking their place
+                            return (
+                              ex.target_first_name === firefighter.firstName &&
+                              ex.target_last_name === firefighter.lastName &&
+                              ex.target_role === firefighter.role
+                            )
+                          }
+                        })
 
                         const firefighterLeave = leaves.find(
                           (leave: any) =>
@@ -237,22 +262,38 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
                             new Date(leave.end_date) >= day.date,
                         )
 
-                        if (day.date.getDate() === 24 && day.date.getMonth() === 9 && firefighterLeave) {
-                          console.log("[v0] Partial leave found for:", firefighter, "leave:", firefighterLeave)
-                        }
-
                         const isAssignedReplacement =
                           replacement?.status === "assigned" && replacement?.replacement_first_name
                         const isPendingReplacement = replacement?.status === "pending"
                         const isApprovedNotAssigned =
                           replacement && replacement?.status !== "assigned" && replacement?.status !== "pending"
 
-                        const displayFirstName = isAssignedReplacement
-                          ? replacement.replacement_first_name
-                          : firefighter.firstName
-                        const displayLastName = isAssignedReplacement
-                          ? replacement.replacement_last_name
-                          : firefighter.lastName
+                        let displayFirstName = firefighter.firstName
+                        let displayLastName = firefighter.lastName
+                        let isExchange = false
+                        let exchangePartialTimes = null
+
+                        if (exchange) {
+                          isExchange = true
+                          if (exchange.type === "requester") {
+                            // Target is taking requester's place
+                            displayFirstName = exchange.target_first_name
+                            displayLastName = exchange.target_last_name
+                            if (exchange.is_partial && exchange.requester_start_time && exchange.requester_end_time) {
+                              exchangePartialTimes = `${exchange.requester_start_time.slice(0, 5)}-${exchange.requester_end_time.slice(0, 5)}`
+                            }
+                          } else {
+                            // Requester is taking target's place
+                            displayFirstName = exchange.requester_first_name
+                            displayLastName = exchange.requester_last_name
+                            if (exchange.is_partial && exchange.target_start_time && exchange.target_end_time) {
+                              exchangePartialTimes = `${exchange.target_start_time.slice(0, 5)}-${exchange.target_end_time.slice(0, 5)}`
+                            }
+                          }
+                        } else if (isAssignedReplacement) {
+                          displayFirstName = replacement.replacement_first_name
+                          displayLastName = replacement.replacement_last_name
+                        }
 
                         const hasPartialReplacement =
                           replacement?.is_partial && replacement?.start_time && replacement?.end_time
@@ -262,75 +303,55 @@ export function CalendarCell({ day, shifts, replacements, leaves, leaveMap, date
                         const hasExtraPartialTime =
                           isExtraFirefighter && firefighter.isPartial && firefighter.startTime && firefighter.endTime
 
-                        if (day.date.getDate() === 24 && day.date.getMonth() === 9) {
-                          console.log("[v0] Displaying:", {
-                            original: `${firefighter.firstName} ${firefighter.lastName}`,
-                            display: `${displayFirstName} ${displayLastName}`,
-                            isAssignedReplacement,
-                            isPendingReplacement,
-                            hasPartialLeave,
-                            hasPartialReplacement,
-                            isExtraFirefighter,
-                            replacementTimes: hasPartialReplacement
-                              ? `${replacement.start_time.slice(0, 5)}-${replacement.end_time.slice(0, 5)}`
-                              : null,
-                          })
-                        }
-
                         return (
                           <div
                             key={index}
                             className={`truncate py-0.5 ${
-                              isExtraFirefighter
-                                ? "font-medium bg-amber-50 dark:bg-amber-950/20 px-1.5 rounded text-amber-700 dark:text-amber-300"
-                                : isPendingReplacement && hasPartialReplacement
-                                  ? "font-medium bg-red-50 dark:bg-red-950/20 px-1.5 rounded text-red-700 dark:text-red-300"
+                              isExchange
+                                ? "font-semibold"
+                                : isExtraFirefighter
+                                  ? "font-semibold" // Changed from font-medium to font-semibold for extra firefighters
                                   : isPendingReplacement
-                                    ? "font-medium bg-red-50 dark:bg-red-950/20 px-1.5 rounded text-red-700 dark:text-red-300"
-                                    : isApprovedNotAssigned && hasPartialReplacement
-                                      ? "font-medium bg-red-50 dark:bg-red-950/20 px-1.5 rounded text-red-700 dark:text-red-300"
-                                      : isApprovedNotAssigned
-                                        ? "font-medium bg-red-50 dark:bg-red-950/20 px-1.5 rounded text-red-700 dark:text-red-300"
-                                        : isAssignedReplacement && hasPartialReplacement
-                                          ? "font-medium bg-amber-50 dark:bg-amber-950/20 px-1.5 rounded text-amber-700 dark:text-amber-300"
-                                          : isAssignedReplacement
-                                            ? "font-medium bg-amber-50 dark:bg-amber-950/20 px-1.5 rounded text-amber-700 dark:text-amber-300"
-                                            : ""
-                            } ${hasPartialLeave && !replacement ? "bg-blue-50 dark:bg-blue-950/20 px-1.5 rounded text-blue-700 dark:text-blue-300" : ""}`}
+                                    ? "italic"
+                                    : isApprovedNotAssigned
+                                      ? "italic"
+                                      : isAssignedReplacement
+                                        ? "font-semibold"
+                                        : ""
+                            } ${hasPartialLeave && !replacement && !isExchange ? "bg-blue-50 dark:bg-blue-950/20 px-1.5 rounded text-blue-700 dark:text-blue-300" : ""}`}
                           >
-                            {isPendingReplacement && (
-                              <span className="text-red-500 dark:text-red-400 font-bold mr-1">?</span>
+                            {isExchange && <span className="text-green-700 dark:text-green-500 mr-1">↔</span>}
+                            {isApprovedNotAssigned && !isExchange && (
+                              <span className="text-gray-600 dark:text-gray-400 mr-1">⏳</span>
                             )}
-                            {isExtraFirefighter && (
-                              <span className="text-amber-500 dark:text-amber-400 font-bold mr-1">+</span>
+                            {isAssignedReplacement && !isExchange && (
+                              <span className="text-green-700 dark:text-green-500 mr-1">✓</span>
                             )}
-                            {hasExtraPartialTime && (
+                            {isExtraFirefighter && !isExchange && (
+                              <span className="inline-block scale-125 text-green-700 dark:text-green-500 mr-1">+</span>
+                            )}
+                            {hasExtraPartialTime && !isExchange && (
                               <span className="text-amber-500 dark:text-amber-400 font-bold mr-1">*</span>
                             )}
                             {displayFirstName === "Pompier" && displayLastName === "supplémentaire"
                               ? "Pompier supplémentaire"
                               : formatFirefighterName(displayFirstName, displayLastName)}
-                            {isPendingReplacement && hasPartialReplacement && (
-                              <span className="ml-1 text-[10px] font-normal text-red-600 dark:text-red-400">
+                            {isExchange && exchangePartialTimes && (
+                              <span className="ml-1 text-[10px] font-normal text-gray-600 dark:text-gray-400">
+                                ({exchangePartialTimes})
+                              </span>
+                            )}
+                            {hasPartialReplacement && !isExchange && (
+                              <span className="ml-1 text-[10px] font-normal text-gray-600 dark:text-gray-400">
                                 ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
                               </span>
                             )}
-                            {isApprovedNotAssigned && hasPartialReplacement && (
-                              <span className="ml-1 text-[10px] font-normal text-red-600 dark:text-red-400">
-                                ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
-                              </span>
-                            )}
-                            {isAssignedReplacement && hasPartialReplacement && (
-                              <span className="ml-1 text-[10px] font-normal text-amber-600 dark:text-amber-400">
-                                ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
-                              </span>
-                            )}
-                            {hasExtraPartialTime && (
+                            {hasExtraPartialTime && !isExchange && (
                               <span className="ml-1 text-[10px] font-normal text-amber-600 dark:text-amber-400">
                                 ({firefighter.startTime!.slice(0, 5)}-{firefighter.endTime!.slice(0, 5)})
                               </span>
                             )}
-                            {hasPartialLeave && (
+                            {hasPartialLeave && !isExchange && (
                               <span className="ml-1 text-[10px] font-normal text-blue-600 dark:text-blue-400">
                                 ({firefighterLeave.start_time.slice(0, 5)}-{firefighterLeave.end_time.slice(0, 5)})
                               </span>
