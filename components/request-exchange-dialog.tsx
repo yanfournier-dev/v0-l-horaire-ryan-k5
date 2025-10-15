@@ -7,10 +7,13 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertTriangle } from "lucide-react"
 import {
   getUserShiftsForExchange,
   getAvailableFirefightersForExchange,
   createExchangeRequest,
+  getUserExchangeCount,
 } from "@/app/actions/exchanges"
 import { useRouter } from "next/navigation"
 import { ArrowRight } from "lucide-react"
@@ -42,6 +45,9 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
   const [targetStartTime, setTargetStartTime] = useState("")
   const [targetEndTime, setTargetEndTime] = useState("")
 
+  const [exchangeCount, setExchangeCount] = useState(0)
+  const [exchangeYear, setExchangeYear] = useState<number | null>(null)
+
   useEffect(() => {
     if (open) {
       setStep(1)
@@ -57,6 +63,8 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
       setTargetIsPartial(false)
       setTargetStartTime("")
       setTargetEndTime("")
+      setExchangeCount(0)
+      setExchangeYear(null)
     }
   }, [open])
 
@@ -66,6 +74,12 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
         if (result.shifts) {
           setMyShifts(result.shifts)
         }
+      })
+
+      const year = new Date(myShiftDate).getFullYear()
+      setExchangeYear(year)
+      getUserExchangeCount(userId, year).then((result) => {
+        setExchangeCount(result.count || 0)
       })
     }
   }, [myShiftDate, userId])
@@ -113,6 +127,9 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
     if (result.error) {
       alert(result.error)
     } else {
+      if (result.warning) {
+        alert(result.warning)
+      }
       onOpenChange(false)
       router.refresh()
     }
@@ -147,6 +164,16 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
 
         {step === 1 && (
           <div className="space-y-4">
+            {exchangeYear && exchangeCount >= 8 && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Vous avez déjà {exchangeCount} échanges approuvés pour l'année {exchangeYear}. La limite recommandée
+                  est de 8 échanges par année. Vous pouvez continuer, mais cela dépassera la limite.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="my-date">Date de votre quart</Label>
               <Input
@@ -157,6 +184,11 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
                 min={new Date().toISOString().split("T")[0]}
                 required
               />
+              {exchangeYear && (
+                <p className="text-xs text-muted-foreground">
+                  Échanges approuvés en {exchangeYear}: {exchangeCount}/8
+                </p>
+              )}
             </div>
 
             {myShifts.length > 0 && (

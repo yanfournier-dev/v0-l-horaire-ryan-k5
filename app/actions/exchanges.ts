@@ -215,18 +215,13 @@ export async function createExchangeRequest(data: {
       return { error: "Non autorisé" }
     }
 
-    // Check if user has reached the limit of 8 exchanges per year
-    const currentYear = new Date().getFullYear()
-    const exchangeCount = await sql`
-      SELECT exchange_count
-      FROM user_exchange_counts
-      WHERE user_id = ${user.id}
-      AND year = ${currentYear}
-    `
+    const requesterShiftYear = new Date(data.requesterShiftDate).getFullYear()
+    const exchangeCountResult = await getUserExchangeCount(user.id, requesterShiftYear)
+    const count = exchangeCountResult.count || 0
 
-    const count = exchangeCount.length > 0 ? exchangeCount[0].exchange_count : 0
+    let warning = undefined
     if (count >= 8) {
-      return { error: "Vous avez atteint la limite de 8 échanges par année" }
+      warning = `Attention: Vous avez déjà ${count} échanges approuvés pour l'année ${requesterShiftYear}. La limite recommandée est de 8 échanges par année.`
     }
 
     // Create the exchange request
@@ -320,7 +315,7 @@ export async function createExchangeRequest(data: {
     }
 
     revalidatePath("/dashboard/exchanges")
-    return { success: true }
+    return { success: true, warning }
   } catch (error) {
     console.error("[v0] Error creating exchange request:", error)
     return { error: "Erreur lors de la création de la demande d'échange" }
@@ -409,16 +404,16 @@ export async function getPendingExchanges() {
   }
 }
 
-export async function getUserExchangeCount(userId: number) {
+export async function getUserExchangeCount(userId: number, year?: number) {
   try {
-    const currentYear = new Date().getFullYear()
+    const targetYear = year || new Date().getFullYear()
 
     const result = await sql`
       SELECT COUNT(*) as exchange_count
       FROM shift_exchanges
       WHERE requester_id = ${userId}
       AND status = 'approved'
-      AND EXTRACT(YEAR FROM approved_at) = ${currentYear}
+      AND EXTRACT(YEAR FROM requester_shift_date) = ${targetYear}
     `
 
     return { count: result.length > 0 ? Number.parseInt(result[0].exchange_count) : 0 }
@@ -455,6 +450,15 @@ export async function approveExchange(exchangeId: number) {
     }
 
     const exchange = exchanges[0]
+
+    const requesterShiftYear = new Date(exchange.requester_shift_date).getFullYear()
+    const exchangeCountResult = await getUserExchangeCount(exchange.requester_id, requesterShiftYear)
+    const count = exchangeCountResult.count || 0
+
+    let warning = undefined
+    if (count >= 8) {
+      warning = `Attention: Le pompier a déjà ${count} échanges approuvés pour l'année ${requesterShiftYear}. La limite recommandée est de 8 échanges par année.`
+    }
 
     console.log("[v0] Approving exchange:", exchangeId, exchange)
 
@@ -527,11 +531,9 @@ export async function approveExchange(exchangeId: number) {
 
       console.log("[v0] Created swapped assignments")
 
-      // Increment exchange count for requester
-      const currentYear = new Date().getFullYear()
       await sql`
         INSERT INTO user_exchange_counts (user_id, year, exchange_count)
-        VALUES (${exchange.requester_id}, ${currentYear}, 1)
+        VALUES (${exchange.requester_id}, ${requesterShiftYear}, 1)
         ON CONFLICT (user_id, year)
         DO UPDATE SET 
           exchange_count = user_exchange_counts.exchange_count + 1,
@@ -603,7 +605,7 @@ export async function approveExchange(exchangeId: number) {
 
       revalidatePath("/dashboard/exchanges")
       revalidatePath("/dashboard/calendar")
-      return { success: true }
+      return { success: true, warning }
     } catch (error) {
       await sql`ROLLBACK`
       console.error("[v0] Error in transaction:", error)
@@ -793,14 +795,13 @@ export async function cancelExchangeRequest(exchangeId: number) {
               end_time = NULL
           `
 
-          // Decrement exchange count for requester
-          const currentYear = new Date().getFullYear()
+          const requesterShiftYear = new Date(exchange.requester_shift_date).getFullYear()
           await sql`
             UPDATE user_exchange_counts
             SET 
               exchange_count = GREATEST(0, exchange_count - 1)
             WHERE user_id = ${exchange.requester_id}
-            AND year = ${currentYear}
+            AND year = ${requesterShiftYear}
           `
         }
 
@@ -935,18 +936,13 @@ export async function createExchangeAsAdmin(data: {
       return { error: "Non autorisé" }
     }
 
-    // Check if requester has reached the limit of 8 exchanges per year
-    const currentYear = new Date().getFullYear()
-    const exchangeCount = await sql`
-      SELECT exchange_count
-      FROM user_exchange_counts
-      WHERE user_id = ${data.requesterId}
-      AND year = ${currentYear}
-    `
+    const requesterShiftYear = new Date(data.requesterShiftDate).getFullYear()
+    const exchangeCountResult = await getUserExchangeCount(data.requesterId, requesterShiftYear)
+    const count = exchangeCountResult.count || 0
 
-    const count = exchangeCount.length > 0 ? exchangeCount[0].exchange_count : 0
+    let warning = undefined
     if (count >= 8) {
-      return { error: "Le pompier a atteint la limite de 8 échanges par année" }
+      warning = `Attention: Le pompier a déjà ${count} échanges approuvés pour l'année ${requesterShiftYear}. La limite recommandée est de 8 échanges par année.`
     }
 
     // Create the exchange request
@@ -1048,10 +1044,9 @@ export async function createExchangeAsAdmin(data: {
 
         console.log("[v0] Created swapped assignments")
 
-        // Increment exchange count for requester
         await sql`
           INSERT INTO user_exchange_counts (user_id, year, exchange_count)
-          VALUES (${data.requesterId}, ${currentYear}, 1)
+          VALUES (${data.requesterId}, ${requesterShiftYear}, 1)
           ON CONFLICT (user_id, year)
           DO UPDATE SET 
             exchange_count = user_exchange_counts.exchange_count + 1,
@@ -1155,7 +1150,7 @@ export async function createExchangeAsAdmin(data: {
 
     revalidatePath("/dashboard/exchanges")
     revalidatePath("/dashboard/calendar")
-    return { success: true }
+    return { success: true, warning }
   } catch (error) {
     console.error("[v0] Error creating exchange as admin:", error)
     return { error: "Erreur lors de la création de l'échange" }
