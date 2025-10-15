@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { getAllEmailTemplates } from "@/app/actions/email-templates"
 import { EmailTemplatesList } from "@/components/email-templates-list"
-import { UpdateTemplatesButton } from "@/components/update-templates-button"
+import { SyncEmailTemplatesButton } from "@/components/sync-email-templates-button"
 
 export const dynamic = "force-dynamic"
 
@@ -28,9 +28,12 @@ export default async function EmailTemplatesPage() {
         <p className="text-muted-foreground mt-2">
           Personnalisez les messages envoyés par email pour chaque type de notification
         </p>
-        <div className="mt-4">
-          <UpdateTemplatesButton />
+        <div className="mt-4 flex gap-2">
+          <SyncEmailTemplatesButton />
         </div>
+        <p className="text-sm text-muted-foreground mt-2">
+          Utilisez le bouton ci-dessus pour mettre à jour les templates avec les dernières modifications du code
+        </p>
       </div>
 
       <EmailTemplatesList templates={templates} />

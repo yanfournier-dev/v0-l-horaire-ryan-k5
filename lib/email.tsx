@@ -22,7 +22,9 @@ export async function sendEmail({
   subject: string
   html: string
 }) {
-  console.log("[v0] Attempting to send email to:", to, "Subject:", subject)
+  console.log("[v0] ========== EMAIL SEND ATTEMPT ==========")
+  console.log("[v0] To:", to)
+  console.log("[v0] Subject:", subject)
 
   const resend = getResendClient()
   if (!resend) {
@@ -30,7 +32,18 @@ export async function sendEmail({
     return { success: false, error: "Email service not configured" }
   }
 
-  const verifiedEmail = process.env.RESEND_VERIFIED_EMAIL
+  let verifiedEmail = process.env.RESEND_VERIFIED_EMAIL
+  if (verifiedEmail) {
+    // Remove "RESEND_VERIFIED_EMAIL=" prefix if present
+    verifiedEmail = verifiedEmail.replace(/^RESEND_VERIFIED_EMAIL=/i, "").trim()
+  }
+
+  console.log("[v0] RESEND_VERIFIED_EMAIL is set:", !!verifiedEmail)
+  if (verifiedEmail) {
+    console.log("[v0] Verified email value:", verifiedEmail)
+    console.log("[v0] Recipient matches verified email:", to === verifiedEmail)
+  }
+
   if (verifiedEmail && to !== verifiedEmail) {
     console.log("[v0] Resend is in test mode - skipping email send")
     console.log("[v0] Verified email:", verifiedEmail)
@@ -44,6 +57,7 @@ export async function sendEmail({
   }
 
   try {
+    console.log("[v0] Calling Resend API...")
     const { data, error } = await resend.emails.send({
       from: "L'horaire Ryan <notifications@resend.dev>",
       to,
@@ -52,6 +66,7 @@ export async function sendEmail({
     })
 
     if (error) {
+      console.error("[v0] Resend API returned error:", error)
       // Check if this is a test mode restriction (403 error)
       if (error.statusCode === 403 && error.message?.includes("testing emails")) {
         console.log("[v0] Resend is in test mode - emails can only be sent to:", verifiedEmail || "your verified email")
@@ -63,10 +78,12 @@ export async function sendEmail({
       return { success: false, error }
     }
 
-    console.log("[v0] Email sent successfully:", data)
+    console.log("[v0] Email sent successfully! Data:", data)
+    console.log("[v0] ========================================")
     return { success: true, data }
   } catch (error) {
-    console.error("[v0] Email send error:", error)
+    console.error("[v0] Email send exception:", error)
+    console.log("[v0] ========================================")
     return { success: false, error }
   }
 }
@@ -160,13 +177,30 @@ function getFallbackTemplate(type: string, variables: Record<string, string>) {
         <p>Bonjour ${variables.targetName},</p>
         <p>${variables.requesterName} souhaite échanger de quart avec vous :</p>
         <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p style="margin: 5px 0;"><strong>Date du requester :</strong> ${variables.requesterDate}</p>
-          <p style="margin: 5px 0;"><strong>Type de quart du requester :</strong> ${variables.requesterShiftType}</p>
-          <p style="margin: 5px 0;"><strong>Date du target :</strong> ${variables.targetDate}</p>
-          <p style="margin: 5px 0;"><strong>Type de quart du target :</strong> ${variables.targetShiftType}</p>
+          <p style="margin: 5px 0;"><strong>Date du demandeur :</strong> ${variables.requesterDate}</p>
+          <p style="margin: 5px 0;"><strong>Type de quart du demandeur :</strong> ${variables.requesterShiftType}</p>
+          <p style="margin: 5px 0;"><strong>Votre date :</strong> ${variables.targetDate}</p>
+          <p style="margin: 5px 0;"><strong>Votre type de quart :</strong> ${variables.targetShiftType}</p>
           ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Échange partiel :</strong> ${variables.requesterPartialHours} <-> ${variables.targetPartialHours}</p>` : ""}
         </div>
         <a href="${appUrl}/dashboard/exchanges" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les demandes d'échange</a>
+      `,
+    },
+    exchange_request_confirmation: {
+      subject: "Demande d'échange envoyée",
+      body: `
+        <h2 style="color: #10b981;">Demande d'échange envoyée</h2>
+        <p>Bonjour ${variables.requesterName},</p>
+        <p>Votre demande d'échange de quart avec ${variables.targetName} a été envoyée avec succès :</p>
+        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Votre date :</strong> ${variables.requesterDate}</p>
+          <p style="margin: 5px 0;"><strong>Votre type de quart :</strong> ${variables.requesterShiftType}</p>
+          <p style="margin: 5px 0;"><strong>Date de ${variables.targetName} :</strong> ${variables.targetDate}</p>
+          <p style="margin: 5px 0;"><strong>Type de quart de ${variables.targetName} :</strong> ${variables.targetShiftType}</p>
+          ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Échange partiel :</strong> ${variables.requesterPartialHours} <-> ${variables.targetPartialHours}</p>` : ""}
+        </div>
+        <p style="margin: 20px 0;">Vous serez notifié lorsqu'un gestionnaire traitera votre demande.</p>
+        <a href="${appUrl}/dashboard/exchanges" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir mes demandes d'échange</a>
       `,
     },
     exchange_approved: {
@@ -357,6 +391,33 @@ export async function getExchangeRequestEmail(
   })
 }
 
+export async function getExchangeRequestConfirmationEmail(
+  requesterName: string,
+  targetName: string,
+  requesterDate: string,
+  requesterShiftType: string,
+  targetDate: string,
+  targetShiftType: string,
+  isPartial?: boolean,
+  requesterPartialHours?: string,
+  targetPartialHours?: string,
+) {
+  const translatedRequesterShiftType = translateShiftType(requesterShiftType)
+  const translatedTargetShiftType = translateShiftType(targetShiftType)
+
+  return await getEmailFromTemplate("exchange_request_confirmation", {
+    requesterName,
+    targetName,
+    requesterDate,
+    requesterShiftType: translatedRequesterShiftType,
+    targetDate,
+    targetShiftType: translatedTargetShiftType,
+    isPartial: isPartial ? "true" : "",
+    requesterPartialHours: requesterPartialHours || "",
+    targetPartialHours: targetPartialHours || "",
+  })
+}
+
 export async function getExchangeApprovedEmail(
   name: string,
   otherName: string,
@@ -372,6 +433,13 @@ export async function getExchangeApprovedEmail(
   const translatedOtherShiftType = translateShiftType(otherShiftType)
 
   return await getEmailFromTemplate("exchange_approved", {
+    firefighterName: name,
+    otherFirefighterName: otherName,
+    newDate: yourDate,
+    newShiftType: translatedYourShiftType,
+    oldDate: otherDate,
+    oldShiftType: translatedOtherShiftType,
+    // Also include original names for fallback template
     name,
     otherName,
     yourDate,

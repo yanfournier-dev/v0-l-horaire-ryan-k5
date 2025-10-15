@@ -8,6 +8,10 @@ import {
   getReplacementAvailableEmail,
   getApplicationRejectedEmail,
   getApplicationApprovedEmail,
+  getExchangeRequestEmail,
+  getExchangeApprovedEmail,
+  getExchangeRejectedEmail,
+  getExchangeRequestConfirmationEmail,
 } from "@/lib/email"
 import { parseLocalDate } from "@/lib/date-utils"
 // crypto is available globally in Node.js
@@ -142,12 +146,17 @@ export async function createNotification(
     console.log("[v0] User preferences found:", userPrefs.length > 0)
 
     if (userPrefs.length === 0) {
-      console.log("[v0] No user preferences found, skipping email")
+      console.log("[v0] No user found, skipping email")
       return { success: true }
     }
 
     const user = userPrefs[0]
     const fullName = `${user.first_name} ${user.last_name}`
+
+    if (user.enable_email === null) {
+      console.log("[v0] No notification preferences found - email notifications disabled by default")
+      return { success: true }
+    }
 
     console.log("[v0] User email:", user.email)
     console.log("[v0] Email enabled:", user.enable_email)
@@ -160,6 +169,10 @@ export async function createNotification(
       application_approved: "notify_replacement_accepted",
       application_rejected: "notify_replacement_rejected",
       replacement_approved: "notify_replacement_accepted",
+      exchange_request: "notify_exchange_request",
+      exchange_approved: "notify_exchange_approved",
+      exchange_rejected: "notify_exchange_rejected",
+      exchange_request_confirmation: "notify_exchange_request_confirmation",
     }
 
     const prefKey = notificationTypeMap[type]
@@ -335,6 +348,195 @@ async function sendEmailNotification(
       }
       break
 
+    case "exchange_request":
+      if (relatedId) {
+        console.log("[v0] Fetching exchange details for relatedId:", relatedId)
+        const exchange = await sql`
+          SELECT 
+            se.*,
+            requester.first_name || ' ' || requester.last_name as requester_name,
+            target.first_name || ' ' || target.last_name as target_name
+          FROM shift_exchanges se
+          LEFT JOIN users requester ON se.requester_id = requester.id
+          LEFT JOIN users target ON se.target_id = target.id
+          WHERE se.id = ${relatedId}
+        `
+        console.log("[v0] Exchange found:", exchange.length > 0)
+
+        if (exchange.length > 0) {
+          const ex = exchange[0]
+          const requesterPartialHours =
+            ex.is_partial && ex.requester_start_time && ex.requester_end_time
+              ? `${ex.requester_start_time.substring(0, 5)} - ${ex.requester_end_time.substring(0, 5)}`
+              : null
+          const targetPartialHours =
+            ex.is_partial && ex.target_start_time && ex.target_end_time
+              ? `${ex.target_start_time.substring(0, 5)} - ${ex.target_end_time.substring(0, 5)}`
+              : null
+
+          emailContent = await getExchangeRequestEmail(
+            ex.target_name,
+            ex.requester_name,
+            parseLocalDate(ex.requester_shift_date).toLocaleDateString("fr-CA"),
+            ex.requester_shift_type,
+            parseLocalDate(ex.target_shift_date).toLocaleDateString("fr-CA"),
+            ex.target_shift_type,
+            ex.is_partial,
+            requesterPartialHours,
+            targetPartialHours,
+          )
+        }
+      }
+      break
+
+    case "exchange_request_confirmation":
+      if (relatedId) {
+        console.log("[v0] Fetching exchange details for confirmation, relatedId:", relatedId)
+        const exchange = await sql`
+          SELECT 
+            se.*,
+            requester.first_name || ' ' || requester.last_name as requester_name,
+            target.first_name || ' ' || target.last_name as target_name
+          FROM shift_exchanges se
+          LEFT JOIN users requester ON se.requester_id = requester.id
+          LEFT JOIN users target ON se.target_id = target.id
+          WHERE se.id = ${relatedId}
+        `
+        console.log("[v0] Exchange found for confirmation:", exchange.length > 0)
+
+        if (exchange.length > 0) {
+          const ex = exchange[0]
+          const requesterPartialHours =
+            ex.is_partial && ex.requester_start_time && ex.requester_end_time
+              ? `${ex.requester_start_time.substring(0, 5)} - ${ex.requester_end_time.substring(0, 5)}`
+              : null
+          const targetPartialHours =
+            ex.is_partial && ex.target_start_time && ex.target_end_time
+              ? `${ex.target_start_time.substring(0, 5)} - ${ex.target_end_time.substring(0, 5)}`
+              : null
+
+          emailContent = await getExchangeRequestConfirmationEmail(
+            ex.requester_name,
+            ex.target_name,
+            parseLocalDate(ex.requester_shift_date).toLocaleDateString("fr-CA"),
+            ex.requester_shift_type,
+            parseLocalDate(ex.target_shift_date).toLocaleDateString("fr-CA"),
+            ex.target_shift_type,
+            ex.is_partial,
+            requesterPartialHours,
+            targetPartialHours,
+          )
+        }
+      }
+      break
+
+    case "exchange_approved":
+      if (relatedId && userId) {
+        console.log("[v0] Fetching exchange details for relatedId:", relatedId, "userId:", userId)
+        const exchange = await sql`
+          SELECT 
+            se.*,
+            requester.first_name || ' ' || requester.last_name as requester_name,
+            target.first_name || ' ' || target.last_name as target_name
+          FROM shift_exchanges se
+          LEFT JOIN users requester ON se.requester_id = requester.id
+          LEFT JOIN users target ON se.target_id = target.id
+          WHERE se.id = ${relatedId}
+        `
+        console.log("[v0] Exchange found:", exchange.length > 0)
+
+        if (exchange.length > 0) {
+          const ex = exchange[0]
+          const isRequester = userId === ex.requester_id
+          const yourDate = isRequester ? ex.requester_shift_date : ex.target_shift_date
+          const yourShiftType = isRequester ? ex.requester_shift_type : ex.target_shift_type
+          const otherDate = isRequester ? ex.target_shift_date : ex.requester_shift_date
+          const otherShiftType = isRequester ? ex.target_shift_type : ex.requester_shift_type
+          const otherName = isRequester ? ex.target_name : ex.requester_name
+
+          const yourPartialHours =
+            ex.is_partial && isRequester && ex.requester_start_time && ex.requester_end_time
+              ? `${ex.requester_start_time.substring(0, 5)} - ${ex.requester_end_time.substring(0, 5)}`
+              : ex.is_partial && !isRequester && ex.target_start_time && ex.target_end_time
+                ? `${ex.target_start_time.substring(0, 5)} - ${ex.target_end_time.substring(0, 5)}`
+                : null
+
+          const otherPartialHours =
+            ex.is_partial && isRequester && ex.target_start_time && ex.target_end_time
+              ? `${ex.target_start_time.substring(0, 5)} - ${ex.target_end_time.substring(0, 5)}`
+              : ex.is_partial && !isRequester && ex.requester_start_time && ex.requester_end_time
+                ? `${ex.requester_start_time.substring(0, 5)} - ${ex.requester_end_time.substring(0, 5)}`
+                : null
+
+          emailContent = await getExchangeApprovedEmail(
+            name,
+            otherName,
+            parseLocalDate(yourDate).toLocaleDateString("fr-CA"),
+            yourShiftType,
+            parseLocalDate(otherDate).toLocaleDateString("fr-CA"),
+            otherShiftType,
+            ex.is_partial,
+            yourPartialHours,
+            otherPartialHours,
+          )
+        }
+      }
+      break
+
+    case "exchange_rejected":
+      if (relatedId && userId) {
+        console.log("[v0] Fetching exchange details for relatedId:", relatedId, "userId:", userId)
+        const exchange = await sql`
+          SELECT 
+            se.*,
+            requester.first_name || ' ' || requester.last_name as requester_name,
+            target.first_name || ' ' || target.last_name as target_name
+          FROM shift_exchanges se
+          LEFT JOIN users requester ON se.requester_id = requester.id
+          LEFT JOIN users target ON se.target_id = target.id
+          WHERE se.id = ${relatedId}
+        `
+        console.log("[v0] Exchange found:", exchange.length > 0)
+
+        if (exchange.length > 0) {
+          const ex = exchange[0]
+          const isRequester = userId === ex.requester_id
+          const yourDate = isRequester ? ex.requester_shift_date : ex.target_shift_date
+          const yourShiftType = isRequester ? ex.requester_shift_type : ex.target_shift_type
+          const otherDate = isRequester ? ex.target_shift_date : ex.requester_shift_date
+          const otherShiftType = isRequester ? ex.target_shift_type : ex.requester_shift_type
+          const otherName = isRequester ? ex.target_name : ex.requester_name
+
+          const yourPartialHours =
+            ex.is_partial && isRequester && ex.requester_start_time && ex.requester_end_time
+              ? `${ex.requester_start_time.substring(0, 5)} - ${ex.requester_end_time.substring(0, 5)}`
+              : ex.is_partial && !isRequester && ex.target_start_time && ex.target_end_time
+                ? `${ex.target_start_time.substring(0, 5)} - ${ex.target_end_time.substring(0, 5)}`
+                : null
+
+          const otherPartialHours =
+            ex.is_partial && isRequester && ex.target_start_time && ex.target_end_time
+              ? `${ex.target_start_time.substring(0, 5)} - ${ex.target_end_time.substring(0, 5)}`
+              : ex.is_partial && !isRequester && ex.requester_start_time && ex.requester_end_time
+                ? `${ex.requester_start_time.substring(0, 5)} - ${ex.requester_end_time.substring(0, 5)}`
+                : null
+
+          emailContent = await getExchangeRejectedEmail(
+            name,
+            otherName,
+            parseLocalDate(yourDate).toLocaleDateString("fr-CA"),
+            yourShiftType,
+            parseLocalDate(otherDate).toLocaleDateString("fr-CA"),
+            otherShiftType,
+            ex.rejected_reason,
+            ex.is_partial,
+            yourPartialHours,
+            otherPartialHours,
+          )
+        }
+      }
+      break
+
     case "schedule_change":
       // Schedule change notifications don't need specific email templates
       // The message is already descriptive enough
@@ -379,6 +581,9 @@ export async function updateUserPreferences(
     notify_replacement_accepted?: boolean
     notify_replacement_rejected?: boolean
     notify_schedule_change?: boolean
+    notify_exchange_request?: boolean
+    notify_exchange_approved?: boolean
+    notify_exchange_rejected?: boolean
   },
 ) {
   const user = await getSession()
@@ -402,7 +607,10 @@ export async function updateUserPreferences(
           notify_replacement_available,
           notify_replacement_accepted,
           notify_replacement_rejected,
-          notify_schedule_change
+          notify_schedule_change,
+          notify_exchange_request,
+          notify_exchange_approved,
+          notify_exchange_rejected
         ) VALUES (
           ${userId},
           ${preferences.enable_app ?? true},
@@ -410,7 +618,10 @@ export async function updateUserPreferences(
           ${preferences.notify_replacement_available ?? true},
           ${preferences.notify_replacement_accepted ?? true},
           ${preferences.notify_replacement_rejected ?? true},
-          ${preferences.notify_schedule_change ?? true}
+          ${preferences.notify_schedule_change ?? true},
+          ${preferences.notify_exchange_request ?? true},
+          ${preferences.notify_exchange_approved ?? true},
+          ${preferences.notify_exchange_rejected ?? true}
         )
       `
     } else {
@@ -423,6 +634,9 @@ export async function updateUserPreferences(
           notify_replacement_accepted = ${preferences.notify_replacement_accepted ?? existing[0].notify_replacement_accepted},
           notify_replacement_rejected = ${preferences.notify_replacement_rejected ?? existing[0].notify_replacement_rejected},
           notify_schedule_change = ${preferences.notify_schedule_change ?? existing[0].notify_schedule_change},
+          notify_exchange_request = ${preferences.notify_exchange_request ?? existing[0].notify_exchange_request},
+          notify_exchange_approved = ${preferences.notify_exchange_approved ?? existing[0].notify_exchange_approved},
+          notify_exchange_rejected = ${preferences.notify_exchange_rejected ?? existing[0].notify_exchange_rejected},
           updated_at = CURRENT_TIMESTAMP
         WHERE user_id = ${userId}
       `

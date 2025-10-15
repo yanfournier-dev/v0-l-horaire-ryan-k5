@@ -158,10 +158,7 @@ export async function getAllShiftsWithAssignments() {
         SELECT 
           tm.team_id,
           string_agg(
-            u.first_name || '|' || u.last_name || '|' || u.role || '|false|' || 
-            COALESCE(sa_team.is_partial::text, 'false') || '|' ||
-            COALESCE(sa_team.start_time::text, '') || '|' ||
-            COALESCE(sa_team.end_time::text, ''),
+            u.first_name || '|' || u.last_name || '|' || u.role || '|false|false|||',
             ';' 
             ORDER BY 
               CASE u.role 
@@ -181,7 +178,6 @@ export async function getAllShiftsWithAssignments() {
           COUNT(*) as team_member_count
         FROM team_members tm
         JOIN users u ON tm.user_id = u.id
-        LEFT JOIN shift_assignments sa_team ON sa_team.user_id = u.id AND sa_team.is_extra = false
         GROUP BY tm.team_id
       ),
       extra_firefighters AS (
