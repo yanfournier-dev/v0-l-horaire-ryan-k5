@@ -6,6 +6,7 @@ import {
   getLeavesForDateRange,
   getExchangesForDateRange,
 } from "@/app/actions/calendar"
+import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
 import { redirect } from "next/navigation"
 import { generateMonthView, getCycleDay, parseLocalDate } from "@/lib/calendar"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { CalendarView } from "@/components/calendar-view"
 import { TodayButton } from "@/components/today-button"
+import { ScrollToToday } from "@/components/scroll-to-today"
 
 export const dynamic = "force-dynamic"
 
@@ -51,21 +53,13 @@ export default async function CalendarPage({
 
     const monthsToDisplay = [
       {
-        year: selectedMonth - 2 < 0 ? selectedYear - 1 : selectedYear,
-        month: (selectedMonth - 2 + 12) % 12,
-      },
-      {
         year: selectedMonth - 1 < 0 ? selectedYear - 1 : selectedYear,
-        month: (selectedMonth - 1 + 12) % 12,
+        month: selectedMonth - 1 < 0 ? 11 : selectedMonth - 1,
       },
       { year: selectedYear, month: selectedMonth },
       {
         year: selectedMonth + 1 > 11 ? selectedYear + 1 : selectedYear,
         month: (selectedMonth + 1) % 12,
-      },
-      {
-        year: selectedMonth + 2 > 11 ? selectedYear + 1 : selectedYear,
-        month: (selectedMonth + 2) % 12,
       },
     ]
 
@@ -94,6 +88,11 @@ export default async function CalendarPage({
     const exchanges =
       firstDay && lastDay
         ? await getExchangesForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
+        : []
+
+    const shiftNotes =
+      firstDay && lastDay
+        ? await getShiftNotesForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
         : []
 
     const replacementMap: Record<string, any[]> = {}
@@ -144,6 +143,13 @@ export default async function CalendarPage({
       }
     })
 
+    const noteMap: Record<string, boolean> = {}
+    shiftNotes.forEach((note: any) => {
+      const dateOnly = new Date(note.shift_date).toISOString().split("T")[0]
+      const key = `${note.shift_id}_${dateOnly}`
+      noteMap[key] = true
+    })
+
     const shiftsByCycleDay: Record<number, any[]> = {}
     allShifts.forEach((shift: any) => {
       if (!shiftsByCycleDay[shift.cycle_day]) {
@@ -168,6 +174,8 @@ export default async function CalendarPage({
 
     return (
       <div className="p-4 md:p-6">
+        <ScrollToToday />
+
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -192,6 +200,7 @@ export default async function CalendarPage({
           exchangeMap={exchangeMap}
           leaves={leaves}
           leaveMap={leaveMap}
+          noteMap={noteMap}
           isAdmin={user.is_admin}
           cycleStartDate={cycleStartDate}
           currentYear={selectedYear}

@@ -563,3 +563,17 @@ export async function getExchangesForDateRange(startDate: string, endDate: strin
     return []
   }
 }
+
+export async function getShiftNotesForDate(shiftId: number, date: string) {
+  try {
+    const result = await sql`
+      SELECT COUNT(*) as count
+      FROM shift_notes
+      WHERE shift_id = ${shiftId} AND shift_date = ${date}
+    `
+    return result[0]?.count > 0
+  } catch (error) {
+    console.error("[v0] getShiftNotesForDate: Query failed", error)
+    return false
+  }
+}

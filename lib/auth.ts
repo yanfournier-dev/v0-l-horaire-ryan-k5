@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
-import { sql } from "./db"
 import bcrypt from "bcryptjs"
+import { neon } from "@neondatabase/serverless"
 
 export interface User {
   id: number
@@ -45,24 +45,42 @@ export async function createSession(userId: number): Promise<string> {
 }
 
 export async function getSession(): Promise<User | null> {
-  const cookieStore = await cookies()
-  const userId = cookieStore.get("userId")?.value
+  console.log("[v0] getSession: Starting...")
 
-  if (!userId) {
+  try {
+    const sqlClient = neon(process.env.DATABASE_URL!)
+    console.log("[v0] getSession: SQL client created")
+
+    const cookieStore = await cookies()
+    console.log("[v0] getSession: Cookie store obtained")
+
+    const userId = cookieStore.get("userId")?.value
+    console.log("[v0] getSession: userId from cookie:", userId)
+
+    if (!userId) {
+      console.log("[v0] getSession: No userId found in cookies")
+      return null
+    }
+
+    console.log("[v0] getSession: Executing SQL query for userId:", userId)
+    const result = await sqlClient`
+      SELECT id, email, first_name, last_name, role, is_admin, phone
+      FROM users
+      WHERE id = ${Number.parseInt(userId)}
+    `
+    console.log("[v0] getSession: SQL query result:", JSON.stringify(result))
+
+    if (result.length === 0) {
+      console.log("[v0] getSession: No user found in database")
+      return null
+    }
+
+    console.log("[v0] getSession: User found:", result[0].email)
+    return result[0] as User
+  } catch (error) {
+    console.error("[v0] getSession: Error occurred:", error)
     return null
   }
-
-  const result = await sql`
-    SELECT id, email, first_name, last_name, role, is_admin, phone
-    FROM users
-    WHERE id = ${Number.parseInt(userId)}
-  `
-
-  if (result.length === 0) {
-    return null
-  }
-
-  return result[0] as User
 }
 
 export async function destroySession(): Promise<void> {

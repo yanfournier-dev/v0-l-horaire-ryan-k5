@@ -1,12 +1,18 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { getShiftTypeLabel } from "@/lib/colors"
 import { ShiftAssignmentDrawer } from "@/components/shift-assignment-drawer"
+import { ShiftNoteDialog } from "@/components/shift-note-dialog"
 import { getShiftWithAssignments } from "@/app/actions/calendar"
 import { getTeamFirefighters } from "@/app/actions/shift-assignments"
+import { getShiftNote } from "@/app/actions/shift-notes"
+import { FileText } from "lucide-react"
 
 interface CalendarCellProps {
   day: {
@@ -27,6 +33,7 @@ interface CalendarCellProps {
     team_color?: string
     assigned_count: number
     assigned_firefighters?: string
+    has_note: boolean // New prop to indicate if a shift has a note
   }>
   replacements: Array<any[]>
   exchanges: Array<any[]> // Add exchanges prop
@@ -71,6 +78,9 @@ export function CalendarCell({
   const [selectedShift, setSelectedShift] = useState<any>(null)
   const [teamFirefighters, setTeamFirefighters] = useState<any[]>([])
   const [currentAssignments, setCurrentAssignments] = useState<any[]>([])
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false)
+  const [selectedShiftForNote, setSelectedShiftForNote] = useState<any>(null)
+  const [currentNote, setCurrentNote] = useState<any>(null)
 
   const formatFirefighterName = (firstName: string, lastName: string) => {
     return `${lastName} ${firstName.charAt(0)}.`
@@ -93,6 +103,15 @@ export function CalendarCell({
     setTeamFirefighters(firefighters)
     setCurrentAssignments(shiftDetails?.assignments || [])
     setDrawerOpen(true)
+  }
+
+  const handleNoteClick = async (shift: any, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent shift click handler from firing
+
+    const note = await getShiftNote(shift.id, dateStr)
+    setCurrentNote(note)
+    setSelectedShiftForNote(shift)
+    setNoteDialogOpen(true)
   }
 
   const isCurrentMonth = day.isCurrentMonth !== undefined ? day.isCurrentMonth : true
@@ -126,7 +145,7 @@ export function CalendarCell({
   return (
     <>
       <Card
-        id={day.isToday ? `day-${dateStr}` : undefined}
+        id={`day-${dateStr}`}
         className={`${day.isToday ? "ring-1 ring-blue-400/50 shadow-md" : ""} ${!isCurrentMonth ? "opacity-40" : ""} hover:shadow-md transition-all duration-200 h-full border-border/50`}
       >
         <CardHeader className="pb-1.5 p-2.5 border-b border-border/30">
@@ -363,6 +382,27 @@ export function CalendarCell({
                   ) : (
                     <p className="text-xs text-muted-foreground/60 italic">Aucun pompier assigné</p>
                   )}
+                  {shift.has_note && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-1 h-6 text-xs font-semibold text-foreground hover:text-foreground hover:bg-accent/50"
+                      onClick={(e) => handleNoteClick(shift, e)}
+                    >
+                      <FileText className="h-3 w-3 mr-1" />
+                      Voir la note
+                    </Button>
+                  )}
+                  {!shift.has_note && isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-1 h-6 text-xs text-muted-foreground/50 hover:text-muted-foreground opacity-40 hover:opacity-70"
+                      onClick={(e) => handleNoteClick(shift, e)}
+                    >
+                      Note
+                    </Button>
+                  )}
                 </div>
               )
             })
@@ -381,6 +421,19 @@ export function CalendarCell({
           currentAssignments={currentAssignments}
           leaves={leaves}
           dateStr={dateStr}
+        />
+      )}
+
+      {selectedShiftForNote && (
+        <ShiftNoteDialog
+          open={noteDialogOpen}
+          onOpenChange={setNoteDialogOpen}
+          shiftId={selectedShiftForNote.id}
+          shiftDate={dateStr}
+          teamName={selectedShiftForNote.team_name}
+          shiftType={selectedShiftForNote.shift_type}
+          existingNote={currentNote}
+          isAdmin={isAdmin}
         />
       )}
     </>

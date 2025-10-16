@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { CalendarCell } from "@/components/calendar-cell"
 import { Button } from "@/components/ui/button"
 import { ChevronUp, ChevronDown } from "lucide-react"
@@ -17,6 +17,7 @@ interface CalendarViewProps {
   exchangeMap: Record<string, any[]>
   leaves: any[]
   leaveMap: Record<string, any[]>
+  noteMap: Record<string, boolean> // Add noteMap prop
   isAdmin: boolean
   cycleStartDate: Date
   currentYear: number
@@ -30,6 +31,7 @@ export function CalendarView({
   exchangeMap,
   leaves,
   leaveMap,
+  noteMap, // Destructure noteMap
   isAdmin,
   cycleStartDate,
   currentYear,
@@ -37,6 +39,7 @@ export function CalendarView({
 }: CalendarViewProps) {
   const [months, setMonths] = useState(initialMonths)
   const [hasScrolled, setHasScrolled] = useState(false)
+  const scrollAnchorRef = useRef<string | null>(null)
 
   const today = new Date()
   const todayStr = today.toISOString().split("T")[0]
@@ -58,6 +61,8 @@ export function CalendarView({
 
   const loadPreviousMonths = () => {
     const firstMonth = months[0]
+    scrollAnchorRef.current = `month-${firstMonth.year}-${firstMonth.month}`
+
     const newMonths = []
 
     for (let i = 3; i > 0; i--) {
@@ -73,6 +78,19 @@ export function CalendarView({
     }
 
     setMonths([...newMonths, ...months])
+
+    setTimeout(() => {
+      if (scrollAnchorRef.current) {
+        const anchorElement = document.getElementById(scrollAnchorRef.current)
+        if (anchorElement) {
+          anchorElement.scrollIntoView({
+            behavior: "instant",
+            block: "start",
+          })
+        }
+        scrollAnchorRef.current = null
+      }
+    }, 50)
   }
 
   const loadNextMonths = () => {
@@ -107,7 +125,7 @@ export function CalendarView({
         const isCurrentMonth = year === currentYear && month === currentMonth
 
         return (
-          <div key={`${year}-${month}`} className="flex flex-col gap-4">
+          <div key={`${year}-${month}`} id={`month-${year}-${month}`} className="flex flex-col gap-4">
             <h2 className="text-xl md:text-2xl font-semibold text-foreground">
               {getMonthName(month)} {year}
               {isCurrentMonth && <span className="ml-2 text-sm font-normal text-muted-foreground">(Mois actuel)</span>}
@@ -139,11 +157,19 @@ export function CalendarView({
                   return exchangeMap[key] || []
                 })
 
+                const shiftsWithNotes = shifts.map((shift: any) => {
+                  const noteKey = `${shift.id}_${dateStr}`
+                  return {
+                    ...shift,
+                    has_note: noteMap[noteKey] || false,
+                  }
+                })
+
                 return (
                   <CalendarCell
                     key={index}
                     day={day}
-                    shifts={shifts}
+                    shifts={shiftsWithNotes}
                     replacements={dayReplacements}
                     exchanges={dayExchanges}
                     leaves={leaves}
