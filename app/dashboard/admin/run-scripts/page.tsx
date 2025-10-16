@@ -1,6 +1,8 @@
 import { getAvailableScripts } from "@/app/actions/run-scripts"
 import { ScriptRunner } from "@/components/script-runner"
 
+export const dynamic = "force-dynamic"
+
 export default async function RunScriptsPage() {
   const scripts = await getAvailableScripts()
 

@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 import { neon } from "@neondatabase/serverless"
 import { ImportFirefightersForm } from "@/components/import-firefighters-form"
 
+export const dynamic = "force-dynamic"
+
 const sql = neon(process.env.DATABASE_URL!)
 
 async function getCurrentUser() {

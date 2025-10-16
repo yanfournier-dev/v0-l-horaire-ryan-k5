@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
+export const dynamic = "force-dynamic"
+
 export default function ImportTeam1Page() {
   async function handleImport() {
     "use server"
