@@ -139,6 +139,14 @@ export function ShiftAssignmentDrawer({
 
   if (!shift) return null
 
+  const refreshReplacements = async () => {
+    setLoadingReplacements(true)
+    const shiftDate = shift.date.toISOString().split("T")[0]
+    const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
+    setReplacements(data)
+    setLoadingReplacements(false)
+  }
+
   const handleCreateReplacement = async () => {
     if (!selectedFirefighter || isLoading) return
 
@@ -602,6 +610,7 @@ export function ShiftAssignmentDrawer({
                                 replacementId={replacement.id}
                                 isAdmin={isAdmin}
                                 firefighters={allFirefighters}
+                                onSuccess={refreshReplacements}
                               />
                             )}
                             {isAdmin && replacement.applications.length > 0 && (

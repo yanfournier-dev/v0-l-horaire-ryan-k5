@@ -19,12 +19,14 @@ interface ApplyForReplacementButtonProps {
   replacementId: number
   isAdmin?: boolean
   firefighters?: any[]
+  onSuccess?: () => void
 }
 
 export function ApplyForReplacementButton({
   replacementId,
   isAdmin = false,
   firefighters = [],
+  onSuccess,
 }: ApplyForReplacementButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<string>("")
@@ -48,7 +50,10 @@ export function ApplyForReplacementButton({
 
       setIsDialogOpen(false)
       setSelectedFirefighter("")
-      router.refresh()
+
+      if (onSuccess) {
+        onSuccess()
+      }
     } else if (result.error) {
       toast({
         title: "Erreur",
