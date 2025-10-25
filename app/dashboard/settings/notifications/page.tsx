@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { redirect } from "next/navigation"
 import { getUserPreferences } from "@/app/actions/notifications"
 import { NotificationPreferencesForm } from "@/components/notification-preferences-form"

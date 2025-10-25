@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { getUserNotifications } from "@/app/actions/notifications"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

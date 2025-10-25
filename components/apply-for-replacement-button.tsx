@@ -62,7 +62,7 @@ export function ApplyForReplacementButton({
     return (
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button size="sm" disabled={isLoading}>
+          <Button size="sm" disabled={isLoading} className="h-6 text-xs px-2 leading-none">
             Postuler
           </Button>
         </DialogTrigger>
@@ -107,7 +107,7 @@ export function ApplyForReplacementButton({
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
-        <Button disabled={isLoading} size="sm">
+        <Button disabled={isLoading} size="sm" className="h-6 text-xs px-2 leading-none">
           {isLoading ? "En cours..." : "Postuler"}
         </Button>
       </DialogTrigger>

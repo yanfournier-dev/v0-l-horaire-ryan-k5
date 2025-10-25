@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { getTeams } from "@/app/actions/teams"
 import { redirect } from "next/navigation"
 import { Badge } from "@/components/ui/badge"

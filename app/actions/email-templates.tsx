@@ -1,21 +1,9 @@
 "use server"
 
-import { neon } from "@neondatabase/serverless"
-import { getSession } from "@/lib/auth"
+import { sql } from "@/lib/db"
+import { getSession } from "@/app/actions/auth"
 
-const sql = neon(process.env.DATABASE_URL!)
-
-export interface EmailTemplate {
-  id: number
-  type: string
-  name: string
-  subject: string
-  body: string
-  variables: string[]
-  description: string | null
-  created_at: Date
-  updated_at: Date
-}
+import type { EmailTemplate } from "@/app/actions/email-templates"
 
 export async function getAllEmailTemplates(): Promise<EmailTemplate[]> {
   const user = await getSession()
@@ -322,10 +310,10 @@ export async function syncEmailTemplatesFromCode(): Promise<{
 <p>Bonjour {{requesterName}},</p>
 <p>Votre demande d'échange de quart avec {{targetName}} a été envoyée avec succès :</p>
 <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
-  <p style="margin: 5px 0;"><strong>Votre date :</strong> {{requesterDate}}</p>
-  <p style="margin: 5px 0;"><strong>Votre type de quart :</strong> {{requesterShiftType}}</p>
-  <p style="margin: 5px 0;"><strong>Date de {{targetName}} :</strong> {{targetDate}}</p>
-  <p style="margin: 5px 0;"><strong>Type de quart de {{targetName}} :</strong> {{targetShiftType}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Votre date :</strong> {{requesterDate}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Votre type de quart :</strong> {{requesterShiftType}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Date de {{targetName}} :</strong> {{targetDate}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Type de quart de {{targetName}} :</strong> {{targetShiftType}}</p>
   {{#if isPartial}}<p style="margin: 5px 0; color: #f97316;"><strong>Échange partiel :</strong> {{requesterPartialHours}} <-> {{targetPartialHours}}</p>{{/if}}
 </div>
 <p style="margin: 20px 0;">Vous serez notifié lorsqu'un gestionnaire traitera votre demande.</p>
@@ -351,10 +339,10 @@ export async function syncEmailTemplatesFromCode(): Promise<{
 <p>Bonjour {{name}},</p>
 <p>L'échange de quart avec {{otherName}} a été approuvé :</p>
 <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
-  <p style="margin: 5px 0;"><strong>Votre date :</strong> {{yourDate}}</p>
-  <p style="margin: 5px 0;"><strong>Votre type de quart :</strong> {{yourShiftType}}</p>
-  <p style="margin: 5px 0;"><strong>Date de l'autre :</strong> {{otherDate}}</p>
-  <p style="margin: 5px 0;"><strong>Type de quart de l'autre :</strong> {{otherShiftType}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Votre date :</strong> {{yourDate}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Votre type de quart :</strong> {{yourShiftType}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Date de l'autre :</strong> {{otherDate}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Type de quart de l'autre :</strong> {{otherShiftType}}</p>
   {{#if isPartial}}<p style="margin: 5px 0; color: #f97316;"><strong>Échange partiel :</strong> {{yourPartialHours}} <-> {{otherPartialHours}}</p>{{/if}}
 </div>
 <a href="{{appUrl}}/dashboard" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir mon horaire</a>`,
@@ -380,10 +368,10 @@ export async function syncEmailTemplatesFromCode(): Promise<{
 <p>L'échange de quart avec {{otherName}} a été refusé pour la raison suivante :</p>
 <p style="margin: 20px 0; color: #ef4444;"><strong>Raison :</strong> {{reason}}</p>
 <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
-  <p style="margin: 5px 0;"><strong>Votre date :</strong> {{yourDate}}</p>
-  <p style="margin: 5px 0;"><strong>Votre type de quart :</strong> {{yourShiftType}}</p>
-  <p style="margin: 5px 0;"><strong>Date de l'autre :</strong> {{otherDate}}</p>
-  <p style="margin: 5px 0;"><strong>Type de quart de l'autre :</strong> {{otherShiftType}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Votre date :</strong> {{yourDate}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Votre type de quart :</strong> {{yourShiftType}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Date de l'autre :</strong> {{otherDate}}</p>
+  <p style="margin: 5px 0; color: #1f2937;"><strong>Type de quart de l'autre :</strong> {{otherShiftType}}</p>
   {{#if isPartial}}<p style="margin: 5px 0; color: #f97316;"><strong>Échange partiel :</strong> {{yourPartialHours}} <-> {{otherPartialHours}}</p>{{/if}}
 </div>
 <a href="{{appUrl}}/dashboard/exchanges" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les demandes d'échange</a>`,

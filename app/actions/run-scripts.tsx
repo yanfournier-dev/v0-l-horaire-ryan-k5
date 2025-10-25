@@ -1,7 +1,7 @@
 "use server"
 
 import { Pool } from "@neondatabase/serverless"
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 
 const SQL_SCRIPTS: Record<string, string> = {
   "022-create-shift-exchanges.sql": `-- Create table for shift exchanges

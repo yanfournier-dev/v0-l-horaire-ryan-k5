@@ -1,11 +1,9 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
-import { neon } from "@neondatabase/serverless"
+import { sql } from "@/lib/db"
 import { ImportFirefightersForm } from "@/components/import-firefighters-form"
 
 export const dynamic = "force-dynamic"
-
-const sql = neon(process.env.DATABASE_URL!)
 
 async function getCurrentUser() {
   // This is a placeholder - replace with your actual auth logic

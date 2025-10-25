@@ -78,9 +78,14 @@ export function EditReplacementAssignmentButton({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !isUpdating && setIsOpen(open)}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={isUpdating}>
-          <Edit className="h-4 w-4 mr-2" />
-          Modifier l'assignation
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isUpdating}
+          className="h-6 text-xs px-2 gap-1 leading-none bg-transparent"
+        >
+          <Edit className="h-3 w-3" />
+          Retirer
         </Button>
       </DialogTrigger>
       <DialogContent>

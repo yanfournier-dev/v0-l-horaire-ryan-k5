@@ -64,8 +64,13 @@ export function WithdrawApplicationButton({ applicationId, shiftDate, shiftType 
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={isWithdrawing}>
-          <X className="h-4 w-4 mr-1" />
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isWithdrawing}
+          className="h-6 text-xs px-2 gap-1 leading-none bg-transparent"
+        >
+          <X className="h-3 w-3" />
           {isWithdrawing ? "Retrait..." : "Retirer"}
         </Button>
       </AlertDialogTrigger>

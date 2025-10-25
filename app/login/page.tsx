@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import Link from "next/link"
 import { useState } from "react"
 import { useFormStatus } from "react-dom"
 
@@ -69,13 +68,6 @@ export default function LoginPage() {
             </div>
             <SubmitButton />
           </form>
-
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            Pas encore de compte?{" "}
-            <Link href="/register" className="text-red-600 hover:underline">
-              S'inscrire
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </div>

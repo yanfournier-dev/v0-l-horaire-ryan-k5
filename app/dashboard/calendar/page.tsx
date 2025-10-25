@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import {
   getCycleConfig,
   getAllShiftsWithAssignments,

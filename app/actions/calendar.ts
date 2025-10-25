@@ -1,7 +1,7 @@
 "use server"
 
-import { sql } from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import { sql, invalidateCache } from "@/lib/db"
+import { getSession } from "@/app/actions/auth"
 
 export async function getCycleConfig() {
   try {
@@ -101,6 +101,13 @@ export async function createShift(
         start_time = ${startTime},
         end_time = ${endTime}
     `
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     console.error("[v0] createShift: Query failed", error)
@@ -118,6 +125,13 @@ export async function deleteShift(shiftId: number) {
     await sql`
       DELETE FROM shifts WHERE id = ${shiftId}
     `
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     console.error("[v0] deleteShift: Query failed", error)

@@ -113,6 +113,8 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
     setAutoApprove(true)
   }
 
+  const sortedFirefighters = [...allFirefighters].sort((a, b) => a.first_name.localeCompare(b.first_name, "fr"))
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -144,7 +146,7 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
                   <SelectValue placeholder="Sélectionner un pompier" />
                 </SelectTrigger>
                 <SelectContent>
-                  {allFirefighters.map((ff) => (
+                  {sortedFirefighters.map((ff) => (
                     <SelectItem key={ff.id} value={ff.id.toString()}>
                       {ff.first_name} {ff.last_name}
                     </SelectItem>
@@ -223,11 +225,13 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
                     <SelectValue placeholder="Sélectionner un pompier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableFirefighters.map((ff) => (
-                      <SelectItem key={ff.id} value={ff.id.toString()}>
-                        {ff.first_name} {ff.last_name} - {ff.team_name} ({ff.shift_type})
-                      </SelectItem>
-                    ))}
+                    {[...availableFirefighters]
+                      .sort((a, b) => a.first_name.localeCompare(b.first_name, "fr"))
+                      .map((ff) => (
+                        <SelectItem key={ff.id} value={ff.id.toString()}>
+                          {ff.first_name} {ff.last_name} - {ff.team_name} ({ff.shift_type})
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

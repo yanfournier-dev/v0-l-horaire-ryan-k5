@@ -1,7 +1,7 @@
 "use server"
 
-import { sql } from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import { sql, invalidateCache } from "@/lib/db"
+import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 import { createNotification } from "./notifications"
 import { parseLocalDate } from "@/lib/date-utils"
@@ -38,6 +38,13 @@ export async function createLeaveRequest(formData: FormData) {
       )
     `
     revalidatePath("/dashboard/leaves")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de la création de la demande" }
@@ -117,6 +124,13 @@ export async function approveLeave(leaveId: number) {
     )
 
     revalidatePath("/dashboard/leaves")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de l'approbation" }
@@ -156,6 +170,13 @@ export async function rejectLeave(leaveId: number) {
     )
 
     revalidatePath("/dashboard/leaves")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors du rejet" }
@@ -193,6 +214,13 @@ export async function deleteLeave(leaveId: number) {
     `
     revalidatePath("/dashboard/leaves")
     revalidatePath("/dashboard/calendar")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de la suppression" }
@@ -247,6 +275,13 @@ export async function updateLeave(
       WHERE id = ${leaveId}
     `
     revalidatePath("/dashboard/leaves")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de la modification" }

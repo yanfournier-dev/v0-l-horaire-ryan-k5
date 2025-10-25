@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { redirect } from "next/navigation"
 import { sql } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +11,7 @@ import { getRoleLabel } from "@/lib/role-labels"
 import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 import { formatReplacementTime } from "@/lib/replacement-utils"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
+import { getFirefighterWeeklyHours } from "@/app/actions/weekly-hours"
 
 export const dynamic = "force-dynamic"
 
@@ -68,6 +69,7 @@ export default async function ReplacementDetailPage({
       u.last_name,
       u.email,
       u.role,
+      u.id as user_id,
       reviewer.first_name as reviewer_first_name,
       reviewer.last_name as reviewer_last_name,
       team_info.name as team_name,
@@ -156,6 +158,16 @@ export default async function ReplacementDetailPage({
     }
   }
 
+  const applicationsWithHours = await Promise.all(
+    applications.map(async (app: any) => {
+      const weeklyHours = await getFirefighterWeeklyHours(app.user_id, replacement.shift_date)
+      return {
+        ...app,
+        weeklyHours,
+      }
+    }),
+  )
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -196,10 +208,10 @@ export default async function ReplacementDetailPage({
 
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-4">
-          Candidats pour ce remplacement ({applications.length})
+          Candidats pour ce remplacement ({applicationsWithHours.length})
         </h2>
 
-        {applications.length === 0 ? (
+        {applicationsWithHours.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">Aucun candidat disponible pour ce remplacement</p>
@@ -208,7 +220,7 @@ export default async function ReplacementDetailPage({
         ) : (
           <div className="space-y-6">
             {Object.entries(
-              applications.reduce((acc: any, app: any) => {
+              applicationsWithHours.reduce((acc: any, app: any) => {
                 const teamKey = app.team_name || "Sans équipe"
                 if (!acc[teamKey]) {
                   acc[teamKey] = []
@@ -221,42 +233,27 @@ export default async function ReplacementDetailPage({
                 <h3 className="text-lg font-semibold mb-3 text-foreground">{teamName}</h3>
                 <div className="space-y-2">
                   {teamApps.map((application: any) => {
-                    const isUnsuitableForPartial = replacement.is_partial && !application.is_partial_interest
                     const isAlreadyAssigned = application.is_already_assigned
 
                     return (
                       <div
                         key={application.id}
                         className={`flex items-center gap-4 p-4 border rounded-lg transition-colors ${
-                          isUnsuitableForPartial || isAlreadyAssigned
-                            ? "bg-muted/50 opacity-60 border-muted"
-                            : "bg-card hover:bg-accent/50"
+                          isAlreadyAssigned ? "bg-muted/50 opacity-60 border-muted" : "bg-card hover:bg-accent/50"
                         }`}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 flex-wrap">
                             <span
-                              className={`font-semibold text-foreground ${
-                                isUnsuitableForPartial || isAlreadyAssigned ? "line-through" : ""
-                              }`}
+                              className={`font-semibold text-foreground ${isAlreadyAssigned ? "line-through" : ""}`}
                             >
                               {application.first_name} {application.last_name}
                             </span>
                             <span className="text-sm text-muted-foreground">{getRoleLabel(application.role)}</span>
                             <span className="text-sm text-muted-foreground">{application.email}</span>
-                            {application.is_partial_interest && (
-                              <Badge variant="outline" className="text-blue-600 border-blue-600">
-                                Intéressé par un congé partiel
-                              </Badge>
-                            )}
-                            {isUnsuitableForPartial && (
-                              <Badge
-                                variant="outline"
-                                className="text-red-600 border-red-600 bg-red-50 dark:bg-red-950"
-                              >
-                                Non disponible pour congé partiel
-                              </Badge>
-                            )}
+                            <Badge variant="outline" className="text-blue-600 border-blue-600">
+                              {application.weeklyHours}h cette semaine
+                            </Badge>
                             {isAlreadyAssigned && (
                               <Badge
                                 variant="outline"

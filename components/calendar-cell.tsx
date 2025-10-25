@@ -421,6 +421,7 @@ export function CalendarCell({
           currentAssignments={currentAssignments}
           leaves={leaves}
           dateStr={dateStr}
+          isAdmin={isAdmin} // Added isAdmin prop to enable admin features in drawer
         />
       )}
 

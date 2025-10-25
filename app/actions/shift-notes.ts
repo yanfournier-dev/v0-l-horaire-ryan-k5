@@ -1,8 +1,6 @@
 "use server"
-import { getSession } from "@/lib/auth"
-import { neon } from "@neondatabase/serverless"
-
-const sql = neon(process.env.DATABASE_URL!)
+import { getSession } from "@/app/actions/auth"
+import { sql, invalidateCache } from "@/lib/db"
 
 export async function getShiftNote(shiftId: number, shiftDate: string) {
   try {
@@ -103,6 +101,13 @@ export async function createOrUpdateShiftNote(shiftId: number, shiftDate: string
     }
 
     console.log("[v0] Returning success")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error: any) {
     console.error("[v0] Error in createOrUpdateShiftNote:", error)
@@ -139,6 +144,12 @@ export async function deleteShiftNote(shiftId: number, shiftDate: string) {
       DELETE FROM shift_notes 
       WHERE shift_id = ${shiftId} AND shift_date = ${shiftDate}
     `
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
 
     return { success: true }
   } catch (error: any) {

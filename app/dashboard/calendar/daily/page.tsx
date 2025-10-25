@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { getAllShifts, getCycleConfig } from "@/app/actions/calendar"
 import { getShiftAssignments } from "@/app/actions/shift-assignments"
 import { redirect } from "next/navigation"

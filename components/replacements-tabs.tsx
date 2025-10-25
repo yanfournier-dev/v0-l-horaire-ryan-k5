@@ -2,18 +2,19 @@
 
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye, EyeOff, Plus, Settings } from "lucide-react"
+import { Eye, EyeOff, Plus } from "lucide-react"
 import { AvailableReplacementsTab } from "@/components/available-replacements-tab"
-import { AllReplacementsTab } from "@/components/all-replacements-tab"
+import { AssignedReplacementsTab } from "@/components/assigned-replacements-tab"
 import { PendingRequestsTab } from "@/components/pending-requests-tab"
 import { UserRequestsTab } from "@/components/user-requests-tab"
 import { WithdrawApplicationButton } from "@/components/withdraw-application-button"
 import { RequestReplacementDialog } from "@/components/request-replacement-dialog"
 import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
+import { compareShifts } from "@/lib/shift-sort"
 
 interface ReplacementsTabsProps {
   recentReplacements: any[]
@@ -70,7 +71,7 @@ export function ReplacementsTabs({
 
   const sortReplacements = (replacements: any[]) => {
     const sorted = [...replacements]
-    sorted.sort((a, b) => parseLocalDate(a.shift_date).getTime() - parseLocalDate(b.shift_date).getTime())
+    sorted.sort((a, b) => compareShifts(a, b, parseLocalDate))
     return sorted
   }
 
@@ -88,8 +89,11 @@ export function ReplacementsTabs({
     return groups
   }
 
-  const sortedRecentReplacements = sortReplacements(recentReplacements)
-  const groupedReplacements = groupByShift(sortedRecentReplacements)
+  const openReplacements = allReplacements.filter((r) => r.status === "open")
+  const assignedReplacements = allReplacements.filter((r) => r.status === "assigned")
+
+  const sortedOpenReplacements = sortReplacements(openReplacements)
+  const groupedOpenReplacements = groupByShift(sortedOpenReplacements)
 
   const filteredApplications = showCompletedApplications
     ? userApplications
@@ -98,12 +102,6 @@ export function ReplacementsTabs({
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
       <div className="flex justify-end gap-2 mb-4">
-        {isAdmin && (
-          <Button onClick={() => setActiveTab("all")} variant="outline" className="gap-2">
-            <Settings className="h-4 w-4" />
-            Gestion des remplacements
-          </Button>
-        )}
         <Button onClick={() => setShowRequestDialog(true)} className="gap-2">
           <Plus className="h-4 w-4" />
           Demander un remplacement
@@ -111,9 +109,8 @@ export function ReplacementsTabs({
       </div>
 
       <TabsList>
-        <TabsTrigger value="available">
-          Disponibles ({recentReplacements.filter((r) => r.status === "open").length})
-        </TabsTrigger>
+        <TabsTrigger value="available">Disponibles ({openReplacements.length})</TabsTrigger>
+        <TabsTrigger value="assigned">Assignés ({assignedReplacements.length})</TabsTrigger>
         <TabsTrigger value="my-applications">Mes candidatures ({userApplications.length})</TabsTrigger>
         <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
         {isAdmin && (
@@ -130,15 +127,9 @@ export function ReplacementsTabs({
         )}
       </TabsList>
 
-      {isAdmin && (
-        <TabsContent value="all">
-          <AllReplacementsTab allReplacements={allReplacements} />
-        </TabsContent>
-      )}
-
       <TabsContent value="available">
         <AvailableReplacementsTab
-          groupedReplacements={groupedReplacements}
+          groupedReplacements={groupedOpenReplacements}
           userApplications={userApplications}
           isAdmin={isAdmin}
           firefighters={firefighters}
@@ -146,7 +137,11 @@ export function ReplacementsTabs({
         />
       </TabsContent>
 
-      <TabsContent value="my-applications" className="space-y-4">
+      <TabsContent value="assigned">
+        <AssignedReplacementsTab allReplacements={assignedReplacements} isAdmin={isAdmin} />
+      </TabsContent>
+
+      <TabsContent value="my-applications" className="space-y-0.5">
         <div className="flex justify-end">
           <Button
             variant="outline"
@@ -179,54 +174,66 @@ export function ReplacementsTabs({
             </CardContent>
           </Card>
         ) : (
-          filteredApplications.map((application: any) => (
-            <Card key={application.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {parseLocalDate(application.shift_date).toLocaleDateString("fr-CA", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </CardTitle>
-                    <CardDescription>
+          filteredApplications
+            .sort((a: any, b: any) => compareShifts(a, b, parseLocalDate))
+            .map((application: any) => (
+              <Card key={application.id} className="overflow-hidden">
+                <CardContent className="py-0 px-1.5">
+                  <div className="flex items-center gap-2 text-sm">
+                    {/* Date and shift type */}
+                    <div className="flex items-center gap-1.5 min-w-[140px]">
+                      <span className="font-medium leading-none">
+                        {parseLocalDate(application.shift_date).toLocaleDateString("fr-CA", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
+                      <Badge
+                        className={`${getShiftTypeColor(application.shift_type)} text-sm px-1.5 py-0 h-5 leading-none`}
+                      >
+                        {getShiftTypeLabel(application.shift_type).split(" ")[0]}
+                      </Badge>
+                    </div>
+
+                    {/* Name and team */}
+                    <div className="flex-1 min-w-0 leading-none truncate">
                       {application.first_name} {application.last_name} • {application.team_name}
-                    </CardDescription>
-                  </div>
-                  <div className="flex flex-col gap-2 items-end">
-                    <Badge className={getShiftTypeColor(application.shift_type)}>
-                      {getShiftTypeLabel(application.shift_type).split(" ")[0]}
+                      {application.is_partial && (
+                        <span className="text-orange-600 dark:text-orange-400 ml-1 text-xs">
+                          ({application.start_time?.slice(0, 5)}-{application.end_time?.slice(0, 5)})
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Assigned replacement firefighter name */}
+                    {application.replacement_status === "assigned" && application.assigned_first_name && (
+                      <div className="text-xs text-blue-600 dark:text-blue-400 shrink-0 leading-none">
+                        → {application.assigned_first_name} {application.assigned_last_name}
+                      </div>
+                    )}
+
+                    {/* Status badge */}
+                    <Badge className={`${getStatusColor(application.status)} text-sm px-1.5 py-0 h-5 leading-none`}>
+                      {getStatusLabel(application.status)}
                     </Badge>
-                    <Badge className={getStatusColor(application.status)}>{getStatusLabel(application.status)}</Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="text-sm text-muted-foreground">
-                    <p>Postulé le {formatLocalDateTime(application.applied_at)}</p>
-                    {application.status !== "pending" && application.reviewer_first_name && (
-                      <p>
-                        {application.status === "approved" ? "Approuvée" : "Rejetée"} par{" "}
-                        {application.reviewer_first_name} {application.reviewer_last_name} le{" "}
-                        {parseLocalDate(application.reviewed_at).toLocaleDateString("fr-CA")}
-                      </p>
+
+                    {/* Applied date */}
+                    <div className="text-[10px] text-muted-foreground leading-none shrink-0">
+                      {formatLocalDateTime(application.applied_at)}
+                    </div>
+
+                    {/* Withdraw button */}
+                    {application.status === "pending" && application.replacement_status === "open" && (
+                      <WithdrawApplicationButton
+                        applicationId={application.id}
+                        shiftDate={application.shift_date}
+                        shiftType={application.shift_type}
+                      />
                     )}
                   </div>
-                  {application.status === "pending" && application.replacement_status === "open" && (
-                    <WithdrawApplicationButton
-                      applicationId={application.id}
-                      shiftDate={application.shift_date}
-                      shiftType={application.shift_type}
-                    />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            ))
         )}
       </TabsContent>
 

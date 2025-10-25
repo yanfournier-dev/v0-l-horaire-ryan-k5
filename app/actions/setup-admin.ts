@@ -1,7 +1,7 @@
 "use server"
 
 import { sql } from "@/lib/db"
-import { hashPassword } from "@/lib/auth"
+import { hashPassword } from "@/app/actions/auth"
 
 export async function setupAdminUser() {
   try {

@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { redirect } from "next/navigation"
 import { sql } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -272,11 +272,6 @@ export default async function ShiftCandidatesPage({
                             </span>
                             <span className="text-sm text-muted-foreground">{getRoleLabel(candidate.role)}</span>
                             <span className="text-sm text-muted-foreground">{candidate.email}</span>
-                            {candidate.is_partial_interest && (
-                              <Badge variant="outline" className="text-blue-600 border-blue-600">
-                                Intéressé par un congé partiel
-                              </Badge>
-                            )}
                             {isAlreadyAssigned && (
                               <Badge
                                 variant="outline"

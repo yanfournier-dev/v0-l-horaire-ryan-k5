@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { redirect } from "next/navigation"
 import { getAllEmailTemplates } from "@/app/actions/email-templates"
 import { EmailTemplatesList } from "@/components/email-templates-list"

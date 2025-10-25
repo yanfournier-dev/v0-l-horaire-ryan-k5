@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { getCycleConfig, getAllShiftsWithAssignments } from "@/app/actions/calendar"
 import { parseLocalDate } from "@/lib/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"

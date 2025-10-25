@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { getTeamMembers, getAvailableFirefighters } from "@/app/actions/teams"
 import { redirect } from "next/navigation"
 import { sql } from "@/lib/db"

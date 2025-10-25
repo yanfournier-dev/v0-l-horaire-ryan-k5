@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth"
+import { getSession } from "@/app/actions/auth"
 import { getUnreadCount } from "@/app/actions/notifications"
 import { Badge } from "@/components/ui/badge"
 

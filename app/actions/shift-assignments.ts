@@ -1,7 +1,7 @@
 "use server"
 
-import { sql } from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import { sql, invalidateCache } from "@/lib/db"
+import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 
 export async function getShiftAssignments(shiftId: number) {
@@ -59,6 +59,13 @@ export async function assignFirefighterToShift(shiftId: number, userId: number) 
     `
 
     revalidatePath("/dashboard/calendar")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de l'assignation" }
@@ -101,6 +108,13 @@ export async function addExtraFirefighterToShift(
     `
 
     revalidatePath("/dashboard/calendar")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     console.error("[v0] Error adding extra firefighter:", error)
@@ -121,6 +135,13 @@ export async function removeFirefighterFromShift(shiftId: number, userId: number
     `
 
     revalidatePath("/dashboard/calendar")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de la suppression" }

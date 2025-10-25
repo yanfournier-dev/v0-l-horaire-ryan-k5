@@ -1,12 +1,10 @@
 "use server"
 
-import { neon } from "@neondatabase/serverless"
-import { getSession } from "@/lib/auth"
+import { sql, invalidateCache } from "@/lib/db"
+import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 import { createNotification } from "@/app/actions/notifications"
 import { parseLocalDate } from "@/lib/calendar"
-
-const sql = neon(process.env.DATABASE_URL!)
 
 export async function checkExchangeTablesExist() {
   try {
@@ -315,6 +313,13 @@ export async function createExchangeRequest(data: {
     }
 
     revalidatePath("/dashboard/exchanges")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true, warning }
   } catch (error) {
     console.error("[v0] Error creating exchange request:", error)
@@ -605,6 +610,13 @@ export async function approveExchange(exchangeId: number) {
 
       revalidatePath("/dashboard/exchanges")
       revalidatePath("/dashboard/calendar")
+
+      try {
+        invalidateCache()
+      } catch (cacheError) {
+        console.error("[v0] Error invalidating cache:", cacheError)
+      }
+
       return { success: true, warning }
     } catch (error) {
       await sql`ROLLBACK`
@@ -710,6 +722,13 @@ export async function rejectExchange(exchangeId: number, reason?: string) {
     }
 
     revalidatePath("/dashboard/exchanges")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     console.error("[v0] Error rejecting exchange:", error)
@@ -848,6 +867,13 @@ export async function cancelExchangeRequest(exchangeId: number) {
 
     revalidatePath("/dashboard/exchanges")
     revalidatePath("/dashboard/calendar")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true }
   } catch (error) {
     console.error("[v0] Error cancelling exchange request:", error)
@@ -1150,6 +1176,13 @@ export async function createExchangeAsAdmin(data: {
 
     revalidatePath("/dashboard/exchanges")
     revalidatePath("/dashboard/calendar")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
     return { success: true, warning }
   } catch (error) {
     console.error("[v0] Error creating exchange as admin:", error)

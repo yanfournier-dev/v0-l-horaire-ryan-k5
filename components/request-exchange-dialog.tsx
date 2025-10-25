@@ -309,12 +309,14 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
                     <SelectValue placeholder="Sélectionnez un pompier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableFirefighters.map((firefighter) => (
-                      <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
-                        {firefighter.first_name} {firefighter.last_name} - {getShiftTypeLabel(firefighter.shift_type)} (
-                        {firefighter.team_name})
-                      </SelectItem>
-                    ))}
+                    {[...availableFirefighters]
+                      .sort((a, b) => a.first_name.localeCompare(b.first_name, "fr"))
+                      .map((firefighter) => (
+                        <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
+                          {firefighter.first_name} {firefighter.last_name} - {getShiftTypeLabel(firefighter.shift_type)}{" "}
+                          ({firefighter.team_name})
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -1,10 +1,8 @@
 "use server"
 
-import { neon } from "@neondatabase/serverless"
 import { revalidatePath } from "next/cache"
-import bcrypt from "bcryptjs"
-
-const sql = neon(process.env.DATABASE_URL!)
+import { hashPassword } from "@/app/actions/auth"
+import { sql } from "@/lib/db"
 
 interface ParsedFirefighter {
   firstName: string
@@ -172,9 +170,8 @@ export async function importTeam1Firefighters(): Promise<{
       teamId = team[0].id
     }
 
-    // Hash the default password once
     const defaultPassword = "Pompier2025!"
-    const passwordHash = await bcrypt.hash(defaultPassword, 10)
+    const passwordHash = await hashPassword(defaultPassword)
 
     let imported = 0
     let skipped = 0
@@ -257,9 +254,8 @@ export async function addFirefighter(data: {
       }
     }
 
-    // Hash the default password
     const defaultPassword = "Pompier2025!"
-    const passwordHash = await bcrypt.hash(defaultPassword, 10)
+    const passwordHash = await hashPassword(defaultPassword)
 
     // Insert user
     const result = await sql`

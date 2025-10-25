@@ -1,7 +1,7 @@
 "use server"
 
 import { sql } from "@/lib/db"
-import { getSession, hashPassword, verifyPassword } from "@/lib/auth"
+import { getSession, hashPassword, verifyPassword } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 
 export async function changeOwnPassword(
