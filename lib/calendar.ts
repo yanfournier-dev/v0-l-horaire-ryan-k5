@@ -140,25 +140,25 @@ export function getMonthName(month: number): string {
  * @returns Date object in local timezone
  */
 export function parseLocalDate(dateInput: string | Date | null | undefined): Date {
-  console.log("[v0] parseLocalDate called with:", dateInput, "type:", typeof dateInput)
-
   if (!dateInput) {
-    console.log("[v0] dateInput is null/undefined, returning current date")
     return new Date()
   }
 
   if (dateInput instanceof Date) {
-    console.log("[v0] dateInput is already a Date object")
-    return dateInput
+    // Extract date components in UTC (since dates from DB are in UTC)
+    const year = dateInput.getUTCFullYear()
+    const month = dateInput.getUTCMonth()
+    const day = dateInput.getUTCDate()
+
+    // Create a new Date in local timezone with these components
+    return new Date(year, month, day, 0, 0, 0, 0)
   }
 
   if (typeof dateInput !== "string") {
-    console.log("[v0] dateInput is not a string, returning current date")
     return new Date()
   }
 
+  // Parse string as local time using date components
   const [year, month, day] = dateInput.split("-").map(Number)
-  const result = new Date(year, month - 1, day)
-  console.log("[v0] Parsed date:", result)
-  return result
+  return new Date(year, month - 1, day, 0, 0, 0, 0)
 }

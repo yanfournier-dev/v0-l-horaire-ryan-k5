@@ -11,17 +11,22 @@ export function parseLocalDate(dateInput: string | Date | null | undefined): Dat
   }
 
   if (dateInput instanceof Date) {
-    const isoString = dateInput.toISOString().split("T")[0]
-    return new Date(isoString + "T00:00:00")
+    // Extract date components in UTC (since dates from DB are in UTC)
+    const year = dateInput.getUTCFullYear()
+    const month = dateInput.getUTCMonth()
+    const day = dateInput.getUTCDate()
+
+    // Create a new Date in local timezone with these components
+    return new Date(year, month, day, 0, 0, 0, 0)
   }
 
   if (typeof dateInput !== "string") {
     return new Date()
   }
 
-  // If it's a string, ensure it's interpreted as local time
-  // by adding the time component
-  return new Date(dateInput + "T00:00:00")
+  // If it's a string, parse it as local time using date components
+  const [year, month, day] = dateInput.split("-").map(Number)
+  return new Date(year, month - 1, day, 0, 0, 0, 0)
 }
 
 /**
