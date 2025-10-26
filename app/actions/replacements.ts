@@ -4,7 +4,7 @@ import { sql, invalidateCache } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 import { createNotification } from "./notifications"
-import { calculateAutoDeadline } from "@/lib/date-utils"
+import { calculateAutoDeadline, formatLocalDate } from "@/lib/date-utils"
 
 export async function getUserApplications(userId: number) {
   try {
@@ -391,7 +391,7 @@ export async function approveApplication(applicationId: number, replacementId: n
     await createNotification(
       applicantId,
       "Remplacement assigné",
-      `Vous avez été assigné au remplacement du ${new Date(shift_date).toLocaleDateString("fr-CA")} (${shift_type === "day" ? "Jour" : "Nuit"}).`,
+      `Vous avez été assigné au remplacement du ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"}).`,
       "application_approved",
       replacementId,
       "replacement",
@@ -840,7 +840,7 @@ export async function removeReplacementAssignment(replacementId: number) {
       await createNotification(
         applicant_id,
         "Assignation retirée",
-        `Votre assignation au remplacement du ${new Date(shift_date).toLocaleDateString("fr-CA")} (${shift_type === "day" ? "Jour" : "Nuit"}) a été retirée.`,
+        `Votre assignation au remplacement du ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"}) a été retirée.`,
         "assignment_removed",
         replacementId,
         "replacement",

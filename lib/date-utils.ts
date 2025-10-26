@@ -37,40 +37,10 @@ export function parseLocalDate(dateInput: string | Date | null | undefined): Dat
  */
 export function formatLocalDate(dateInput: string | Date): string {
   const date = parseLocalDate(dateInput)
-  return date.toLocaleDateString("fr-CA")
-}
-
-/**
- * Get the current date in YYYY-MM-DD format (local timezone)
- *
- * @returns Current date string
- */
-export function getCurrentLocalDate(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, "0")
-  const day = String(now.getDate()).padStart(2, "0")
-
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
-}
-
-/**
- * Compare two dates (ignoring time component)
- *
- * @param date1 - First date
- * @param date2 - Second date
- * @returns -1 if date1 < date2, 0 if equal, 1 if date1 > date2
- */
-export function compareDates(date1: string | Date | null | undefined, date2: string | Date | null | undefined): number {
-  const d1 = parseLocalDate(date1)
-  const d2 = parseLocalDate(date2)
-
-  d1.setHours(0, 0, 0, 0)
-  d2.setHours(0, 0, 0, 0)
-
-  if (d1 < d2) return -1
-  if (d1 > d2) return 1
-  return 0
 }
 
 /**
@@ -212,4 +182,37 @@ export function getPartTimeTeam(date: string | Date): number {
   } else {
     return 4 // Team 4: days 16-22
   }
+}
+
+/**
+ * Compare two dates (ignoring time component)
+ *
+ * @param date1 - First date
+ * @param date2 - Second date
+ * @returns -1 if date1 < date2, 0 if equal, 1 if date1 > date2
+ */
+export function compareDates(date1: string | Date | null | undefined, date2: string | Date | null | undefined): number {
+  const d1 = parseLocalDate(date1)
+  const d2 = parseLocalDate(date2)
+
+  d1.setHours(0, 0, 0, 0)
+  d2.setHours(0, 0, 0, 0)
+
+  if (d1 < d2) return -1
+  if (d1 > d2) return 1
+  return 0
+}
+
+/**
+ * Get the current date in YYYY-MM-DD format (local timezone)
+ *
+ * @returns Current date string
+ */
+export function getCurrentLocalDate(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+
+  return `${year}-${month}-${day}`
 }
