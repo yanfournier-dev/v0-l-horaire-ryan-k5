@@ -3,12 +3,14 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Users, Clock } from "lucide-react"
+import { Users } from "lucide-react"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { parseLocalDate } from "@/lib/calendar"
 import Link from "next/link"
 import { compareShifts } from "@/lib/shift-sort"
-import { AssignReplacementDialog } from "@/components/assign-replacement-dialog"
+import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
+import { DeleteReplacementButton } from "@/components/delete-replacement-button"
+import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
 
 interface ExpiredReplacementsTabProps {
   expiredReplacements: any[]
@@ -41,8 +43,8 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
           const candidateCount = Number.parseInt(replacement.application_count) || 0
 
           return (
-            <Card key={replacement.id} className="overflow-hidden border-red-200 dark:border-red-800">
-              <CardContent className="py-0 px-1.5 bg-red-50 dark:bg-red-950/20">
+            <Card key={replacement.id} className="overflow-hidden">
+              <CardContent className="py-0 px-1.5">
                 <div className="flex items-center gap-2 text-sm">
                   {/* Date and shift type */}
                   <div className="flex items-center gap-1.5 min-w-[140px]">
@@ -57,6 +59,8 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
                     >
                       {getShiftTypeLabel(replacement.shift_type).split(" ")[0]}
                     </Badge>
+                    {/* Part-time team badge */}
+                    <PartTimeTeamBadge shiftDate={replacement.shift_date} />
                   </div>
 
                   {/* Name and team */}
@@ -75,19 +79,19 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
                     )}
                   </div>
 
-                  {/* Expired badge */}
-                  <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-sm px-1.5 py-0 h-5 leading-none gap-1">
-                    <Clock className="h-3 w-3" />
-                    Délai expiré
-                  </Badge>
-
                   <div className="flex gap-0.5 shrink-0">
-                    <AssignReplacementDialog replacementId={replacement.id} firefighters={firefighters} />
+                    <ApplyForReplacementButton
+                      replacementId={replacement.id}
+                      isAdmin={isAdmin}
+                      firefighters={firefighters}
+                      onSuccess={() => {}}
+                    />
+                    <DeleteReplacementButton replacementId={replacement.id} />
                     <Link href={`/dashboard/replacements/${replacement.id}`}>
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="h-6 text-xs px-2 gap-0.5 bg-transparent leading-none"
+                        size="default"
+                        className="h-8 text-xs px-2 gap-1 bg-transparent leading-none"
                       >
                         <Users className="h-3 w-3" />
                         <Badge variant="secondary" className="text-[9px] px-0.5 py-0 h-3.5 leading-none">

@@ -13,6 +13,7 @@ import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
 import { DeadlineTimer } from "@/components/deadline-timer"
+import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
 
 interface AvailableReplacementsTabProps {
   groupedReplacements: Record<string, any[]>
@@ -37,11 +38,6 @@ export function AvailableReplacementsTab({
       allReplacements.push(replacement)
     })
   })
-
-  console.log("[v0] AvailableReplacementsTab - Total replacements:", allReplacements.length)
-  if (allReplacements.length > 0) {
-    console.log("[v0] First replacement data:", allReplacements[0])
-  }
 
   const filteredReplacements = allReplacements.filter((replacement) => {
     const isExpired = replacement.application_deadline && new Date(replacement.application_deadline) < new Date()
@@ -112,6 +108,7 @@ export function AvailableReplacementsTab({
                     >
                       {getShiftTypeLabel(replacement.shift_type).split(" ")[0]}
                     </Badge>
+                    <PartTimeTeamBadge shiftDate={replacement.shift_date} />
                   </div>
 
                   <div className="flex-1 min-w-0 leading-none">
@@ -136,7 +133,11 @@ export function AvailableReplacementsTab({
                   )}
 
                   {replacement.application_deadline && !isExpired && (
-                    <DeadlineTimer deadline={replacement.application_deadline} />
+                    <DeadlineTimer
+                      deadline={replacement.application_deadline}
+                      deadlineDuration={replacement.deadline_duration}
+                      shiftDate={replacement.shift_date}
+                    />
                   )}
 
                   <div className="shrink-0">
@@ -148,10 +149,6 @@ export function AvailableReplacementsTab({
                       <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-sm px-1.5 py-0 h-5 leading-none">
                         Fermé
                       </Badge>
-                    ) : hasApplied ? (
-                      <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 leading-none">
-                        Candidature soumise
-                      </Badge>
                     ) : null}
                   </div>
 
@@ -162,13 +159,14 @@ export function AvailableReplacementsTab({
                           replacementId={replacement.id}
                           isAdmin={isAdmin}
                           firefighters={firefighters}
+                          hasApplied={hasApplied}
                         />
                       )}
                     <Link href={`/dashboard/replacements/${replacement.id}`}>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-6 text-xs px-2 gap-0.5 bg-transparent leading-none"
+                        className="h-8 text-xs px-2 gap-0.5 bg-transparent leading-none"
                       >
                         <Users className="h-3 w-3" />
                         <Badge variant="secondary" className="text-[9px] px-0.5 py-0 h-3.5 leading-none">

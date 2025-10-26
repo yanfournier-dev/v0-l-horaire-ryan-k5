@@ -4,6 +4,7 @@ import { sql, invalidateCache } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 import { createNotification } from "./notifications"
+import { calculateAutoDeadline } from "@/lib/date-utils"
 
 export async function getUserApplications(userId: number) {
   try {
@@ -215,11 +216,18 @@ export async function createReplacementFromShift(
     console.log("[v0] createReplacementFromShift - deadlineSeconds received:", deadlineSeconds)
 
     let applicationDeadline = null
+    let deadlineDuration = null
+
     if (deadlineSeconds && deadlineSeconds > 0) {
-      // Use timestamp arithmetic to avoid timezone issues
       const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
       applicationDeadline = new Date(deadlineTimestamp).toISOString()
+      deadlineDuration = Math.floor(deadlineSeconds / 60)
       console.log("[v0] createReplacementFromShift - calculated applicationDeadline:", applicationDeadline)
+    } else {
+      const autoDeadline = calculateAutoDeadline(shiftDate)
+      applicationDeadline = autoDeadline.toISOString()
+      deadlineDuration = null
+      console.log("[v0] createReplacementFromShift - auto deadline:", applicationDeadline)
     }
 
     const result = await sql`
@@ -230,7 +238,7 @@ export async function createReplacementFromShift(
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
         ${isPartial}, ${startTime || null}, ${endTime || null}, ${userId},
-        ${applicationDeadline}, ${deadlineSeconds || null}
+        ${applicationDeadline}, ${deadlineDuration}
       )
       RETURNING id
     `
@@ -539,10 +547,16 @@ export async function createExtraFirefighterReplacement(
     console.log("[v0] createExtraFirefighterReplacement - deadlineSeconds received:", deadlineSeconds)
 
     let applicationDeadline = null
+    let deadlineDuration = null
+
     if (deadlineSeconds && deadlineSeconds > 0) {
-      // Use timestamp arithmetic to avoid timezone issues
       const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
       applicationDeadline = new Date(deadlineTimestamp).toISOString()
+      deadlineDuration = Math.floor(deadlineSeconds / 60)
+    } else {
+      const autoDeadline = calculateAutoDeadline(shiftDate)
+      applicationDeadline = autoDeadline.toISOString()
+      deadlineDuration = null
     }
 
     const result = await sql`
@@ -553,7 +567,7 @@ export async function createExtraFirefighterReplacement(
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
         ${isPartial}, ${startTime || null}, ${endTime || null}, true,
-        ${applicationDeadline}, ${deadlineSeconds || null}
+        ${applicationDeadline}, ${deadlineDuration}
       )
       RETURNING id
     `
@@ -632,8 +646,20 @@ export async function updateReplacementAssignment(replacementId: number, assigne
   }
 }
 
-export async function getAvailableFirefighters(shiftDate: string, shiftType: string) {
+export async function getAvailableFirefighters(replacementId: number) {
   try {
+    // First, get the shift date from the replacement
+    const replacement = await sql`
+      SELECT shift_date, shift_type FROM replacements WHERE id = ${replacementId}
+    `
+
+    if (replacement.length === 0) {
+      console.error("[v0] getAvailableFirefighters: Replacement not found")
+      return []
+    }
+
+    const { shift_date: shiftDate } = replacement[0]
+
     const firefighters = await sql`
       SELECT 
         u.id,
@@ -666,18 +692,34 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
   }
 
   try {
-    // Use timestamp arithmetic to avoid timezone issues
+    const replacement = await sql`
+      SELECT shift_date FROM replacements WHERE id = ${replacementId}
+    `
+
+    if (replacement.length === 0) {
+      return { error: "Remplacement non trouvé" }
+    }
+
+    const shiftDate = replacement[0].shift_date
+
     let applicationDeadline = null
+    let deadlineDuration = null
+
     if (deadlineSeconds && deadlineSeconds > 0) {
       const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
       applicationDeadline = new Date(deadlineTimestamp).toISOString()
+      deadlineDuration = Math.floor(deadlineSeconds / 60)
+    } else {
+      const autoDeadline = calculateAutoDeadline(shiftDate)
+      applicationDeadline = autoDeadline.toISOString()
+      deadlineDuration = null
     }
 
     await sql`
       UPDATE replacements
       SET status = 'open', 
           application_deadline = ${applicationDeadline},
-          deadline_duration = ${deadlineSeconds || null}
+          deadline_duration = ${deadlineDuration}
       WHERE id = ${replacementId}
     `
 
@@ -774,7 +816,6 @@ export async function removeReplacementAssignment(replacementId: number) {
   }
 
   try {
-    // Get the approved application to notify the firefighter
     const approvedApp = await sql`
       SELECT ra.applicant_id, r.shift_date, r.shift_type
       FROM replacement_applications ra
@@ -782,21 +823,18 @@ export async function removeReplacementAssignment(replacementId: number) {
       WHERE ra.replacement_id = ${replacementId} AND ra.status = 'approved'
     `
 
-    // Reject the approved application
     await sql`
       UPDATE replacement_applications
       SET status = 'rejected'
       WHERE replacement_id = ${replacementId} AND status = 'approved'
     `
 
-    // Set replacement status back to open
     await sql`
       UPDATE replacements
       SET status = 'open'
       WHERE id = ${replacementId}
     `
 
-    // Notify the firefighter that was removed
     if (approvedApp.length > 0) {
       const { applicant_id, shift_date, shift_type } = approvedApp[0]
       await createNotification(

@@ -16,6 +16,7 @@ import { ExpiredReplacementsTab } from "@/components/expired-replacements-tab"
 import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { compareShifts } from "@/lib/shift-sort"
+import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
 
 interface ReplacementsTabsProps {
   recentReplacements: any[]
@@ -113,30 +114,28 @@ export function ReplacementsTabs({
 
       <TabsList>
         <TabsTrigger value="available">Disponibles ({openReplacements.length})</TabsTrigger>
+        {isAdmin && expiredReplacements.length > 0 && (
+          <TabsTrigger
+            value="to-assign"
+            className="data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
+          >
+            Prêts à assigner ({expiredReplacements.length})
+          </TabsTrigger>
+        )}
         <TabsTrigger value="assigned">Assignés ({assignedReplacements.length})</TabsTrigger>
         <TabsTrigger value="my-applications">Mes candidatures ({userApplications.length})</TabsTrigger>
         <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
         {isAdmin && (
-          <>
-            {expiredReplacements.length > 0 && (
-              <TabsTrigger
-                value="to-assign"
-                className="data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
-              >
-                À assigner ({expiredReplacements.length})
-              </TabsTrigger>
-            )}
-            <TabsTrigger
-              value="pending"
-              className={
-                pendingRequests.length > 0
-                  ? "data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
-                  : ""
-              }
-            >
-              Demandes en attente ({pendingRequests.length})
-            </TabsTrigger>
-          </>
+          <TabsTrigger
+            value="pending"
+            className={
+              pendingRequests.length > 0
+                ? "data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
+                : ""
+            }
+          >
+            Demandes en attente ({pendingRequests.length})
+          </TabsTrigger>
         )}
       </TabsList>
 
@@ -206,6 +205,7 @@ export function ReplacementsTabs({
                       >
                         {getShiftTypeLabel(application.shift_type).split(" ")[0]}
                       </Badge>
+                      <PartTimeTeamBadge shiftDate={application.shift_date} />
                     </div>
 
                     {/* Name and team */}

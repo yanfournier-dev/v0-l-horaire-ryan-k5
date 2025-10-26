@@ -65,9 +65,8 @@ export function DeleteReplacementButton({ replacementId }: { replacementId: numb
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !isDeleting && setIsOpen(open)}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" size="sm" disabled={isDeleting} className="h-6 text-xs px-2 gap-1 leading-none">
+        <Button variant="destructive" size="sm" disabled={isDeleting} className="h-8 text-xs px-2 gap-1 leading-none">
           <Trash2 className="h-3 w-3" />
-          {isDeleting ? "Suppression..." : "Supprimer la demande"}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

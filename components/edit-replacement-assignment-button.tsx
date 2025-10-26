@@ -85,7 +85,7 @@ export function EditReplacementAssignmentButton({
           className="h-6 text-xs px-2 gap-1 leading-none bg-transparent"
         >
           <Edit className="h-3 w-3" />
-          Retirer
+          Modifier
         </Button>
       </DialogTrigger>
       <DialogContent>

@@ -14,12 +14,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { UserPlus, Check } from "lucide-react"
 
 interface ApplyForReplacementButtonProps {
   replacementId: number
   isAdmin?: boolean
   firefighters?: any[]
   onSuccess?: () => void
+  hasApplied?: boolean
 }
 
 export function ApplyForReplacementButton({
@@ -27,6 +29,7 @@ export function ApplyForReplacementButton({
   isAdmin = false,
   firefighters = [],
   onSuccess,
+  hasApplied = false,
 }: ApplyForReplacementButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<string>("")
@@ -67,15 +70,21 @@ export function ApplyForReplacementButton({
     return (
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button size="sm" disabled={isLoading} className="h-6 text-xs px-2 leading-none">
-            Postuler
+          <Button
+            variant={hasApplied ? "outline" : "default"}
+            size="sm"
+            disabled={isLoading}
+            className={`h-8 text-xs px-2 gap-1 leading-none ${hasApplied ? "border-green-500 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950" : ""}`}
+          >
+            {hasApplied ? <Check className="h-3 w-3" /> : <UserPlus className="h-3 w-3" />}
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Postuler pour ce remplacement</DialogTitle>
+            <DialogTitle>Ajouter une candidature</DialogTitle>
             <DialogDescription>
-              Sélectionnez un pompier pour postuler à ce remplacement, ou postulez pour vous-même.
+              Sélectionnez un pompier pour ajouter une candidature à ce remplacement, ou ajoutez votre propre
+              candidature.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -100,7 +109,7 @@ export function ApplyForReplacementButton({
                 disabled={isLoading || !selectedFirefighter}
                 className="flex-1"
               >
-                Postuler pour le pompier sélectionné
+                Ajouter candidature
               </Button>
             </div>
           </div>
@@ -112,8 +121,13 @@ export function ApplyForReplacementButton({
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
-        <Button disabled={isLoading} size="sm" className="h-6 text-xs px-2 leading-none">
-          {isLoading ? "En cours..." : "Postuler"}
+        <Button
+          disabled={isLoading || hasApplied}
+          size="sm"
+          variant={hasApplied ? "outline" : "default"}
+          className={`h-8 text-xs px-2 gap-1 leading-none ${hasApplied ? "border-green-500 text-green-600 dark:text-green-400" : ""}`}
+        >
+          {hasApplied ? <Check className="h-3 w-3" /> : <UserPlus className="h-3 w-3" />}
         </Button>
       </DialogTrigger>
       <DialogContent>

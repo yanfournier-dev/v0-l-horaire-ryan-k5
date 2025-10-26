@@ -15,6 +15,7 @@ import { parseLocalDate } from "@/lib/date-utils"
 import { ArrowUpDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
+import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
 
 interface AllReplacementsTabProps {
   allReplacements: any[]
@@ -127,6 +128,7 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
                   >
                     {replacement.shift_type === "day" ? "Jour" : "Nuit"}
                   </Badge>
+                  <PartTimeTeamBadge shiftDate={replacement.shift_date} />
                 </div>
 
                 <div className="flex-1 min-w-0 leading-none">

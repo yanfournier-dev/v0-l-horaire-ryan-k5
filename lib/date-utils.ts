@@ -11,8 +11,6 @@ export function parseLocalDate(dateInput: string | Date | null | undefined): Dat
   }
 
   if (dateInput instanceof Date) {
-    // If it's already a Date object, create a new date from its ISO string
-    // but interpret it as local time
     const isoString = dateInput.toISOString().split("T")[0]
     return new Date(isoString + "T00:00:00")
   }
@@ -44,20 +42,11 @@ export function formatLocalDate(dateInput: string | Date): string {
  */
 export function getCurrentLocalDate(): string {
   const now = new Date()
-  console.log("[v0] getCurrentLocalDate - now:", now)
-  console.log("[v0] getCurrentLocalDate - now.toString():", now.toString())
-  console.log("[v0] getCurrentLocalDate - now.toISOString():", now.toISOString())
-
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, "0")
   const day = String(now.getDate()).padStart(2, "0")
 
-  console.log("[v0] getCurrentLocalDate - year:", year, "month:", month, "day:", day)
-
-  const result = `${year}-${month}-${day}`
-  console.log("[v0] getCurrentLocalDate - result:", result)
-
-  return result
+  return `${year}-${month}-${day}`
 }
 
 /**
@@ -117,4 +106,105 @@ export function formatDateForDB(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0")
   const day = String(date.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
+}
+
+/**
+ * Calculate the automatic deadline for a replacement
+ * The deadline is the Monday of the previous week at 5pm (17:00) local time
+ *
+ * @param shiftDate - The date of the shift (YYYY-MM-DD or Date object)
+ * @returns Date object representing the deadline
+ *
+ * @example
+ * // For a shift on Wednesday, November 5, 2025
+ * calculateAutoDeadline("2025-11-05")
+ * // Returns: Monday, October 27, 2025 at 17:00
+ */
+export function calculateAutoDeadline(shiftDate: string | Date): Date {
+  const shift = typeof shiftDate === "string" ? parseLocalDate(shiftDate) : shiftDate
+
+  // Get the day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+  const dayOfWeek = shift.getDay()
+
+  // Calculate days to subtract to get to Monday of the shift's week
+  // If Sunday (0), go back 6 days; if Monday (1), go back 0 days; etc.
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+
+  // Get Monday of the shift's week
+  const mondayOfShiftWeek = new Date(shift)
+  mondayOfShiftWeek.setDate(shift.getDate() - daysToMonday)
+
+  // Subtract 7 days to get Monday of the previous week
+  const mondayOfPreviousWeek = new Date(mondayOfShiftWeek)
+  mondayOfPreviousWeek.setDate(mondayOfShiftWeek.getDate() - 7)
+
+  // Set time to 17:00 (5pm) local time
+  mondayOfPreviousWeek.setHours(17, 0, 0, 0)
+
+  return mondayOfPreviousWeek
+}
+
+/**
+ * Format a deadline date for display
+ * Returns a clear, unambiguous format like "27 octobre 2025, 17h00"
+ *
+ * @param deadline - Date object or ISO string
+ * @returns Formatted deadline string
+ */
+export function formatDeadlineForDisplay(deadline: string | Date): string {
+  const date = typeof deadline === "string" ? new Date(deadline) : deadline
+
+  // Use Intl.DateTimeFormat for localized date formatting
+  const dateFormatter = new Intl.DateTimeFormat("fr-CA", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+
+  const timeFormatter = new Intl.DateTimeFormat("fr-CA", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+
+  return `${dateFormatter.format(date)}, ${timeFormatter.format(date)}`
+}
+
+/**
+ * Get the part-time firefighter team on duty for a given date
+ * Based on a 28-day cycle starting September 21, 2025 (day 1)
+ *
+ * Team schedule:
+ * - Team 1: days 1, 23, 24, 25, 26, 27, 28
+ * - Team 2: days 2, 3, 4, 5, 6, 7, 8
+ * - Team 3: days 9, 10, 11, 12, 13, 14, 15
+ * - Team 4: days 16, 17, 18, 19, 20, 21, 22
+ *
+ * @param date - The date to check (YYYY-MM-DD or Date object)
+ * @returns Team number (1-4)
+ */
+export function getPartTimeTeam(date: string | Date): number {
+  // Reference date: September 21, 2025 is day 1 of the cycle
+  const referenceDate = new Date("2025-09-21T00:00:00")
+  const checkDate = typeof date === "string" ? parseLocalDate(date) : date
+
+  // Calculate the number of days between the reference date and the check date
+  const timeDiff = checkDate.getTime() - referenceDate.getTime()
+  const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+
+  // Calculate the day in the 28-day cycle (1-28)
+  // Add 1 because day 0 should be day 28, day 1 should be day 1, etc.
+  let cycleDay = (((daysDiff % 28) + 28) % 28) + 1
+  if (cycleDay === 29) cycleDay = 1
+
+  // Determine which team is on duty based on the cycle day
+  if (cycleDay === 1 || (cycleDay >= 23 && cycleDay <= 28)) {
+    return 1 // Team 1: days 1, 23-28
+  } else if (cycleDay >= 2 && cycleDay <= 8) {
+    return 2 // Team 2: days 2-8
+  } else if (cycleDay >= 9 && cycleDay <= 15) {
+    return 3 // Team 3: days 9-15
+  } else {
+    return 4 // Team 4: days 16-22
+  }
 }

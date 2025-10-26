@@ -65,9 +65,8 @@ export function AssignReplacementDialog({ replacementId, firefighters }: AssignR
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" size="sm" className="h-6 text-xs px-2 gap-1 leading-none">
+        <Button variant="default" size="sm" className="h-8 text-xs px-2 gap-1 leading-none">
           <UserPlus className="h-3 w-3" />
-          Assigner
         </Button>
       </DialogTrigger>
       <DialogContent>

@@ -12,6 +12,7 @@ import { parseLocalDate } from "@/lib/calendar"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
+import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
 
 interface AssignedReplacementsTabProps {
   allReplacements: any[]
@@ -86,6 +87,7 @@ export function AssignedReplacementsTab({ allReplacements, isAdmin }: AssignedRe
                     >
                       {getShiftTypeLabel(replacement.shift_type).split(" ")[0]}
                     </Badge>
+                    <PartTimeTeamBadge shiftDate={replacement.shift_date} />
                   </div>
 
                   {/* Name and team */}
