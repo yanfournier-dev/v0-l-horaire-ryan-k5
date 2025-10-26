@@ -36,6 +36,7 @@ import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { DeadlineSelect } from "@/components/deadline-select"
+import { formatDateForDB } from "@/lib/date-utils"
 
 interface ShiftAssignmentDrawerProps {
   open: boolean
@@ -123,7 +124,7 @@ export function ShiftAssignmentDrawer({
     if (open && shift) {
       const fetchReplacements = async () => {
         setLoadingReplacements(true)
-        const shiftDate = shift.date.toISOString().split("T")[0]
+        const shiftDate = formatDateForDB(shift.date)
 
         const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
 
@@ -144,7 +145,7 @@ export function ShiftAssignmentDrawer({
 
   const refreshReplacements = async () => {
     setLoadingReplacements(true)
-    const shiftDate = shift.date.toISOString().split("T")[0]
+    const shiftDate = formatDateForDB(shift.date)
     const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
     setReplacements(data)
     setLoadingReplacements(false)
@@ -162,7 +163,7 @@ export function ShiftAssignmentDrawer({
 
     console.log("[v0] handleCreateReplacement - deadlineSeconds:", deadlineSeconds)
 
-    const shiftDate = shift.date.toISOString().split("T")[0]
+    const shiftDate = formatDateForDB(shift.date)
     const result = await createReplacementFromShift(
       selectedFirefighter.id,
       shiftDate,
@@ -313,7 +314,7 @@ export function ShiftAssignmentDrawer({
 
     console.log("[v0] handleCreateExtraRequest - extraDeadlineSeconds:", extraDeadlineSeconds)
 
-    const shiftDate = shift.date.toISOString().split("T")[0]
+    const shiftDate = formatDateForDB(shift.date)
 
     const result = await createExtraFirefighterReplacement(
       shiftDate,
@@ -379,7 +380,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${replacementName} a été retiré du remplacement`)
 
     // Refresh replacements list
-    const shiftDate = shift.date.toISOString().split("T")[0]
+    const shiftDate = formatDateForDB(shift.date)
     const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
     setReplacements(data)
 
