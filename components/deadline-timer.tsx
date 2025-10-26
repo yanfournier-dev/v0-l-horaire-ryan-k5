@@ -60,10 +60,24 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
     }
 
     const date = effectiveDeadline
-    const day = date.getDate()
-    const month = date.toLocaleDateString("fr-CA", { month: "short" }).replace(".", "")
-    const hour = date.getHours()
-    const minute = date.getMinutes()
+    const day = date.getUTCDate() // Using getUTCDate instead of getDate
+    const monthNames = [
+      "janv.",
+      "févr.",
+      "mars",
+      "avr.",
+      "mai",
+      "juin",
+      "juil.",
+      "août",
+      "sept.",
+      "oct.",
+      "nov.",
+      "déc.",
+    ]
+    const month = monthNames[date.getUTCMonth()] // Using getUTCMonth instead of toLocaleDateString
+    const hour = date.getUTCHours() // Using getUTCHours instead of getHours
+    const minute = date.getUTCMinutes() // Using getUTCMinutes instead of getMinutes
     const timeStr = minute > 0 ? `${hour}h${minute.toString().padStart(2, "0")}` : `${hour}h`
     setDisplayDeadline(`${day} ${month}. ${timeStr}`)
 

@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Check, X, ArrowUpDown } from "lucide-react"
-import { parseLocalDate } from "@/lib/date-utils"
+import { parseLocalDate, formatShortDate } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { approveReplacementRequest, rejectReplacementRequest } from "@/app/actions/replacements"
 import { useState } from "react"
@@ -115,12 +115,7 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
             <CardContent className="py-0 px-1.5">
               <div className="flex items-center gap-2 text-sm">
                 <div className="flex items-center gap-1.5 min-w-[140px]">
-                  <span className="font-medium leading-none">
-                    {parseLocalDate(request.shift_date).toLocaleDateString("fr-CA", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </span>
+                  <span className="font-medium leading-none">{formatShortDate(request.shift_date)}</span>
                   <Badge className={`${getShiftTypeColor(request.shift_type)} text-sm px-1.5 py-0 h-5 leading-none`}>
                     {getShiftTypeLabel(request.shift_type).split(" ")[0]}
                   </Badge>

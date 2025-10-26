@@ -13,7 +13,7 @@ import { UserRequestsTab } from "@/components/user-requests-tab"
 import { WithdrawApplicationButton } from "@/components/withdraw-application-button"
 import { RequestReplacementDialog } from "@/components/request-replacement-dialog"
 import { ExpiredReplacementsTab } from "@/components/expired-replacements-tab"
-import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
+import { parseLocalDate, formatLocalDateTime, formatShortDate } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { compareShifts } from "@/lib/shift-sort"
 import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
@@ -194,12 +194,7 @@ export function ReplacementsTabs({
                   <div className="flex items-center gap-2 text-sm">
                     {/* Date and shift type */}
                     <div className="flex items-center gap-1.5 min-w-[140px]">
-                      <span className="font-medium leading-none">
-                        {parseLocalDate(application.shift_date).toLocaleDateString("fr-CA", {
-                          day: "numeric",
-                          month: "short",
-                        })}
-                      </span>
+                      <span className="font-medium leading-none">{formatShortDate(application.shift_date)}</span>
                       <Badge
                         className={`${getShiftTypeColor(application.shift_type)} text-sm px-1.5 py-0 h-5 leading-none`}
                       >
