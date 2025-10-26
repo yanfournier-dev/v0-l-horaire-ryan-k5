@@ -188,9 +188,14 @@ export function formatShortDate(dateInput: string | Date): string {
  * @returns Team number (1-4)
  */
 export function getPartTimeTeam(date: string | Date): number {
-  // Reference date: September 21, 2025 is day 1 of the cycle
-  const referenceDate = new Date("2025-09-21T00:00:00")
-  const checkDate = typeof date === "string" ? parseLocalDate(date) : date
+  // Reference date: September 21, 2025 at midnight UTC
+  const referenceDate = new Date(Date.UTC(2025, 8, 21, 0, 0, 0, 0))
+
+  // Convert input date to UTC midnight
+  const inputDate = typeof date === "string" ? new Date(date) : date
+  const checkDate = new Date(
+    Date.UTC(inputDate.getUTCFullYear(), inputDate.getUTCMonth(), inputDate.getUTCDate(), 0, 0, 0, 0),
+  )
 
   // Calculate the number of days between the reference date and the check date
   const timeDiff = checkDate.getTime() - referenceDate.getTime()
