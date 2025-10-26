@@ -31,15 +31,29 @@ export function parseLocalDate(dateInput: string | Date | null | undefined): Dat
 
 /**
  * Format a date for display in French Canadian format
+ * Always uses UTC components to avoid timezone conversion issues
  *
  * @param dateInput - Date string or Date object
  * @returns Formatted date string (e.g., "2025-03-10")
  */
 export function formatLocalDate(dateInput: string | Date): string {
-  const date = parseLocalDate(dateInput)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
+  if (typeof dateInput === "string") {
+    // If it's already a string in YYYY-MM-DD format, return it
+    if (dateInput.match(/^\d{4}-\d{2}-\d{2}/)) {
+      return dateInput.split("T")[0]
+    }
+    // Otherwise parse it first
+    const date = parseLocalDate(dateInput)
+    const year = date.getUTCFullYear()
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0")
+    const day = String(date.getUTCDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
+  // If it's a Date object from DB, use UTC methods directly
+  const year = dateInput.getUTCFullYear()
+  const month = String(dateInput.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(dateInput.getUTCDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
 }
 
