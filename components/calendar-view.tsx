@@ -5,7 +5,7 @@ import { CalendarCell } from "@/components/calendar-cell"
 import { Button } from "@/components/ui/button"
 import { ChevronUp, ChevronDown } from "lucide-react"
 import { generateMonthView, getMonthName } from "@/lib/calendar"
-import { getCurrentLocalDate } from "@/lib/date-utils"
+import { getCurrentLocalDate, formatLocalDate } from "@/lib/date-utils"
 
 interface CalendarViewProps {
   initialMonths: Array<{
@@ -146,7 +146,7 @@ export function CalendarView({
               {days.map((day, index) => {
                 const shifts = shiftsByCycleDay[day.cycleDay] || []
 
-                const dateStr = day.date.toISOString().split("T")[0]
+                const dateStr = formatLocalDate(day.date)
                 const dayReplacements = shifts.map((shift: any) => {
                   const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
                   return replacementMap[key] || []
