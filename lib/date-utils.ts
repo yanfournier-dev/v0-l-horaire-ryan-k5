@@ -44,10 +44,20 @@ export function formatLocalDate(dateInput: string | Date): string {
  */
 export function getCurrentLocalDate(): string {
   const now = new Date()
+  console.log("[v0] getCurrentLocalDate - now:", now)
+  console.log("[v0] getCurrentLocalDate - now.toString():", now.toString())
+  console.log("[v0] getCurrentLocalDate - now.toISOString():", now.toISOString())
+
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, "0")
   const day = String(now.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
+
+  console.log("[v0] getCurrentLocalDate - year:", year, "month:", month, "day:", day)
+
+  const result = `${year}-${month}-${day}`
+  console.log("[v0] getCurrentLocalDate - result:", result)
+
+  return result
 }
 
 /**
@@ -93,4 +103,18 @@ export function formatLocalDateTime(dateInput: string | Date | null | undefined)
   const minutes = String(date.getMinutes()).padStart(2, "0")
 
   return `${year}-${month}-${day} à ${hours}:${minutes}`
+}
+
+/**
+ * Format a Date object to YYYY-MM-DD string using local timezone
+ * Use this instead of toISOString() to avoid timezone conversion issues
+ *
+ * @param date - Date object to format
+ * @returns Date string in YYYY-MM-DD format
+ */
+export function formatDateForDB(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }

@@ -5,6 +5,7 @@ import {
   getUserApplications,
   getPendingReplacementRequests,
   getUserReplacementRequests,
+  getExpiredReplacements,
 } from "@/app/actions/replacements"
 import { getAllFirefighters } from "@/app/actions/teams"
 import { redirect } from "next/navigation"
@@ -27,6 +28,7 @@ export default async function ReplacementsPage({
   const firefighters = user.is_admin ? await getAllFirefighters() : []
   const pendingRequests = user.is_admin ? await getPendingReplacementRequests() : []
   const userRequests = await getUserReplacementRequests(user.id)
+  const expiredReplacements = user.is_admin ? await getExpiredReplacements() : []
 
   const initialTab = searchParams.tab || "available"
 
@@ -46,6 +48,7 @@ export default async function ReplacementsPage({
         firefighters={firefighters}
         pendingRequests={pendingRequests}
         userRequests={userRequests}
+        expiredReplacements={expiredReplacements}
         isAdmin={user.is_admin}
         userId={user.id}
         initialTab={initialTab}

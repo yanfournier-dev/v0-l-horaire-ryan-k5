@@ -12,6 +12,7 @@ import { parseLocalDate } from "@/lib/calendar"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
+import { DeadlineTimer } from "@/components/deadline-timer"
 
 interface AvailableReplacementsTabProps {
   groupedReplacements: Record<string, any[]>
@@ -42,7 +43,10 @@ export function AvailableReplacementsTab({
     console.log("[v0] First replacement data:", allReplacements[0])
   }
 
-  const filteredReplacements = allReplacements
+  const filteredReplacements = allReplacements.filter((replacement) => {
+    const isExpired = replacement.application_deadline && new Date(replacement.application_deadline) < new Date()
+    return !isExpired
+  })
 
   const sortedReplacements = [...filteredReplacements].sort((a, b) => {
     switch (sortBy) {
@@ -90,12 +94,12 @@ export function AvailableReplacementsTab({
           const hasApplied = userApplications.some((app: any) => app.replacement_id === replacement.id)
           const candidateCount = Number.parseInt(replacement.application_count) || 0
           const isOwnReplacement = replacement.user_id === userId
+          const isExpired = replacement.application_deadline && new Date(replacement.application_deadline) < new Date()
 
           return (
             <Card key={replacement.id} className="overflow-hidden">
               <CardContent className="py-0 px-1.5">
                 <div className="flex items-center gap-2 text-sm">
-                  {/* Date and shift type */}
                   <div className="flex items-center gap-1.5 min-w-[140px]">
                     <span className="font-medium leading-none">
                       {parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA", {
@@ -110,7 +114,6 @@ export function AvailableReplacementsTab({
                     </Badge>
                   </div>
 
-                  {/* Name and team */}
                   <div className="flex-1 min-w-0 leading-none">
                     {replacement.user_id === null ? (
                       <span className="text-amber-600 dark:text-amber-400 font-medium">Pompier supplémentaire</span>
@@ -126,18 +129,24 @@ export function AvailableReplacementsTab({
                     )}
                   </div>
 
-                  {/* Assigned replacement firefighter name */}
                   {replacement.status === "assigned" && replacement.assigned_first_name && (
                     <div className="text-xs text-blue-600 dark:text-blue-400 shrink-0 leading-none">
                       → {replacement.assigned_first_name} {replacement.assigned_last_name}
                     </div>
                   )}
 
-                  {/* Status badge */}
+                  {replacement.application_deadline && !isExpired && (
+                    <DeadlineTimer deadline={replacement.application_deadline} />
+                  )}
+
                   <div className="shrink-0">
                     {replacement.status === "assigned" ? (
                       <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-sm px-1.5 py-0 h-5 leading-none">
                         Assigné
+                      </Badge>
+                    ) : isExpired ? (
+                      <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-sm px-1.5 py-0 h-5 leading-none">
+                        Fermé
                       </Badge>
                     ) : hasApplied ? (
                       <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 leading-none">
@@ -146,15 +155,15 @@ export function AvailableReplacementsTab({
                     ) : null}
                   </div>
 
-                  {/* Action buttons */}
                   <div className="flex gap-0.5 shrink-0">
-                    {(isAdmin || (!hasApplied && !isOwnReplacement)) && replacement.status !== "assigned" && (
-                      <ApplyForReplacementButton
-                        replacementId={replacement.id}
-                        isAdmin={isAdmin}
-                        firefighters={firefighters}
-                      />
-                    )}
+                    {(isAdmin || (!hasApplied && !isOwnReplacement && !isExpired)) &&
+                      replacement.status !== "assigned" && (
+                        <ApplyForReplacementButton
+                          replacementId={replacement.id}
+                          isAdmin={isAdmin}
+                          firefighters={firefighters}
+                        />
+                      )}
                     <Link href={`/dashboard/replacements/${replacement.id}`}>
                       <Button
                         variant="outline"

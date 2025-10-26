@@ -12,6 +12,7 @@ import { PendingRequestsTab } from "@/components/pending-requests-tab"
 import { UserRequestsTab } from "@/components/user-requests-tab"
 import { WithdrawApplicationButton } from "@/components/withdraw-application-button"
 import { RequestReplacementDialog } from "@/components/request-replacement-dialog"
+import { ExpiredReplacementsTab } from "@/components/expired-replacements-tab"
 import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { compareShifts } from "@/lib/shift-sort"
@@ -23,6 +24,7 @@ interface ReplacementsTabsProps {
   firefighters: any[]
   pendingRequests: any[]
   userRequests: any[]
+  expiredReplacements: any[]
   isAdmin: boolean
   userId: number
   initialTab?: string
@@ -35,6 +37,7 @@ export function ReplacementsTabs({
   firefighters,
   pendingRequests,
   userRequests,
+  expiredReplacements,
   isAdmin,
   userId,
   initialTab = "available",
@@ -114,16 +117,26 @@ export function ReplacementsTabs({
         <TabsTrigger value="my-applications">Mes candidatures ({userApplications.length})</TabsTrigger>
         <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
         {isAdmin && (
-          <TabsTrigger
-            value="pending"
-            className={
-              pendingRequests.length > 0
-                ? "data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
-                : ""
-            }
-          >
-            Demandes en attente ({pendingRequests.length})
-          </TabsTrigger>
+          <>
+            {expiredReplacements.length > 0 && (
+              <TabsTrigger
+                value="to-assign"
+                className="data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
+              >
+                À assigner ({expiredReplacements.length})
+              </TabsTrigger>
+            )}
+            <TabsTrigger
+              value="pending"
+              className={
+                pendingRequests.length > 0
+                  ? "data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
+                  : ""
+              }
+            >
+              Demandes en attente ({pendingRequests.length})
+            </TabsTrigger>
+          </>
         )}
       </TabsList>
 
@@ -240,6 +253,16 @@ export function ReplacementsTabs({
       <TabsContent value="my-requests">
         <UserRequestsTab userRequests={userRequests} userId={userId} />
       </TabsContent>
+
+      {isAdmin && (
+        <TabsContent value="to-assign">
+          <ExpiredReplacementsTab
+            expiredReplacements={expiredReplacements}
+            isAdmin={isAdmin}
+            firefighters={firefighters}
+          />
+        </TabsContent>
+      )}
 
       {isAdmin && (
         <TabsContent value="pending">

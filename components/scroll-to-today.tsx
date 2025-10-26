@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { getCurrentLocalDate } from "@/lib/date-utils"
 
 export function ScrollToToday() {
   useEffect(() => {
@@ -8,12 +9,11 @@ export function ScrollToToday() {
 
     let attempts = 0
     const maxAttempts = 10
-    const attemptDelay = 50 // Try every 50ms if needed
+    const attemptDelay = 50
 
     const tryScroll = () => {
       attempts++
-      const today = new Date()
-      const todayStr = today.toISOString().split("T")[0]
+      const todayStr = getCurrentLocalDate()
       console.log(`[v0] ScrollToToday: Attempt ${attempts}/${maxAttempts}, looking for element: day-${todayStr}`)
 
       const todayElement = document.getElementById(`day-${todayStr}`)

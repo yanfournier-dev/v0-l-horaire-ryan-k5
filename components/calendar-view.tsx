@@ -5,6 +5,7 @@ import { CalendarCell } from "@/components/calendar-cell"
 import { Button } from "@/components/ui/button"
 import { ChevronUp, ChevronDown } from "lucide-react"
 import { generateMonthView, getMonthName } from "@/lib/calendar"
+import { getCurrentLocalDate } from "@/lib/date-utils"
 
 interface CalendarViewProps {
   initialMonths: Array<{
@@ -41,8 +42,7 @@ export function CalendarView({
   const [hasScrolled, setHasScrolled] = useState(false)
   const scrollAnchorRef = useRef<string | null>(null)
 
-  const today = new Date()
-  const todayStr = today.toISOString().split("T")[0]
+  const todayStr = getCurrentLocalDate()
 
   useEffect(() => {
     if (!hasScrolled) {

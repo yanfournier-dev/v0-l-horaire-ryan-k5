@@ -204,6 +204,7 @@ export async function createReplacementFromShift(
   isPartial = false,
   startTime?: string,
   endTime?: string,
+  deadlineSeconds?: number,
 ) {
   const user = await getSession()
   if (!user?.is_admin) {
@@ -211,16 +212,30 @@ export async function createReplacementFromShift(
   }
 
   try {
+    console.log("[v0] createReplacementFromShift - deadlineSeconds received:", deadlineSeconds)
+
+    let applicationDeadline = null
+    if (deadlineSeconds && deadlineSeconds > 0) {
+      // Use timestamp arithmetic to avoid timezone issues
+      const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
+      applicationDeadline = new Date(deadlineTimestamp).toISOString()
+      console.log("[v0] createReplacementFromShift - calculated applicationDeadline:", applicationDeadline)
+    }
+
     const result = await sql`
       INSERT INTO replacements (
-        shift_date, shift_type, team_id, status, is_partial, start_time, end_time, user_id
+        shift_date, shift_type, team_id, status, is_partial, start_time, end_time, user_id,
+        application_deadline, deadline_duration
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
-        ${isPartial}, ${startTime || null}, ${endTime || null}, ${userId}
+        ${isPartial}, ${startTime || null}, ${endTime || null}, ${userId},
+        ${applicationDeadline}, ${deadlineSeconds || null}
       )
       RETURNING id
     `
+
+    console.log("[v0] createReplacementFromShift - replacement created with id:", result[0].id)
 
     revalidatePath("/dashboard/calendar")
     revalidatePath("/dashboard/replacements")
@@ -252,11 +267,19 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
 
   try {
     const replacement = await sql`
-      SELECT user_id FROM replacements WHERE id = ${replacementId}
+      SELECT user_id, application_deadline FROM replacements WHERE id = ${replacementId}
     `
 
     if (replacement.length === 0) {
       return { error: "Remplacement non trouvé" }
+    }
+
+    if (replacement[0].application_deadline) {
+      const deadline = new Date(replacement[0].application_deadline)
+      const now = new Date()
+      if (now > deadline) {
+        return { error: "Le délai pour postuler est expiré" }
+      }
     }
 
     if (replacement[0].user_id === applicantId) {
@@ -505,6 +528,7 @@ export async function createExtraFirefighterReplacement(
   isPartial = false,
   startTime?: string,
   endTime?: string,
+  deadlineSeconds?: number,
 ) {
   const user = await getSession()
   if (!user?.is_admin) {
@@ -512,16 +536,29 @@ export async function createExtraFirefighterReplacement(
   }
 
   try {
+    console.log("[v0] createExtraFirefighterReplacement - deadlineSeconds received:", deadlineSeconds)
+
+    let applicationDeadline = null
+    if (deadlineSeconds && deadlineSeconds > 0) {
+      // Use timestamp arithmetic to avoid timezone issues
+      const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
+      applicationDeadline = new Date(deadlineTimestamp).toISOString()
+    }
+
     const result = await sql`
       INSERT INTO replacements (
-        shift_date, shift_type, team_id, status, is_partial, start_time, end_time, is_extra
+        shift_date, shift_type, team_id, status, is_partial, start_time, end_time, is_extra,
+        application_deadline, deadline_duration
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
-        ${isPartial}, ${startTime || null}, ${endTime || null}, true
+        ${isPartial}, ${startTime || null}, ${endTime || null}, true,
+        ${applicationDeadline}, ${deadlineSeconds || null}
       )
       RETURNING id
     `
+
+    console.log("[v0] createExtraFirefighterReplacement - replacement created with id:", result[0].id)
 
     revalidatePath("/dashboard/calendar")
     revalidatePath("/dashboard/replacements")
@@ -622,16 +659,25 @@ export async function getAvailableFirefighters(shiftDate: string, shiftType: str
   }
 }
 
-export async function approveReplacementRequest(replacementId: number) {
+export async function approveReplacementRequest(replacementId: number, deadlineSeconds?: number) {
   const user = await getSession()
   if (!user?.is_admin) {
     return { error: "Non autorisé" }
   }
 
   try {
+    // Use timestamp arithmetic to avoid timezone issues
+    let applicationDeadline = null
+    if (deadlineSeconds && deadlineSeconds > 0) {
+      const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
+      applicationDeadline = new Date(deadlineTimestamp).toISOString()
+    }
+
     await sql`
       UPDATE replacements
-      SET status = 'open'
+      SET status = 'open', 
+          application_deadline = ${applicationDeadline},
+          deadline_duration = ${deadlineSeconds || null}
       WHERE id = ${replacementId}
     `
 
@@ -776,5 +822,32 @@ export async function removeReplacementAssignment(replacementId: number) {
   } catch (error) {
     console.error("[v0] removeReplacementAssignment: Error", error)
     return { error: "Erreur lors du retrait de l'assignation" }
+  }
+}
+
+export async function getExpiredReplacements() {
+  try {
+    const replacements = await sql`
+      SELECT 
+        r.*,
+        t.name as team_name,
+        t.color as team_color,
+        replaced_user.first_name as first_name,
+        replaced_user.last_name as last_name,
+        (SELECT COUNT(*) FROM replacement_applications WHERE replacement_id = r.id) as application_count
+      FROM replacements r
+      LEFT JOIN teams t ON r.team_id = t.id
+      LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+      WHERE r.status = 'open'
+        AND r.application_deadline IS NOT NULL
+        AND r.application_deadline < CURRENT_TIMESTAMP
+        AND r.shift_date >= CURRENT_DATE
+      ORDER BY r.application_deadline ASC
+    `
+
+    return replacements
+  } catch (error) {
+    console.error("[v0] getExpiredReplacements: Error", error)
+    return []
   }
 }

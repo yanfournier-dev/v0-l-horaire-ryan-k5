@@ -35,6 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
+import { DeadlineSelect } from "@/components/deadline-select"
 
 interface ShiftAssignmentDrawerProps {
   open: boolean
@@ -114,7 +115,9 @@ export function ShiftAssignmentDrawer({
   const [extraStartTime, setExtraStartTime] = useState(defaultTimes.startTime)
   const [extraEndTime, setExtraEndTime] = useState(defaultTimes.endTime)
   const [extraFirefighters, setExtraFirefighters] = useState<number[]>([])
-  const [removedExtraFirefighters, setRemovedExtraFirefighters] = useState<number[]>([]) // Track removed extra firefighters by user_id to hide them immediately
+  const [removedExtraFirefighters, setRemovedExtraFirefighters] = useState<number[]>([])
+  const [deadlineSeconds, setDeadlineSeconds] = useState<number | null>(null)
+  const [extraDeadlineSeconds, setExtraDeadlineSeconds] = useState<number | null>(null)
 
   useEffect(() => {
     if (open && shift) {
@@ -157,6 +160,8 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
+    console.log("[v0] handleCreateReplacement - deadlineSeconds:", deadlineSeconds)
+
     const shiftDate = shift.date.toISOString().split("T")[0]
     const result = await createReplacementFromShift(
       selectedFirefighter.id,
@@ -166,6 +171,7 @@ export function ShiftAssignmentDrawer({
       isPartial,
       isPartial ? startTime : undefined,
       isPartial ? endTime : undefined,
+      deadlineSeconds ?? undefined,
     )
 
     if (result.error) {
@@ -182,6 +188,7 @@ export function ShiftAssignmentDrawer({
     setIsLoading(false)
     setSelectedFirefighter(null)
     setIsPartial(false)
+    setDeadlineSeconds(null)
     const times = getDefaultReplacementTimes(shift.shift_type)
     setStartTime(times.startTime)
     setEndTime(times.endTime)
@@ -192,6 +199,7 @@ export function ShiftAssignmentDrawer({
   const handleCancel = () => {
     setSelectedFirefighter(null)
     setIsPartial(false)
+    setDeadlineSeconds(null)
     const times = getDefaultReplacementTimes(shift.shift_type)
     setStartTime(times.startTime)
     setEndTime(times.endTime)
@@ -285,6 +293,7 @@ export function ShiftAssignmentDrawer({
     setSelectedExtraFirefighter(null)
     setIsCreatingRequest(false)
     setIsExtraPartial(false)
+    setExtraDeadlineSeconds(null)
     const times = getDefaultReplacementTimes(shift.shift_type)
     setExtraStartTime(times.startTime)
     setExtraEndTime(times.endTime)
@@ -302,6 +311,8 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
+    console.log("[v0] handleCreateExtraRequest - extraDeadlineSeconds:", extraDeadlineSeconds)
+
     const shiftDate = shift.date.toISOString().split("T")[0]
 
     const result = await createExtraFirefighterReplacement(
@@ -311,6 +322,7 @@ export function ShiftAssignmentDrawer({
       isExtraPartial,
       isExtraPartial ? extraStartTime : undefined,
       isExtraPartial ? extraEndTime : undefined,
+      extraDeadlineSeconds ?? undefined,
     )
 
     if (result.error) {
@@ -326,6 +338,7 @@ export function ShiftAssignmentDrawer({
     setSelectedExtraFirefighter(null)
     setIsCreatingRequest(false)
     setIsExtraPartial(false)
+    setExtraDeadlineSeconds(null)
     const times = getDefaultReplacementTimes(shift.shift_type)
     setExtraStartTime(times.startTime)
     setExtraEndTime(times.endTime)
@@ -704,6 +717,8 @@ export function ShiftAssignmentDrawer({
           </AlertDialogHeader>
 
           <div className="space-y-4 py-4">
+            <DeadlineSelect value={deadlineSeconds} onValueChange={setDeadlineSeconds} />
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="partial"
@@ -816,6 +831,10 @@ export function ShiftAssignmentDrawer({
               </SelectContent>
             </Select>
 
+            {isCreatingRequest && (
+              <DeadlineSelect value={extraDeadlineSeconds} onValueChange={setExtraDeadlineSeconds} />
+            )}
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="extra-partial"
@@ -881,6 +900,7 @@ export function ShiftAssignmentDrawer({
                 setSelectedExtraFirefighter(null)
                 setIsCreatingRequest(false)
                 setIsExtraPartial(false)
+                setExtraDeadlineSeconds(null)
                 const times = getDefaultReplacementTimes(shift.shift_type)
                 setExtraStartTime(times.startTime)
                 setExtraEndTime(times.endTime)

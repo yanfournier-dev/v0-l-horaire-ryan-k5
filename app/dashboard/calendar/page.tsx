@@ -9,6 +9,7 @@ import {
 import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
 import { redirect } from "next/navigation"
 import { generateMonthView, getCycleDay, parseLocalDate } from "@/lib/calendar"
+import { formatDateForDB } from "@/lib/date-utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -76,28 +77,20 @@ export default async function CalendarPage({
       allMonthsDays[allMonthsDays.length - 1].days[allMonthsDays[allMonthsDays.length - 1].days.length - 1]?.date
 
     const replacements =
-      firstDay && lastDay
-        ? await getReplacementsForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
-        : []
+      firstDay && lastDay ? await getReplacementsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : []
 
     const leaves =
-      firstDay && lastDay
-        ? await getLeavesForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
-        : []
+      firstDay && lastDay ? await getLeavesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : []
 
     const exchanges =
-      firstDay && lastDay
-        ? await getExchangesForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
-        : []
+      firstDay && lastDay ? await getExchangesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : []
 
     const shiftNotes =
-      firstDay && lastDay
-        ? await getShiftNotesForDateRange(firstDay.toISOString().split("T")[0], lastDay.toISOString().split("T")[0])
-        : []
+      firstDay && lastDay ? await getShiftNotesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : []
 
     const replacementMap: Record<string, any[]> = {}
     replacements.forEach((repl: any) => {
-      const dateOnly = new Date(repl.shift_date).toISOString().split("T")[0]
+      const dateOnly = formatDateForDB(new Date(repl.shift_date))
       const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
       if (!replacementMap[key]) {
         replacementMap[key] = []
@@ -107,7 +100,7 @@ export default async function CalendarPage({
 
     const exchangeMap: Record<string, any[]> = {}
     exchanges.forEach((exchange: any) => {
-      const requesterDateOnly = new Date(exchange.requester_shift_date).toISOString().split("T")[0]
+      const requesterDateOnly = formatDateForDB(new Date(exchange.requester_shift_date))
       const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
       if (!exchangeMap[requesterKey]) {
         exchangeMap[requesterKey] = []
@@ -117,7 +110,7 @@ export default async function CalendarPage({
         type: "requester",
       })
 
-      const targetDateOnly = new Date(exchange.target_shift_date).toISOString().split("T")[0]
+      const targetDateOnly = formatDateForDB(new Date(exchange.target_shift_date))
       const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
       if (!exchangeMap[targetKey]) {
         exchangeMap[targetKey] = []
@@ -134,7 +127,7 @@ export default async function CalendarPage({
       const endDate = new Date(leave.end_date)
 
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split("T")[0]
+        const dateStr = formatDateForDB(d)
         const key = `${dateStr}_${leave.user_id}`
         if (!leaveMap[key]) {
           leaveMap[key] = []
@@ -145,7 +138,7 @@ export default async function CalendarPage({
 
     const noteMap: Record<string, boolean> = {}
     shiftNotes.forEach((note: any) => {
-      const dateOnly = new Date(note.shift_date).toISOString().split("T")[0]
+      const dateOnly = formatDateForDB(new Date(note.shift_date))
       const key = `${note.shift_id}_${dateOnly}`
       noteMap[key] = true
     })

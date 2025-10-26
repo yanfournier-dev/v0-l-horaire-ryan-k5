@@ -1,11 +1,11 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { getCurrentLocalDate } from "@/lib/date-utils"
 
 export function TodayButton() {
   const scrollToToday = () => {
-    const today = new Date()
-    const todayStr = today.toISOString().split("T")[0]
+    const todayStr = getCurrentLocalDate()
     const todayElement = document.getElementById(`day-${todayStr}`)
 
     if (todayElement) {
