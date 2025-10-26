@@ -160,6 +160,21 @@ export function formatDeadlineForDisplay(deadline: string | Date): string {
 }
 
 /**
+ * Format a date for short display (e.g., "26 oct.")
+ * Always uses UTC components to avoid timezone conversion issues
+ *
+ * @param dateInput - Date string or Date object
+ * @returns Formatted short date string (e.g., "26 oct.")
+ */
+export function formatShortDate(dateInput: string | Date): string {
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput
+  const day = date.getUTCDate()
+  const monthNames = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
+  const month = monthNames[date.getUTCMonth()]
+  return `${day} ${month}`
+}
+
+/**
  * Get the part-time firefighter team on duty for a given date
  * Based on a 28-day cycle starting September 21, 2025 (day 1)
  *

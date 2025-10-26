@@ -11,7 +11,7 @@ import Link from "next/link"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { EditReplacementAssignmentButton } from "@/components/edit-replacement-assignment-button"
 import { getShiftTypeColor } from "@/lib/colors"
-import { parseLocalDate } from "@/lib/date-utils"
+import { parseLocalDate, formatShortDate } from "@/lib/date-utils"
 import { ArrowUpDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
@@ -116,12 +116,7 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
             <CardContent className="py-0 px-1.5">
               <div className="flex items-center gap-2 text-sm leading-none">
                 <div className="flex items-center gap-1.5 min-w-[140px]">
-                  <span className="text-sm font-medium leading-none">
-                    {parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </span>
+                  <span className="text-sm font-medium leading-none">{formatShortDate(replacement.shift_date)}</span>
 
                   <Badge
                     className={`${getShiftTypeColor(replacement.shift_type)} text-sm px-1.5 py-0 h-5 leading-none shrink-0`}

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Users } from "lucide-react"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
-import { parseLocalDate } from "@/lib/calendar"
+import { parseLocalDate, formatShortDate } from "@/lib/date-utils"
 import Link from "next/link"
 import { compareShifts } from "@/lib/shift-sort"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
@@ -48,12 +48,7 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
                 <div className="flex items-center gap-2 text-sm">
                   {/* Date and shift type */}
                   <div className="flex items-center gap-1.5 min-w-[140px]">
-                    <span className="font-medium leading-none">
-                      {parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </span>
+                    <span className="font-medium leading-none">{formatShortDate(replacement.shift_date)}</span>
                     <Badge
                       className={`${getShiftTypeColor(replacement.shift_type)} text-sm px-1.5 py-0 h-5 leading-none`}
                     >
