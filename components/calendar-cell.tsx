@@ -69,11 +69,6 @@ export function CalendarCell({
   dateStr,
   isAdmin,
 }: CalendarCellProps) {
-  if (day.date.getDate() === 24 && day.date.getMonth() === 9) {
-    console.log("[v0] CalendarCell Oct 24 - leaves prop:", JSON.stringify(leaves, null, 2))
-    console.log("[v0] CalendarCell Oct 24 - leaveMap prop:", JSON.stringify(leaveMap, null, 2))
-  }
-
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedShift, setSelectedShift] = useState<any>(null)
   const [teamFirefighters, setTeamFirefighters] = useState<any[]>([])
@@ -152,7 +147,7 @@ export function CalendarCell({
           <CardTitle className="text-sm font-semibold text-foreground/90 flex items-center justify-between">
             <span className="text-xs text-muted-foreground/80 font-normal">{getDayOfWeekLabel(day.dayOfWeek)}</span>
             <span className="text-base font-bold">
-              {day.date.getDate()} {getMonthLabel(day.date.getMonth())}
+              {day.date.getUTCDate()} {getMonthLabel(day.date.getUTCMonth())}
             </span>
           </CardTitle>
         </CardHeader>
@@ -160,13 +155,7 @@ export function CalendarCell({
           {shifts.length > 0 ? (
             shifts.map((shift, shiftIndex) => {
               const shiftReplacements = replacements[shiftIndex] || []
-              const shiftExchanges = exchanges[shiftIndex] || [] // Get exchanges for this shift
-
-              if (day.date.getDate() === 24 && day.date.getMonth() === 9) {
-                // October 24
-                console.log("[v0] CalendarCell for Oct 24, shift:", shift.team_name, shift.shift_type)
-                console.log("[v0] shiftReplacements:", JSON.stringify(shiftReplacements, null, 2))
-              }
+              const shiftExchanges = exchanges[shiftIndex] || []
 
               // Parse firefighters from the shift
               const firefighters = shift.assigned_firefighters
