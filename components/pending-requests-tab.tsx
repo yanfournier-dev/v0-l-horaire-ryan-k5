@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Check, X, ArrowUpDown } from "lucide-react"
-import { parseLocalDate, formatShortDate } from "@/lib/date-utils"
+import { parseLocalDate, formatShortDate, calculateAutoDeadline } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { approveReplacementRequest, rejectReplacementRequest } from "@/app/actions/replacements"
 import { useState } from "react"
@@ -34,13 +34,33 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false)
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
   const [deadlineMinutes, setDeadlineMinutes] = useState<number | null>(null)
+  const [showDeadlineWarning, setShowDeadlineWarning] = useState(false)
+  const [selectedShiftDate, setSelectedShiftDate] = useState<string | null>(null)
 
-  const handleApprove = async (replacementId: number) => {
+  const handleApprove = async (replacementId: number, shiftDate: string) => {
     setSelectedRequestId(replacementId)
+    setSelectedShiftDate(shiftDate)
     setApprovalDialogOpen(true)
   }
 
   const handleConfirmApproval = async () => {
+    if (!selectedRequestId || !selectedShiftDate) return
+
+    if (!deadlineMinutes || deadlineMinutes === 0) {
+      const autoDeadline = calculateAutoDeadline(selectedShiftDate)
+      const now = new Date()
+
+      if (autoDeadline < now) {
+        setApprovalDialogOpen(false)
+        setShowDeadlineWarning(true)
+        return
+      }
+    }
+
+    await executeApproval()
+  }
+
+  const executeApproval = async () => {
     if (!selectedRequestId) return
 
     setProcessingId(selectedRequestId)
@@ -50,14 +70,18 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
     }
     setProcessingId(null)
     setApprovalDialogOpen(false)
+    setShowDeadlineWarning(false)
     setSelectedRequestId(null)
+    setSelectedShiftDate(null)
     setDeadlineMinutes(null)
     router.refresh()
   }
 
   const handleCancelApproval = () => {
     setApprovalDialogOpen(false)
+    setShowDeadlineWarning(false)
     setSelectedRequestId(null)
+    setSelectedShiftDate(null)
     setDeadlineMinutes(null)
   }
 
@@ -143,7 +167,7 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => handleApprove(request.id)}
+                    onClick={() => handleApprove(request.id, request.shift_date)}
                     disabled={processingId === request.id}
                     className="h-6 text-xs px-2 gap-1 leading-none"
                   >
@@ -175,6 +199,29 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
             <AlertDialogCancel onClick={handleCancelApproval}>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmApproval} disabled={processingId === selectedRequestId}>
               {processingId === selectedRequestId ? "Approbation..." : "Approuver"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeadlineWarning} onOpenChange={setShowDeadlineWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>⚠️ Délai par défaut expiré</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le délai par défaut pour ce remplacement est déjà passé. Les pompiers ne pourront pas postuler à moins que
+              vous définissiez un nouveau délai.
+              <br />
+              <br />
+              Voulez-vous quand même approuver cette demande ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={handleCancelApproval}>
+              Annuler
+            </Button>
+            <AlertDialogAction onClick={executeApproval} disabled={processingId === selectedRequestId}>
+              {processingId === selectedRequestId ? "Approbation..." : "Approuver quand même"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

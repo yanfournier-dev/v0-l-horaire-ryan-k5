@@ -18,7 +18,7 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
   const [displayDeadline, setDisplayDeadline] = useState<string>("")
 
   useEffect(() => {
-    if (deadlineDuration && deadline) {
+    if (deadlineDuration !== null && deadline) {
       const effectiveDeadline = new Date(deadline)
 
       const updateTimer = () => {
@@ -60,7 +60,7 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
     }
 
     const date = effectiveDeadline
-    const day = date.getUTCDate() // Using getUTCDate instead of getDate
+    const day = date.getDate()
     const monthNames = [
       "janv.",
       "févr.",
@@ -75,9 +75,9 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
       "nov.",
       "déc.",
     ]
-    const month = monthNames[date.getUTCMonth()] // Using getUTCMonth instead of toLocaleDateString
-    const hour = date.getUTCHours() // Using getUTCHours instead of getHours
-    const minute = date.getUTCMinutes() // Using getUTCMinutes instead of getMinutes
+    const month = monthNames[date.getMonth()]
+    const hour = date.getHours()
+    const minute = date.getMinutes()
     const timeStr = minute > 0 ? `${hour}h${minute.toString().padStart(2, "0")}` : `${hour}h`
     setDisplayDeadline(`${day} ${month}. ${timeStr}`)
 
@@ -93,7 +93,7 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
     return () => clearInterval(interval)
   }, [deadline, deadlineDuration, shiftDate])
 
-  if (!deadlineDuration) {
+  if (deadlineDuration === null) {
     // Automatic or manual deadline
     return (
       <Badge

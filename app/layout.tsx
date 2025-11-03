@@ -1,12 +1,17 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Suspense } from "react"
 
-const inter = Inter({
+const geistSans = Geist({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-geist-sans",
+})
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
 })
 
 export const metadata: Metadata = {
@@ -23,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={`font-sans ${inter.variable}`}>
+      <body className={`font-sans ${geistSans.variable} ${geistMono.variable}`}>
         <Suspense fallback={null}>{children}</Suspense>
       </body>
     </html>

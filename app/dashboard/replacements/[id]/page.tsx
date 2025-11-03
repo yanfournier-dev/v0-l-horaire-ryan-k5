@@ -40,6 +40,7 @@ export default async function ReplacementDetailPage({
       l.user_id as leave_user_id,
       COALESCE(leave_user.first_name, direct_user.first_name) as first_name,
       COALESCE(leave_user.last_name, direct_user.last_name) as last_name,
+      COALESCE(leave_user.role, direct_user.role) as replaced_role,
       t.name as team_name
     FROM replacements r
     LEFT JOIN leaves l ON r.leave_id = l.id
@@ -168,6 +169,40 @@ export default async function ReplacementDetailPage({
     }),
   )
 
+  const shiftResult = await sql`
+    SELECT id FROM shifts
+    WHERE team_id = ${replacement.team_id}
+      AND shift_type = ${replacement.shift_type}
+    LIMIT 1
+  `
+
+  const shiftId = shiftResult.length > 0 ? shiftResult[0].id : null
+
+  const teamFirefighters = await sql`
+    SELECT 
+      u.id,
+      u.first_name,
+      u.last_name,
+      u.role
+    FROM team_members tm
+    JOIN users u ON tm.user_id = u.id
+    WHERE tm.team_id = ${replacement.team_id}
+    ORDER BY 
+      CASE u.role 
+        WHEN 'captain' THEN 1 
+        WHEN 'lieutenant' THEN 2 
+        ELSE 3
+      END,
+      u.last_name
+  `
+
+  console.log("[v0] Replacement detail page data:", {
+    replacementId,
+    replacedRole: replacement.replaced_role,
+    shiftId,
+    teamFirefighters: teamFirefighters.length,
+  })
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -286,6 +321,10 @@ export default async function ReplacementDetailPage({
                                 isPartial={replacement.is_partial}
                                 startTime={replacement.start_time}
                                 endTime={replacement.end_time}
+                                replacedFirefighterRole={replacement.replaced_role}
+                                shiftFirefighters={teamFirefighters}
+                                shiftId={shiftId}
+                                replacementFirefighterId={application.user_id}
                               />
                               <RejectApplicationButton applicationId={application.id} />
                             </>

@@ -250,3 +250,34 @@ export function getCurrentLocalDate(): string {
 
   return `${year}-${month}-${day}`
 }
+
+/**
+ * Format a creation date for subtle display
+ * Always shows the exact date and time in a compact format
+ * Adjusts for EDT timezone (UTC-4)
+ *
+ * @param dateInput - Date string or Date object
+ * @returns Formatted creation date string (e.g., "26 oct., 14:30")
+ */
+export function formatCreatedAt(dateInput: string | Date): string {
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput
+  const now = new Date()
+
+  date.setHours(date.getHours() - 4)
+
+  const day = date.getDate()
+  const monthNames = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
+  const month = monthNames[date.getMonth()]
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+
+  // Only show year if it's different from current year
+  const year = date.getFullYear()
+  const currentYear = now.getFullYear()
+
+  if (year !== currentYear) {
+    return `${day} ${month} ${year}, ${hours}:${minutes}`
+  }
+
+  return `${day} ${month}, ${hours}:${minutes}`
+}

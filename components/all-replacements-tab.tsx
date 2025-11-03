@@ -12,7 +12,7 @@ import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { EditReplacementAssignmentButton } from "@/components/edit-replacement-assignment-button"
 import { getShiftTypeColor } from "@/lib/colors"
 import { parseLocalDate, formatShortDate } from "@/lib/date-utils"
-import { ArrowUpDown } from "lucide-react"
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
 import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
@@ -23,7 +23,8 @@ interface AllReplacementsTabProps {
 
 export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps) {
   const [showAssigned, setShowAssigned] = useState(false)
-  const [sortBy, setSortBy] = useState<"date" | "name" | "status" | "candidates">("date")
+  const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "status" | "candidates">("date")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
   const getReplacementStatusLabel = (status: string) => {
     switch (status) {
@@ -58,22 +59,33 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
   const filteredReplacements = showAssigned ? allReplacements : allReplacements.filter((r) => r.status !== "assigned")
 
   const sortedReplacements = [...filteredReplacements].sort((a, b) => {
+    let comparison = 0
+
     switch (sortBy) {
       case "date":
-        return compareShifts(a, b, parseLocalDate)
+        comparison = compareShifts(a, b, parseLocalDate)
+        break
+      case "created_at":
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        break
       case "name":
         const nameA = a.user_id === null ? "Pompier supplémentaire" : `${a.first_name} ${a.last_name}`
         const nameB = b.user_id === null ? "Pompier supplémentaire" : `${b.first_name} ${b.last_name}`
-        return nameA.localeCompare(nameB)
+        comparison = nameA.localeCompare(nameB)
+        break
       case "status":
-        return a.status.localeCompare(b.status)
+        comparison = a.status.localeCompare(b.status)
+        break
       case "candidates":
         const countA = Number.parseInt(a.application_count) || 0
         const countB = Number.parseInt(b.application_count) || 0
-        return countB - countA // Descending order (most candidates first)
+        comparison = countA - countB
+        break
       default:
-        return 0
+        comparison = 0
     }
+
+    return sortDirection === "asc" ? comparison : -comparison
   })
 
   return (
@@ -87,11 +99,20 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="date">Date</SelectItem>
+              <SelectItem value="created_at">Date de création</SelectItem>
               <SelectItem value="name">Nom</SelectItem>
               <SelectItem value="status">Statut</SelectItem>
               <SelectItem value="candidates">Nombre de candidats</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+          >
+            {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+          </Button>
         </div>
 
         <div className="flex items-center gap-2">

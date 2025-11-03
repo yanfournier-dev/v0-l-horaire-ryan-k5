@@ -26,18 +26,39 @@ interface AssignReplacementDialogProps {
     last_name: string
     role: string
   }>
+  replacedFirefighterRole?: string
+  shiftFirefighters?: Array<{
+    id: number
+    first_name: string
+    last_name: string
+    role: string
+  }>
+  shiftId?: number
 }
 
-export function AssignReplacementDialog({ replacementId, firefighters }: AssignReplacementDialogProps) {
+export function AssignReplacementDialog({
+  replacementId,
+  firefighters,
+  replacedFirefighterRole,
+  shiftFirefighters,
+  shiftId,
+}: AssignReplacementDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedFirefighterId, setSelectedFirefighterId] = useState<string>("")
+  const [selectedLieutenantId, setSelectedLieutenantId] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
+
+  const isReplacingLieutenant = replacedFirefighterRole === "lieutenant"
 
   const handleAssign = async () => {
     if (!selectedFirefighterId) {
       toast.error("Veuillez sélectionner un pompier")
       return
+    }
+
+    if (isReplacingLieutenant && !selectedLieutenantId) {
+      setSelectedLieutenantId(selectedFirefighterId)
     }
 
     setIsSubmitting(true)
@@ -47,9 +68,16 @@ export function AssignReplacementDialog({ replacementId, firefighters }: AssignR
       const result = await approveApplication(replacementId, Number.parseInt(selectedFirefighterId))
 
       if (result.success) {
+        if (isReplacingLieutenant && shiftId) {
+          const { setActingLieutenant } = await import("@/app/actions/shift-assignments")
+          const lieutenantId = selectedLieutenantId || selectedFirefighterId
+          await setActingLieutenant(shiftId, Number.parseInt(lieutenantId))
+        }
+
         toast.success("Pompier assigné avec succès")
         setIsOpen(false)
         setSelectedFirefighterId("")
+        setSelectedLieutenantId("")
         router.refresh()
       } else {
         toast.error(result.error || "Erreur lors de l'assignation")
@@ -62,6 +90,14 @@ export function AssignReplacementDialog({ replacementId, firefighters }: AssignR
     }
   }
 
+  const allShiftFirefighters =
+    isReplacingLieutenant && shiftFirefighters && selectedFirefighterId
+      ? [
+          ...shiftFirefighters.filter((f) => f.role !== "lieutenant"), // Exclude the replaced lieutenant
+          firefighters.find((f) => f.id.toString() === selectedFirefighterId)!,
+        ].filter(Boolean)
+      : []
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -72,7 +108,11 @@ export function AssignReplacementDialog({ replacementId, firefighters }: AssignR
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Assigner un pompier</DialogTitle>
-          <DialogDescription>Sélectionnez un pompier à assigner à ce remplacement</DialogDescription>
+          <DialogDescription>
+            {isReplacingLieutenant
+              ? "Sélectionnez un pompier à assigner à ce remplacement de lieutenant"
+              : "Sélectionnez un pompier à assigner à ce remplacement"}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -90,6 +130,27 @@ export function AssignReplacementDialog({ replacementId, firefighters }: AssignR
               </SelectContent>
             </Select>
           </div>
+
+          {isReplacingLieutenant && selectedFirefighterId && allShiftFirefighters.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="lieutenant">Qui sera le lieutenant?</Label>
+              <Select value={selectedLieutenantId} onValueChange={setSelectedLieutenantId}>
+                <SelectTrigger id="lieutenant">
+                  <SelectValue placeholder="Sélectionner le lieutenant (par défaut: le remplaçant)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allShiftFirefighters.map((firefighter) => (
+                    <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
+                      {firefighter.first_name} {firefighter.last_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Si aucun n'est sélectionné, le remplaçant sera le lieutenant
+              </p>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>

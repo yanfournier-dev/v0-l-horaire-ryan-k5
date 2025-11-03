@@ -93,8 +93,13 @@ export function ReplacementsTabs({
     return groups
   }
 
-  const openReplacements = allReplacements.filter((r) => r.status === "open")
+  const openReplacements = allReplacements.filter((r) => {
+    if (r.status !== "open") return false
+    const isExpired = r.application_deadline && new Date(r.application_deadline) < new Date()
+    return !isExpired
+  })
   const assignedReplacements = allReplacements.filter((r) => r.status === "assigned")
+  const pendingApplications = userApplications.filter((app: any) => app.status === "pending")
 
   const sortedOpenReplacements = sortReplacements(openReplacements)
   const groupedOpenReplacements = groupByShift(sortedOpenReplacements)
@@ -123,7 +128,7 @@ export function ReplacementsTabs({
           </TabsTrigger>
         )}
         <TabsTrigger value="assigned">Assignés ({assignedReplacements.length})</TabsTrigger>
-        <TabsTrigger value="my-applications">Mes candidatures ({userApplications.length})</TabsTrigger>
+        <TabsTrigger value="my-applications">Mes candidatures ({pendingApplications.length})</TabsTrigger>
         <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
         {isAdmin && (
           <TabsTrigger

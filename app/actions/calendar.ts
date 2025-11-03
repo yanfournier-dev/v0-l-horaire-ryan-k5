@@ -170,9 +170,10 @@ export async function getAllShiftsWithAssignments() {
     const shifts = await sql`
       WITH team_firefighters AS (
         SELECT 
-          tm.team_id,
+          s.id as shift_id,
           string_agg(
-            u.first_name || '|' || u.last_name || '|' || u.role || '|false|false|||',
+            u.first_name || '|' || u.last_name || '|' || u.role || '|false|false|||' ||
+            COALESCE(sa.is_acting_lieutenant::text, 'null'),
             ';' 
             ORDER BY 
               CASE u.role 
@@ -190,9 +191,17 @@ export async function getAllShiftsWithAssignments() {
               u.first_name
           ) as team_members_str,
           COUNT(*) as team_member_count
-        FROM team_members tm
+        FROM shifts s
+        JOIN team_members tm ON s.team_id = tm.team_id
         JOIN users u ON tm.user_id = u.id
-        GROUP BY tm.team_id
+        LEFT JOIN shift_assignments sa ON sa.shift_id = s.id AND sa.user_id = u.id AND sa.is_extra = false
+        WHERE NOT EXISTS (
+          SELECT 1 FROM shift_assignments sa_extra 
+          WHERE sa_extra.shift_id = s.id 
+            AND sa_extra.user_id = u.id 
+            AND sa_extra.is_extra = true
+        )
+        GROUP BY s.id
       ),
       extra_firefighters AS (
         SELECT 
@@ -201,7 +210,8 @@ export async function getAllShiftsWithAssignments() {
             u.first_name || '|' || u.last_name || '|' || u.role || '|true|' ||
             COALESCE(sa.is_partial::text, 'false') || '|' ||
             COALESCE(sa.start_time::text, '') || '|' ||
-            COALESCE(sa.end_time::text, ''),
+            COALESCE(sa.end_time::text, '') || '|' ||
+            COALESCE(sa.is_acting_lieutenant::text, 'null'),
             ';'
             ORDER BY
               CASE u.role 
@@ -215,8 +225,7 @@ export async function getAllShiftsWithAssignments() {
                 WHEN 'pp6' THEN 8 
                 ELSE 9 
               END,
-              u.last_name,
-              u.first_name
+              u.last_name
           ) as extra_members_str
         FROM shift_assignments sa
         JOIN users u ON sa.user_id = u.id
@@ -253,7 +262,7 @@ export async function getAllShiftsWithAssignments() {
         ci.cycle_length_days
       FROM shifts s
       JOIN teams t ON s.team_id = t.id
-      LEFT JOIN team_firefighters tf ON t.id = tf.team_id
+      LEFT JOIN team_firefighters tf ON s.id = tf.shift_id
       LEFT JOIN extra_firefighters ef ON s.id = ef.shift_id
       CROSS JOIN cycle_info ci
       ORDER BY s.cycle_day, t.name
@@ -327,6 +336,7 @@ export async function getReplacementsForDateRange(startDate: string, endDate: st
         r.is_partial,
         r.start_time,
         r.end_time,
+        r.application_deadline,
         u.first_name as replaced_first_name,
         u.last_name as replaced_last_name,
         u.role as replaced_role,
@@ -335,11 +345,15 @@ export async function getReplacementsForDateRange(startDate: string, endDate: st
         repl_user.last_name as replacement_last_name
       FROM replacements r
       JOIN users u ON r.user_id = u.id
-      LEFT JOIN replacement_applications ra ON ra.replacement_id = r.id AND ra.status = 'approved'
-      LEFT JOIN users repl_user ON ra.applicant_id = repl_user.id
+      LEFT JOIN replacement_applications approved_app ON 
+        approved_app.replacement_id = r.id 
+        AND approved_app.status = 'approved'
+      LEFT JOIN users repl_user ON approved_app.applicant_id = repl_user.id
       WHERE r.shift_date >= ${startDate}
         AND r.shift_date <= ${endDate}
+        AND r.status != 'cancelled'
     `
+
     return replacements
   } catch (error: any) {
     const errorMessage = error?.message || String(error)
@@ -399,9 +413,17 @@ export async function getShiftWithAssignments(shiftId: number) {
       FROM shifts s
       JOIN teams t ON s.team_id = t.id
       WHERE s.id = ${shiftId}
-    `
+    `.catch((err) => {
+      const errorMessage = err?.message || String(err)
+      if (errorMessage.includes("Too Many")) {
+        console.error("[v0] getShiftWithAssignments: Rate limit exceeded, please wait a moment and try again")
+      } else {
+        console.error("[v0] getShiftWithAssignments: Shift query failed", errorMessage)
+      }
+      throw err
+    })
 
-    if (shift.length === 0) return null
+    if (!Array.isArray(shift) || shift.length === 0) return null
 
     const teamMembers = await sql`
       SELECT 
@@ -433,7 +455,10 @@ export async function getShiftWithAssignments(shiftId: number) {
           ELSE 9 
         END,
         u.last_name
-    `
+    `.catch((err) => {
+      console.error("[v0] getShiftWithAssignments: Team members query failed", err?.message || err)
+      return []
+    })
 
     const extraFirefighters = await sql`
       SELECT 
@@ -465,17 +490,23 @@ export async function getShiftWithAssignments(shiftId: number) {
           ELSE 9 
         END,
         u.last_name
-    `
+    `.catch((err) => {
+      console.error("[v0] getShiftWithAssignments: Extra firefighters query failed", err?.message || err)
+      return []
+    })
 
     const cycleConfig = await sql`
       SELECT start_date, cycle_length_days
       FROM cycle_config
       WHERE is_active = true
       LIMIT 1
-    `
+    `.catch((err) => {
+      console.error("[v0] getShiftWithAssignments: Cycle config query failed", err?.message || err)
+      return []
+    })
 
     let extraReplacementRequests: any[] = []
-    if (cycleConfig.length > 0) {
+    if (Array.isArray(cycleConfig) && cycleConfig.length > 0) {
       const { start_date, cycle_length_days } = cycleConfig[0]
       const startDate = new Date(start_date)
       const cycleDay = shift[0].cycle_day
@@ -495,40 +526,54 @@ export async function getShiftWithAssignments(shiftId: number) {
         FROM replacements r
         WHERE r.user_id IS NULL
           AND r.status = 'open'
-      `
+      `.catch((err) => {
+        console.error("[v0] getShiftWithAssignments: Extra requests query failed", err?.message || err)
+        return []
+      })
 
-      extraReplacementRequests = allExtraRequests
-        .filter((req: any) => {
-          const reqDate = new Date(req.shift_date)
-          const daysSinceStart = Math.floor((reqDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-          const reqCycleDay = (daysSinceStart % cycle_length_days) + 1
+      if (Array.isArray(allExtraRequests)) {
+        extraReplacementRequests = allExtraRequests
+          .filter((req: any) => {
+            const reqDate = new Date(req.shift_date)
+            const daysSinceStart = Math.floor((reqDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+            const reqCycleDay = (daysSinceStart % cycle_length_days) + 1
 
-          return reqCycleDay === cycleDay && req.shift_type === shiftType && req.team_id === teamId
-        })
-        .map((req: any) => ({
-          id: req.id,
-          user_id: null,
-          is_extra: true,
-          is_partial: req.is_partial || false,
-          start_time: req.start_time,
-          end_time: req.end_time,
-          replacement_id: req.id,
-          replacement_status: req.status,
-          first_name: "Pompier",
-          last_name: "supplémentaire",
-          role: "firefighter",
-          email: null,
-        }))
+            return reqCycleDay === cycleDay && req.shift_type === shiftType && req.team_id === teamId
+          })
+          .map((req: any) => ({
+            id: req.id,
+            user_id: null,
+            is_extra: true,
+            is_partial: req.is_partial || false,
+            start_time: req.start_time,
+            end_time: req.end_time,
+            replacement_id: req.id,
+            replacement_status: req.status,
+            first_name: "Pompier",
+            last_name: "supplémentaire",
+            role: "firefighter",
+            email: null,
+          }))
+      }
     }
 
-    const assignments = [...teamMembers, ...extraFirefighters, ...extraReplacementRequests]
+    const assignments = [
+      ...(Array.isArray(teamMembers) ? teamMembers : []),
+      ...(Array.isArray(extraFirefighters) ? extraFirefighters : []),
+      ...extraReplacementRequests,
+    ]
 
     return {
       ...shift[0],
       assignments,
     }
-  } catch (error) {
-    console.error("[v0] getShiftWithAssignments: Query failed", error)
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error)
+    if (errorMessage.includes("Too Many")) {
+      console.error("[v0] getShiftWithAssignments: Rate limit exceeded, please wait a moment and try again")
+    } else {
+      console.error("[v0] getShiftWithAssignments: Query failed", errorMessage)
+    }
     return null
   }
 }

@@ -5,43 +5,39 @@ import { getCurrentLocalDate } from "@/lib/date-utils"
 
 export function ScrollToToday() {
   useEffect(() => {
-    console.log("[v0] ScrollToToday: Component mounted, starting scroll")
+    const hasVisited = sessionStorage.getItem("calendar-visited")
 
-    let attempts = 0
-    const maxAttempts = 10
-    const attemptDelay = 50
+    if (!hasVisited) {
+      // First visit - scroll to today
+      sessionStorage.setItem("calendar-visited", "true")
 
-    const tryScroll = () => {
-      attempts++
-      const todayStr = getCurrentLocalDate()
-      console.log(`[v0] ScrollToToday: Attempt ${attempts}/${maxAttempts}, looking for element: day-${todayStr}`)
+      let attempts = 0
+      const maxAttempts = 10
+      const attemptDelay = 50
 
-      const todayElement = document.getElementById(`day-${todayStr}`)
-      console.log(`[v0] ScrollToToday: Element found: ${!!todayElement}`)
+      const tryScroll = () => {
+        attempts++
+        const todayStr = getCurrentLocalDate()
+        const todayElement = document.getElementById(`day-${todayStr}`)
 
-      if (todayElement) {
-        console.log("[v0] ScrollToToday: Scrolling to today")
-        todayElement.scrollIntoView({
-          behavior: "instant",
-          block: "center",
-        })
-        console.log("[v0] ScrollToToday: Scroll complete")
-        return true
-      } else if (attempts < maxAttempts) {
-        console.log(`[v0] ScrollToToday: Element not found, will retry in ${attemptDelay}ms`)
-        setTimeout(tryScroll, attemptDelay)
-        return false
-      } else {
-        console.log("[v0] ScrollToToday: Max attempts reached, element not found in DOM")
+        if (todayElement) {
+          todayElement.scrollIntoView({
+            behavior: "instant",
+            block: "center",
+          })
+          return true
+        } else if (attempts < maxAttempts) {
+          setTimeout(tryScroll, attemptDelay)
+          return false
+        }
         return false
       }
-    }
 
-    const timer = setTimeout(tryScroll, 0)
+      const timer = setTimeout(tryScroll, 0)
 
-    return () => {
-      console.log("[v0] ScrollToToday: Component unmounting, clearing timer")
-      clearTimeout(timer)
+      return () => {
+        clearTimeout(timer)
+      }
     }
   }, [])
 

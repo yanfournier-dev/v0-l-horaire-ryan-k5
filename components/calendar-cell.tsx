@@ -82,22 +82,92 @@ export function CalendarCell({
   }
 
   const handleShiftClick = async (shift: any) => {
-    if (!isAdmin) return
+    if (!isAdmin) {
+      return
+    }
 
-    const shiftDetails = await getShiftWithAssignments(shift.id)
-    const firefighters = await getTeamFirefighters(shift.team_id)
+    try {
+      const shiftDetails = await getShiftWithAssignments(shift.id)
+      const firefighters = await getTeamFirefighters(shift.team_id)
 
-    const shiftIndex = shifts.findIndex((s) => s.id === shift.id)
-    const shiftExchanges = exchanges[shiftIndex] || []
+      const shiftIndex = shifts.findIndex((s) => s.id === shift.id)
+      const shiftExchanges = exchanges[shiftIndex] || []
 
-    setSelectedShift({
-      ...shiftDetails,
-      date: day.date,
-      exchanges: shiftExchanges,
-    })
-    setTeamFirefighters(firefighters)
-    setCurrentAssignments(shiftDetails?.assignments || [])
-    setDrawerOpen(true)
+      const calendarFirefighters = shift.assigned_firefighters
+        ? shift.assigned_firefighters.split(";").map((entry: string) => {
+            const [firstName, lastName, role, isExtra, isPartial, startTime, endTime, isActingLieutenant] = entry
+              .trim()
+              .split("|")
+
+            return {
+              firstName,
+              lastName,
+              role,
+              isExtra: isExtra === "true",
+              isPartial: isPartial === "true",
+              startTime: startTime || null,
+              endTime: endTime || null,
+              isActingLieutenant: isActingLieutenant === "true" ? true : isActingLieutenant === "false" ? false : null,
+            }
+          })
+        : []
+
+      const roleOrder: Record<string, number> = {
+        captain: 1,
+        lieutenant: 2,
+        pp1: 3,
+        pp2: 4,
+        pp3: 5,
+        pp4: 6,
+        pp5: 7,
+        pp6: 8,
+      }
+      calendarFirefighters.sort((a, b) => {
+        if (a.isExtra !== b.isExtra) {
+          return a.isExtra ? 1 : -1
+        }
+        const orderA = roleOrder[a.role] || 9
+        const orderB = roleOrder[b.role] || 9
+        return orderA - orderB
+      })
+
+      const hasActingLieutenant = calendarFirefighters.some((f) => f.isActingLieutenant === true)
+      const firstPermanentLieutenantIndex = calendarFirefighters.findIndex(
+        (f) => f.role === "lieutenant" && f.isActingLieutenant !== false,
+      )
+
+      // Add showsLtBadge field to assignments based on calendar logic
+      const assignmentsWithLtBadge = (shiftDetails?.assignments || []).map((assignment: any) => {
+        const calendarIndex = calendarFirefighters.findIndex(
+          (f) => f.firstName === assignment.first_name && f.lastName === assignment.last_name,
+        )
+
+        if (calendarIndex === -1) {
+          return { ...assignment, showsLtBadge: false }
+        }
+
+        const firefighter = calendarFirefighters[calendarIndex]
+        const showsLtBadge =
+          firefighter.isActingLieutenant === true ||
+          (!hasActingLieutenant &&
+            firefighter.role === "lieutenant" &&
+            firefighter.isActingLieutenant !== false &&
+            calendarIndex === firstPermanentLieutenantIndex)
+
+        return { ...assignment, showsLtBadge }
+      })
+
+      setSelectedShift({
+        ...shiftDetails,
+        date: day.date,
+        exchanges: shiftExchanges,
+      })
+      setTeamFirefighters(firefighters)
+      setCurrentAssignments(assignmentsWithLtBadge)
+      setDrawerOpen(true)
+    } catch (error) {
+      console.error("[v0] Error in handleShiftClick:", error)
+    }
   }
 
   const handleNoteClick = async (shift: any, e: React.MouseEvent) => {
@@ -157,10 +227,11 @@ export function CalendarCell({
               const shiftReplacements = replacements[shiftIndex] || []
               const shiftExchanges = exchanges[shiftIndex] || []
 
-              // Parse firefighters from the shift
               const firefighters = shift.assigned_firefighters
                 ? shift.assigned_firefighters.split(";").map((entry: string) => {
-                    const [firstName, lastName, role, isExtra, isPartial, startTime, endTime] = entry.trim().split("|")
+                    const [firstName, lastName, role, isExtra, isPartial, startTime, endTime, isActingLieutenant] =
+                      entry.trim().split("|")
+
                     return {
                       firstName,
                       lastName,
@@ -169,6 +240,8 @@ export function CalendarCell({
                       isPartial: isPartial === "true",
                       startTime: startTime || null,
                       endTime: endTime || null,
+                      isActingLieutenant:
+                        isActingLieutenant === "true" ? true : isActingLieutenant === "false" ? false : null,
                     }
                   })
                 : []
@@ -184,15 +257,19 @@ export function CalendarCell({
                 pp6: 8,
               }
               firefighters.sort((a, b) => {
-                // First, sort by isExtra (false comes before true)
                 if (a.isExtra !== b.isExtra) {
                   return a.isExtra ? 1 : -1
                 }
-                // Then sort by role within each group
                 const orderA = roleOrder[a.role] || 9
                 const orderB = roleOrder[b.role] || 9
                 return orderA - orderB
               })
+
+              const hasActingLieutenant = firefighters.some((f) => f.isActingLieutenant === true)
+
+              const firstPermanentLieutenantIndex = firefighters.findIndex(
+                (f) => f.role === "lieutenant" && f.isActingLieutenant !== false,
+              )
 
               return (
                 <div
@@ -311,6 +388,14 @@ export function CalendarCell({
                         const hasExtraPartialTime =
                           isExtraFirefighter && firefighter.isPartial && firefighter.startTime && firefighter.endTime
 
+                        const showLtBadge =
+                          firefighter.isActingLieutenant === true ||
+                          (!hasActingLieutenant &&
+                            firefighter.role === "lieutenant" &&
+                            firefighter.isActingLieutenant !== false &&
+                            index === firstPermanentLieutenantIndex)
+                        const showCptBadge = firefighter.role === "captain"
+
                         return (
                           <div
                             key={index}
@@ -318,7 +403,7 @@ export function CalendarCell({
                               isExchange
                                 ? "font-semibold"
                                 : isExtraFirefighter
-                                  ? "font-semibold" // Changed from font-medium to font-semibold for extra firefighters
+                                  ? "font-semibold"
                                   : isPendingReplacement
                                     ? "italic"
                                     : isApprovedNotAssigned
@@ -328,6 +413,16 @@ export function CalendarCell({
                                         : ""
                             } ${hasPartialLeave && !replacement && !isExchange ? "bg-blue-50 dark:bg-blue-950/20 px-1.5 rounded text-blue-700 dark:text-blue-300" : ""}`}
                           >
+                            {showLtBadge && (
+                              <span className="text-[9px] font-semibold px-1 py-0.5 rounded border border-muted-foreground/20 bg-muted/30 text-muted-foreground mr-1">
+                                Lt
+                              </span>
+                            )}
+                            {showCptBadge && (
+                              <span className="text-[9px] font-semibold px-1 py-0.5 rounded border border-muted-foreground/20 bg-muted/30 text-muted-foreground mr-1">
+                                Cpt
+                              </span>
+                            )}
                             {isExchange && <span className="text-green-700 dark:text-green-500 mr-1">↔</span>}
                             {isApprovedNotAssigned && !isExchange && (
                               <span className="text-gray-600 dark:text-gray-400 mr-1">⏳</span>

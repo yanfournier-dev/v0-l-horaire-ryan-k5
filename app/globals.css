@@ -75,8 +75,8 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Removed --font-sans and --font-mono references that were causing "Invalid custom property" error */
+  /* Next.js handles font variables automatically via the className in layout.tsx */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

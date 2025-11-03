@@ -17,7 +17,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-export function DeleteReplacementButton({ replacementId }: { replacementId: number }) {
+export function DeleteReplacementButton({
+  replacementId,
+  onSuccess,
+}: {
+  replacementId: number
+  onSuccess?: () => void
+}) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
@@ -42,7 +48,12 @@ export function DeleteReplacementButton({ replacementId }: { replacementId: numb
         alert(result.error)
         setIsDeleting(false)
       } else {
-        router.refresh()
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          router.refresh()
+        }
+
         setTimeout(() => {
           setIsDeleting(false)
         }, 2000)

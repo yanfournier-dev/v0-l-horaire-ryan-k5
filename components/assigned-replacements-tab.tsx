@@ -4,11 +4,11 @@ import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowUpDown } from "lucide-react"
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { EditReplacementAssignmentButton } from "@/components/edit-replacement-assignment-button"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
-import { parseLocalDate, formatShortDate } from "@/lib/date-utils"
+import { parseLocalDate, formatShortDate, formatCreatedAt } from "@/lib/date-utils"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
@@ -20,26 +20,37 @@ interface AssignedReplacementsTabProps {
 }
 
 export function AssignedReplacementsTab({ allReplacements, isAdmin }: AssignedReplacementsTabProps) {
-  const [sortBy, setSortBy] = useState<"date" | "name" | "replacement">("date")
+  const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "replacement">("date")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
   // Filter to show only assigned replacements
   const assignedReplacements = allReplacements.filter((r) => r.status === "assigned")
 
   const sortedReplacements = [...assignedReplacements].sort((a, b) => {
+    let comparison = 0
+
     switch (sortBy) {
       case "date":
-        return compareShifts(a, b, parseLocalDate)
+        comparison = compareShifts(a, b, parseLocalDate)
+        break
+      case "created_at":
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        break
       case "name":
         const nameA = a.user_id === null ? "Pompier supplémentaire" : `${a.first_name} ${a.last_name}`
         const nameB = b.user_id === null ? "Pompier supplémentaire" : `${b.first_name} ${b.last_name}`
-        return nameA.localeCompare(nameB)
+        comparison = nameA.localeCompare(nameB)
+        break
       case "replacement":
         const replacementA = a.assigned_first_name ? `${a.assigned_first_name} ${a.assigned_last_name}` : "Zzz"
         const replacementB = b.assigned_first_name ? `${b.assigned_first_name} ${b.assigned_last_name}` : "Zzz"
-        return replacementA.localeCompare(replacementB)
+        comparison = replacementA.localeCompare(replacementB)
+        break
       default:
-        return 0
+        comparison = 0
     }
+
+    return sortDirection === "asc" ? comparison : -comparison
   })
 
   return (
@@ -53,10 +64,19 @@ export function AssignedReplacementsTab({ allReplacements, isAdmin }: AssignedRe
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="date">Date</SelectItem>
+              <SelectItem value="created_at">Date de création</SelectItem>
               <SelectItem value="name">Pompier à remplacer</SelectItem>
               <SelectItem value="replacement">Remplaçant</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+          >
+            {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
 
@@ -99,6 +119,9 @@ export function AssignedReplacementsTab({ allReplacements, isAdmin }: AssignedRe
                         ({replacement.start_time?.slice(0, 5)}-{replacement.end_time?.slice(0, 5)})
                       </span>
                     )}
+                    <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                      Créé {formatCreatedAt(replacement.created_at)}
+                    </div>
                   </div>
 
                   {/* Assigned replacement firefighter name */}

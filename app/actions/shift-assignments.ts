@@ -14,7 +14,8 @@ export async function getShiftAssignments(shiftId: number) {
       u.first_name,
       u.last_name,
       u.role,
-      u.email
+      u.email,
+      sa.is_acting_lieutenant
     FROM shift_assignments sa
     JOIN users u ON sa.user_id = u.id
     WHERE sa.shift_id = ${shiftId}
@@ -390,5 +391,200 @@ export async function isUserAssignedToShift(userId: number, shiftId: number, tar
   } catch (error) {
     console.error("Error checking user shift assignment:", error)
     return false
+  }
+}
+
+export async function setActingLieutenant(shiftId: number, userId: number) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    console.log("[v0] setActingLieutenant called with:", { shiftId, userId })
+
+    // Get the shift details to find the team
+    const shiftDetails = await sql`
+      SELECT team_id FROM shifts WHERE id = ${shiftId}
+    `
+
+    if (shiftDetails.length === 0) {
+      return { error: "Quart non trouvé" }
+    }
+
+    const teamId = shiftDetails[0].team_id
+    console.log("[v0] setActingLieutenant - teamId:", teamId)
+
+    // Get all team members who are lieutenants
+    const teamLieutenants = await sql`
+      SELECT u.id
+      FROM team_members tm
+      JOIN users u ON tm.user_id = u.id
+      WHERE tm.team_id = ${teamId} AND u.role = 'lieutenant'
+    `
+    console.log(
+      "[v0] setActingLieutenant - team lieutenants:",
+      teamLieutenants.map((l) => l.id),
+    )
+
+    console.log("[v0] setActingLieutenant - Setting is_acting_lieutenant = false for all assignments")
+    await sql`
+      UPDATE shift_assignments
+      SET is_acting_lieutenant = false
+      WHERE shift_id = ${shiftId}
+    `
+
+    // For each permanent lieutenant, ensure they have a shift_assignments record with is_acting_lieutenant = false
+    for (const lieutenant of teamLieutenants) {
+      if (lieutenant.id !== userId) {
+        // Check if they already have a shift_assignments record
+        const existing = await sql`
+          SELECT id FROM shift_assignments
+          WHERE shift_id = ${shiftId} AND user_id = ${lieutenant.id}
+        `
+
+        if (existing.length === 0) {
+          console.log("[v0] setActingLieutenant - Creating shift_assignments for permanent lieutenant:", lieutenant.id)
+          // Create a record with is_acting_lieutenant = false to override their permanent lieutenant role
+          await sql`
+            INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant)
+            VALUES (${shiftId}, ${lieutenant.id}, false, false)
+          `
+        }
+      }
+    }
+
+    // Now set the new acting lieutenant
+    const existing = await sql`
+      SELECT id FROM shift_assignments
+      WHERE shift_id = ${shiftId} AND user_id = ${userId}
+    `
+
+    if (existing.length > 0) {
+      console.log("[v0] setActingLieutenant - Updating existing shift_assignments record for userId:", userId)
+      await sql`
+        UPDATE shift_assignments
+        SET is_acting_lieutenant = true
+        WHERE shift_id = ${shiftId} AND user_id = ${userId}
+      `
+    } else {
+      console.log("[v0] setActingLieutenant - Creating new shift_assignments record for userId:", userId)
+      await sql`
+        INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant)
+        VALUES (${shiftId}, ${userId}, false, true)
+      `
+    }
+
+    console.log("[v0] setActingLieutenant - Success")
+
+    revalidatePath("/dashboard/calendar")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] Error setting acting lieutenant:", error)
+    return { error: "Erreur lors de la désignation du lieutenant" }
+  }
+}
+
+export async function removeActingLieutenant(shiftId: number, userId: number) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    console.log("[v0] removeActingLieutenant called with:", { shiftId, userId })
+
+    const assignment = await sql`
+      SELECT is_acting_lieutenant, is_extra
+      FROM shift_assignments
+      WHERE shift_id = ${shiftId} AND user_id = ${userId}
+    `
+
+    const isActingLieutenant = assignment.length > 0 && assignment[0].is_acting_lieutenant === true
+
+    if (isActingLieutenant) {
+      await sql`
+        UPDATE shift_assignments
+        SET is_acting_lieutenant = false
+        WHERE shift_id = ${shiftId} AND user_id = ${userId}
+      `
+    } else {
+      const existing = await sql`
+        SELECT id FROM shift_assignments
+        WHERE shift_id = ${shiftId} AND user_id = ${userId}
+      `
+
+      if (existing.length > 0) {
+        await sql`
+          UPDATE shift_assignments
+          SET is_acting_lieutenant = false
+          WHERE shift_id = ${shiftId} AND user_id = ${userId}
+        `
+      } else {
+        await sql`
+          INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant)
+          VALUES (${shiftId}, ${userId}, false, false)
+        `
+      }
+    }
+
+    const otherActingLieutenants = await sql`
+      SELECT COUNT(*) as count
+      FROM shift_assignments
+      WHERE shift_id = ${shiftId} 
+        AND is_acting_lieutenant = true 
+        AND user_id != ${userId}
+    `
+
+    const hasOtherActingLieutenant = otherActingLieutenants[0].count > 0
+
+    if (!hasOtherActingLieutenant) {
+      const shiftDetails = await sql`
+        SELECT team_id FROM shifts WHERE id = ${shiftId}
+      `
+
+      if (shiftDetails.length > 0) {
+        const teamId = shiftDetails[0].team_id
+
+        const teamLieutenants = await sql`
+          SELECT u.id
+          FROM team_members tm
+          JOIN users u ON tm.user_id = u.id
+          WHERE tm.team_id = ${teamId} AND u.role = 'lieutenant'
+        `
+
+        for (const lieutenant of teamLieutenants) {
+          await sql`
+            DELETE FROM shift_assignments
+            WHERE shift_id = ${shiftId} 
+              AND user_id = ${lieutenant.id} 
+              AND is_extra = false 
+              AND is_acting_lieutenant = false
+          `
+        }
+      }
+    }
+
+    console.log("[v0] removeActingLieutenant: Success")
+
+    revalidatePath("/dashboard/calendar")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] Error removing acting lieutenant:", error)
+    return { error: "Erreur lors du retrait du lieutenant" }
   }
 }

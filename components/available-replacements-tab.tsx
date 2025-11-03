@@ -4,11 +4,11 @@ import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Users, ArrowUpDown } from "lucide-react"
+import { Users, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
-import { parseLocalDate, formatShortDate } from "@/lib/date-utils"
+import { parseLocalDate, formatShortDate, formatCreatedAt } from "@/lib/date-utils"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
@@ -30,7 +30,8 @@ export function AvailableReplacementsTab({
   firefighters,
   userId,
 }: AvailableReplacementsTabProps) {
-  const [sortBy, setSortBy] = useState<"date" | "name" | "candidates">("date")
+  const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "candidates">("date")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
   const allReplacements: any[] = []
   Object.entries(groupedReplacements).forEach(([dateKey, replacements]) => {
@@ -39,26 +40,52 @@ export function AvailableReplacementsTab({
     })
   })
 
+  console.log("[v0] AvailableReplacementsTab - Total replacements:", allReplacements.length)
+  console.log("[v0] AvailableReplacementsTab - Current time:", new Date().toISOString())
+
+  allReplacements.forEach((r, index) => {
+    const isExpired = r.application_deadline && new Date(r.application_deadline) < new Date()
+    console.log(`[v0] Replacement ${index + 1}:`, {
+      id: r.id,
+      name: `${r.first_name} ${r.last_name}`,
+      shift_date: r.shift_date,
+      deadline: r.application_deadline,
+      isExpired,
+    })
+  })
+
   const filteredReplacements = allReplacements.filter((replacement) => {
     const isExpired = replacement.application_deadline && new Date(replacement.application_deadline) < new Date()
     return !isExpired
   })
 
+  console.log("[v0] AvailableReplacementsTab - Filtered replacements:", filteredReplacements.length)
+
   const sortedReplacements = [...filteredReplacements].sort((a, b) => {
+    let comparison = 0
+
     switch (sortBy) {
       case "date":
-        return compareShifts(a, b, parseLocalDate)
+        comparison = compareShifts(a, b, parseLocalDate)
+        break
+      case "created_at":
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        break
       case "name":
         const nameA = a.user_id === null ? "Pompier supplémentaire" : `${a.first_name} ${a.last_name}`
         const nameB = b.user_id === null ? "Pompier supplémentaire" : `${b.first_name} ${b.last_name}`
-        return nameA.localeCompare(nameB)
+        comparison = nameA.localeCompare(nameB)
+        break
       case "candidates":
         const countA = Number.parseInt(a.application_count) || 0
         const countB = Number.parseInt(b.application_count) || 0
-        return countB - countA // Descending order (most candidates first)
+        comparison = countA - countB
+        break
       default:
-        return 0
+        comparison = 0
     }
+
+    return sortDirection === "asc" ? comparison : -comparison
   })
 
   return (
@@ -72,10 +99,19 @@ export function AvailableReplacementsTab({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="date">Date</SelectItem>
+              <SelectItem value="created_at">Date de création</SelectItem>
               <SelectItem value="name">Nom</SelectItem>
               <SelectItem value="candidates">Nombre de candidats</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+          >
+            {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
 
@@ -119,6 +155,9 @@ export function AvailableReplacementsTab({
                         ({replacement.start_time?.slice(0, 5)}-{replacement.end_time?.slice(0, 5)})
                       </span>
                     )}
+                    <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                      Créé {formatCreatedAt(replacement.created_at)}
+                    </div>
                   </div>
 
                   {replacement.status === "assigned" && replacement.assigned_first_name && (

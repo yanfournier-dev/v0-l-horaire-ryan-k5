@@ -1,12 +1,14 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Users } from "lucide-react"
+import { Users, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
-import { parseLocalDate, formatShortDate } from "@/lib/date-utils"
+import { parseLocalDate, formatShortDate, formatCreatedAt } from "@/lib/date-utils"
 import Link from "next/link"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
@@ -24,7 +26,35 @@ interface ExpiredReplacementsTabProps {
 }
 
 export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefighters }: ExpiredReplacementsTabProps) {
-  const sortedReplacements = [...expiredReplacements].sort((a, b) => compareShifts(a, b, parseLocalDate))
+  const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "candidates">("date")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+
+  const sortedReplacements = [...expiredReplacements].sort((a, b) => {
+    let comparison = 0
+
+    switch (sortBy) {
+      case "date":
+        comparison = compareShifts(a, b, parseLocalDate)
+        break
+      case "created_at":
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        break
+      case "name":
+        const nameA = a.user_id === null ? "Pompier supplémentaire" : `${a.first_name} ${a.last_name}`
+        const nameB = b.user_id === null ? "Pompier supplémentaire" : `${b.first_name} ${b.last_name}`
+        comparison = nameA.localeCompare(nameB)
+        break
+      case "candidates":
+        const countA = Number.parseInt(a.application_count) || 0
+        const countB = Number.parseInt(b.application_count) || 0
+        comparison = countA - countB
+        break
+      default:
+        comparison = 0
+    }
+
+    return sortDirection === "asc" ? comparison : -comparison
+  })
 
   if (!isAdmin) {
     return null
@@ -32,6 +62,31 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
 
   return (
     <div className="space-y-0.5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Trier par..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Date</SelectItem>
+              <SelectItem value="created_at">Date de création</SelectItem>
+              <SelectItem value="name">Nom</SelectItem>
+              <SelectItem value="candidates">Nombre de candidats</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+          >
+            {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+
       {sortedReplacements.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -72,6 +127,9 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
                         ({replacement.start_time?.slice(0, 5)}-{replacement.end_time?.slice(0, 5)})
                       </span>
                     )}
+                    <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                      Créé {formatCreatedAt(replacement.created_at)}
+                    </div>
                   </div>
 
                   <div className="flex gap-0.5 shrink-0">
