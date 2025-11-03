@@ -173,7 +173,8 @@ export async function getAllShiftsWithAssignments() {
           s.id as shift_id,
           string_agg(
             u.first_name || '|' || u.last_name || '|' || u.role || '|false|false|||' ||
-            COALESCE(sa.is_acting_lieutenant::text, 'null'),
+            COALESCE(sa.is_acting_lieutenant::text, 'null') || '|' ||
+            COALESCE(sa.is_acting_captain::text, 'null'),
             ';' 
             ORDER BY 
               CASE u.role 
@@ -211,7 +212,8 @@ export async function getAllShiftsWithAssignments() {
             COALESCE(sa.is_partial::text, 'false') || '|' ||
             COALESCE(sa.start_time::text, '') || '|' ||
             COALESCE(sa.end_time::text, '') || '|' ||
-            COALESCE(sa.is_acting_lieutenant::text, 'null'),
+            COALESCE(sa.is_acting_lieutenant::text, 'null') || '|' ||
+            COALESCE(sa.is_acting_captain::text, 'null'),
             ';'
             ORDER BY
               CASE u.role 
@@ -318,80 +320,6 @@ export async function getAllShiftsWithAssignments() {
       console.error("[v0] getAllShiftsWithAssignments: Rate limit exceeded, please wait a moment")
     } else {
       console.error("[v0] getAllShiftsWithAssignments: Query failed", errorMessage)
-    }
-    return []
-  }
-}
-
-export async function getReplacementsForDateRange(startDate: string, endDate: string) {
-  try {
-    const replacements = await sql`
-      SELECT 
-        r.id,
-        r.user_id,
-        r.shift_date,
-        r.shift_type,
-        r.team_id,
-        r.status,
-        r.is_partial,
-        r.start_time,
-        r.end_time,
-        r.application_deadline,
-        u.first_name as replaced_first_name,
-        u.last_name as replaced_last_name,
-        u.role as replaced_role,
-        repl_user.id as replacement_id,
-        repl_user.first_name as replacement_first_name,
-        repl_user.last_name as replacement_last_name
-      FROM replacements r
-      JOIN users u ON r.user_id = u.id
-      LEFT JOIN replacement_applications approved_app ON 
-        approved_app.replacement_id = r.id 
-        AND approved_app.status = 'approved'
-      LEFT JOIN users repl_user ON approved_app.applicant_id = repl_user.id
-      WHERE r.shift_date >= ${startDate}
-        AND r.shift_date <= ${endDate}
-        AND r.status != 'cancelled'
-    `
-
-    return replacements
-  } catch (error: any) {
-    const errorMessage = error?.message || String(error)
-    if (errorMessage.includes("Too Many")) {
-      console.error("[v0] getReplacementsForDateRange: Rate limit exceeded, please wait a moment")
-    } else {
-      console.error("[v0] getReplacementsForDateRange: Query failed", errorMessage)
-    }
-    return []
-  }
-}
-
-export async function getLeavesForDateRange(startDate: string, endDate: string) {
-  try {
-    const leaves = await sql`
-      SELECT 
-        l.id,
-        l.user_id,
-        l.start_date,
-        l.end_date,
-        l.leave_type,
-        l.start_time,
-        l.end_time,
-        u.first_name,
-        u.last_name
-      FROM leaves l
-      JOIN users u ON l.user_id = u.id
-      WHERE l.status = 'approved'
-        AND l.start_date <= ${endDate}
-        AND l.end_date >= ${startDate}
-    `
-    return leaves
-  } catch (error: any) {
-    const errorMessage = error?.message || String(error)
-    if (errorMessage.includes("Too Many")) {
-      console.error("[v0] getLeavesForDateRange: Rate limit exceeded, please wait a moment")
-    } else {
-      console.error("[v0] getLeavesForDateRange: Query failed", errorMessage)
     }
     return []
   }
@@ -575,6 +503,98 @@ export async function getShiftWithAssignments(shiftId: number) {
       console.error("[v0] getShiftWithAssignments: Query failed", errorMessage)
     }
     return null
+  }
+}
+
+export async function getReplacementsForDateRange(startDate: string, endDate: string) {
+  try {
+    const replacements = await sql`
+      WITH cycle_info AS (
+        SELECT start_date, cycle_length_days
+        FROM cycle_config
+        WHERE is_active = true
+        LIMIT 1
+      )
+      SELECT 
+        r.id,
+        r.user_id,
+        r.shift_date,
+        r.shift_type,
+        r.team_id,
+        r.status,
+        r.is_partial,
+        r.start_time,
+        r.end_time,
+        r.application_deadline,
+        u.first_name as replaced_first_name,
+        u.last_name as replaced_last_name,
+        u.role as replaced_role,
+        repl_user.id as replacement_id,
+        repl_user.first_name as replacement_first_name,
+        repl_user.last_name as replacement_last_name,
+        sa.is_acting_captain as replacement_is_acting_captain,
+        sa.is_acting_lieutenant as replacement_is_acting_lieutenant
+      FROM replacements r
+      JOIN users u ON r.user_id = u.id
+      CROSS JOIN cycle_info ci
+      LEFT JOIN replacement_applications approved_app ON 
+        approved_app.replacement_id = r.id 
+        AND approved_app.status = 'approved'
+      LEFT JOIN users repl_user ON approved_app.applicant_id = repl_user.id
+      LEFT JOIN shifts s ON 
+        s.team_id = r.team_id 
+        AND s.shift_type = r.shift_type
+        AND s.cycle_day = (
+          ((r.shift_date::date - ci.start_date::date) % ci.cycle_length_days) + 1
+        )
+      LEFT JOIN shift_assignments sa ON 
+        sa.shift_id = s.id 
+        AND sa.user_id = repl_user.id
+      WHERE r.shift_date >= ${startDate}
+        AND r.shift_date <= ${endDate}
+        AND r.status != 'cancelled'
+    `
+
+    return replacements
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error)
+    if (errorMessage.includes("Too Many")) {
+      console.error("[v0] getReplacementsForDateRange: Rate limit exceeded, please wait a moment")
+    } else {
+      console.error("[v0] getReplacementsForDateRange: Query failed", errorMessage)
+    }
+    return []
+  }
+}
+
+export async function getLeavesForDateRange(startDate: string, endDate: string) {
+  try {
+    const leaves = await sql`
+      SELECT 
+        l.id,
+        l.user_id,
+        l.start_date,
+        l.end_date,
+        l.leave_type,
+        l.start_time,
+        l.end_time,
+        u.first_name,
+        u.last_name
+      FROM leaves l
+      JOIN users u ON l.user_id = u.id
+      WHERE l.status = 'approved'
+        AND l.start_date <= ${endDate}
+        AND l.end_date >= ${startDate}
+    `
+    return leaves
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error)
+    if (errorMessage.includes("Too Many")) {
+      console.error("[v0] getLeavesForDateRange: Rate limit exceeded, please wait a moment")
+    } else {
+      console.error("[v0] getLeavesForDateRange: Query failed", errorMessage)
+    }
+    return []
   }
 }
 

@@ -26,6 +26,8 @@ import {
   removeFirefighterFromShift,
   setActingLieutenant,
   removeActingLieutenant,
+  setActingCaptain,
+  removeActingCaptain,
 } from "@/app/actions/shift-assignments"
 import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
@@ -75,6 +77,7 @@ interface ShiftAssignmentDrawerProps {
     end_time?: string
     is_acting_lieutenant?: boolean
     showsLtBadge?: boolean // Add showsLtBadge field
+    is_acting_captain?: boolean // Add is_acting_captain field
   }>
   leaves: Array<any>
   dateStr: string
@@ -127,6 +130,7 @@ export function ShiftAssignmentDrawer({
   const [extraDeadlineSeconds, setExtraDeadlineSeconds] = useState<number | null>(null)
   const [showDeadlineWarning, setShowDeadlineWarning] = useState(false)
   const [showExtraDeadlineWarning, setShowExtraDeadlineWarning] = useState(false)
+  const [assignedReplacements, setAssignedReplacements] = useState<any[]>([])
 
   useEffect(() => {
     if (open) {
@@ -167,6 +171,44 @@ export function ShiftAssignmentDrawer({
         const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
 
         setReplacements(data)
+
+        const assigned = data.filter(
+          (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
+        )
+
+        const assignedWithAssignments = await Promise.all(
+          assigned.map(async (r: any) => {
+            const approvedApp = r.applications.find((app: any) => app.status === "approved")
+
+            // Fetch shift_assignments for this replacement firefighter
+            const assignmentResult = await fetch("/api/get-shift-assignment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                shiftId: shift.id,
+                userId: approvedApp.applicant_id,
+              }),
+            })
+
+            let isActingLieutenant = false
+            let isActingCaptain = false
+
+            if (assignmentResult.ok) {
+              const assignmentData = await assignmentResult.json()
+              isActingLieutenant = assignmentData.is_acting_lieutenant || false
+              isActingCaptain = assignmentData.is_acting_captain || false
+            }
+
+            return {
+              ...r,
+              is_acting_lieutenant: isActingLieutenant,
+              is_acting_captain: isActingCaptain,
+            }
+          }),
+        )
+
+        setAssignedReplacements(assignedWithAssignments)
+
         setLoadingReplacements(false)
       }
       fetchReplacements()
@@ -184,6 +226,43 @@ export function ShiftAssignmentDrawer({
     const shiftDate = formatDateForDB(shift.date)
     const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
     setReplacements(data)
+
+    const assigned = data.filter(
+      (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
+    )
+
+    const assignedWithAssignments = await Promise.all(
+      assigned.map(async (r: any) => {
+        const approvedApp = r.applications.find((app: any) => app.status === "approved")
+
+        const assignmentResult = await fetch("/api/get-shift-assignment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shiftId: shift.id,
+            userId: approvedApp.applicant_id,
+          }),
+        })
+
+        let isActingLieutenant = false
+        let isActingCaptain = false
+
+        if (assignmentResult.ok) {
+          const assignmentData = await assignmentResult.json()
+          isActingLieutenant = assignmentData.is_acting_lieutenant || false
+          isActingCaptain = assignmentData.is_acting_captain || false
+        }
+
+        return {
+          ...r,
+          is_acting_lieutenant: isActingLieutenant,
+          is_acting_captain: isActingCaptain,
+        }
+      }),
+    )
+
+    setAssignedReplacements(assignedWithAssignments)
+
     setLoadingReplacements(false)
   }
 
@@ -495,13 +574,75 @@ export function ShiftAssignmentDrawer({
     refreshAndClose()
   }
 
+  const handleSetCaptain = async (userId: number, firefighterName: string) => {
+    if (!shift) return
+
+    setIsLoading(true)
+
+    const result = await setActingCaptain(shift.id, userId)
+
+    if (result.error) {
+      toast.error(result.error)
+      setIsLoading(false)
+      return
+    }
+
+    toast.success(`${firefighterName} a été désigné comme capitaine`)
+
+    setIsLoading(false)
+    refreshAndClose()
+  }
+
+  const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
+    if (!shift) return
+
+    setIsLoading(true)
+
+    const result = await removeActingCaptain(shift.id, userId)
+
+    if (result.error) {
+      toast.error(result.error)
+      setIsLoading(false)
+      return
+    }
+
+    toast.success(`${firefighterName} n'est plus désigné comme capitaine`)
+
+    setIsLoading(false)
+    refreshAndClose()
+  }
+
   const availableFirefighters = [...allFirefighters].sort((a, b) => {
     const lastNameCompare = a.last_name.localeCompare(b.last_name, "fr")
     if (lastNameCompare !== 0) return lastNameCompare
     return a.first_name.localeCompare(b.first_name, "fr")
   })
 
-  const displayedAssignments = currentAssignments.filter((a) => !removedExtraFirefighters.includes(a.user_id))
+  const displayedAssignments = [
+    ...currentAssignments.filter((a) => !removedExtraFirefighters.includes(a.user_id)),
+    ...assignedReplacements.map((r: any) => {
+      const approvedApp = r.applications.find((app: any) => app.status === "approved")
+      return {
+        id: `replacement-${r.id}`,
+        user_id: approvedApp.applicant_id,
+        first_name: approvedApp.first_name,
+        last_name: approvedApp.last_name,
+        role: approvedApp.role,
+        email: approvedApp.email,
+        is_extra: false,
+        is_replacement: true,
+        replacement_id: r.id,
+        replaced_user_id: r.user_id,
+        replaced_first_name: r.first_name,
+        replaced_last_name: r.last_name,
+        is_partial: r.is_partial,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        is_acting_lieutenant: r.is_acting_lieutenant || false,
+        is_acting_captain: r.is_acting_captain || false,
+      }
+    }),
+  ]
 
   const getExchangeForFirefighter = (firefighterId: number, firstName: string, lastName: string, role: string) => {
     if (!shift?.exchanges) return null
@@ -560,6 +701,8 @@ export function ShiftAssignmentDrawer({
                 const replacement = getReplacementForFirefighter(assignment.user_id)
                 const hasReplacement = !!replacement
 
+                const isReplacementFirefighter = assignment.is_replacement === true
+
                 const firefighterLeave = getFirefighterLeaveForDate(assignment.user_id, shift.date, leaves)
                 const hasPartialLeave = firefighterLeave && firefighterLeave.start_time && firefighterLeave.end_time
 
@@ -613,7 +756,10 @@ export function ShiftAssignmentDrawer({
                         ? "border-amber-300 bg-amber-50/30"
                         : hasExchange
                           ? "border-purple-300 bg-purple-50/30"
-                          : ""
+                          : // Add badge for replacement firefighters
+                            isReplacementFirefighter
+                            ? "border-green-300 bg-green-50/30"
+                            : ""
                     }
                   >
                     <CardContent className="p-4">
@@ -639,9 +785,20 @@ export function ShiftAssignmentDrawer({
                                   Partiel: {assignment.start_time.slice(0, 5)} - {assignment.end_time.slice(0, 5)}
                                 </Badge>
                               )}
+                            {isReplacementFirefighter && (
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                                <span className="text-green-700 mr-1">✓</span>
+                                Remplaçant
+                              </Badge>
+                            )}
                           </div>
                           {!isExtraRequest && assignment.email && (
                             <p className="text-xs text-muted-foreground">{assignment.email}</p>
+                          )}
+                          {isReplacementFirefighter && assignment.replaced_first_name && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Remplace {assignment.replaced_first_name} {assignment.replaced_last_name}
+                            </p>
                           )}
                           {hasExchange && (
                             <div className="mt-2">
@@ -731,25 +888,96 @@ export function ShiftAssignmentDrawer({
                               )}
                             </div>
                           )}
-                          {!hasReplacement && !assignment.is_extra && !isExtraRequest && isAdmin && (
+                          {!hasReplacement &&
+                            !assignment.is_extra &&
+                            !isExtraRequest &&
+                            !isReplacementFirefighter &&
+                            isAdmin && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedFirefighter({
+                                      id: assignment.user_id,
+                                      first_name: assignment.first_name,
+                                      last_name: assignment.last_name,
+                                    })
+                                  }}
+                                  disabled={isLoading || loadingReplacements}
+                                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                >
+                                  <UserX className="h-4 w-4 mr-1" />
+                                  Remplacement
+                                </Button>
+                                {assignment.is_acting_captain ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRemoveCaptain(assignment.user_id, displayName)}
+                                    disabled={isLoading || loadingReplacements}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    Retirer Cpt
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleSetCaptain(assignment.user_id, displayName)}
+                                    disabled={isLoading || loadingReplacements}
+                                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                  >
+                                    Désigner Cpt
+                                  </Button>
+                                )}
+                                {assignment.is_acting_lieutenant ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRemoveLieutenant(assignment.user_id, displayName)}
+                                    disabled={isLoading || loadingReplacements}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    Retirer Lt
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleSetLieutenant(assignment.user_id, displayName)}
+                                    disabled={isLoading || loadingReplacements}
+                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  >
+                                    Désigner Lt
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          {isReplacementFirefighter && isAdmin && (
                             <div className="mt-2 flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedFirefighter({
-                                    id: assignment.user_id,
-                                    first_name: assignment.first_name,
-                                    last_name: assignment.last_name,
-                                  })
-                                }}
-                                disabled={isLoading || loadingReplacements}
-                                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                              >
-                                <UserX className="h-4 w-4 mr-1" />
-                                Remplacement
-                              </Button>
-                              {assignment.showsLtBadge ? (
+                              {assignment.is_acting_captain ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRemoveCaptain(assignment.user_id, displayName)}
+                                  disabled={isLoading || loadingReplacements}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  Retirer Cpt
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSetCaptain(assignment.user_id, displayName)}
+                                  disabled={isLoading || loadingReplacements}
+                                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                >
+                                  Désigner Cpt
+                                </Button>
+                              )}
+                              {assignment.is_acting_lieutenant ? (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -768,6 +996,19 @@ export function ShiftAssignmentDrawer({
                                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                 >
                                   Désigner Lt
+                                </Button>
+                              )}
+                              {isAdmin && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleRemoveReplacementAssignment(assignment.replacement_id, displayName)
+                                  }
+                                  disabled={isLoading || loadingReplacements}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               )}
                             </div>

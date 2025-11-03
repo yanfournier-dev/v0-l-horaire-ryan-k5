@@ -95,9 +95,17 @@ export function CalendarCell({
 
       const calendarFirefighters = shift.assigned_firefighters
         ? shift.assigned_firefighters.split(";").map((entry: string) => {
-            const [firstName, lastName, role, isExtra, isPartial, startTime, endTime, isActingLieutenant] = entry
-              .trim()
-              .split("|")
+            const [
+              firstName,
+              lastName,
+              role,
+              isExtra,
+              isPartial,
+              startTime,
+              endTime,
+              isActingLieutenant,
+              isActingCaptain,
+            ] = entry.trim().split("|")
 
             return {
               firstName,
@@ -108,6 +116,7 @@ export function CalendarCell({
               startTime: startTime || null,
               endTime: endTime || null,
               isActingLieutenant: isActingLieutenant === "true" ? true : isActingLieutenant === "false" ? false : null,
+              isActingCaptain: isActingCaptain === "true" ? true : isActingCaptain === "false" ? false : null,
             }
           })
         : []
@@ -132,18 +141,27 @@ export function CalendarCell({
       })
 
       const hasActingLieutenant = calendarFirefighters.some((f) => f.isActingLieutenant === true)
+      const hasActingCaptain = calendarFirefighters.some((f) => f.isActingCaptain === true)
       const firstPermanentLieutenantIndex = calendarFirefighters.findIndex(
         (f) => f.role === "lieutenant" && f.isActingLieutenant !== false,
       )
+      const firstPermanentCaptainIndex = calendarFirefighters.findIndex(
+        (f) => f.role === "captain" && f.isActingCaptain !== false,
+      )
 
-      // Add showsLtBadge field to assignments based on calendar logic
       const assignmentsWithLtBadge = (shiftDetails?.assignments || []).map((assignment: any) => {
         const calendarIndex = calendarFirefighters.findIndex(
           (f) => f.firstName === assignment.first_name && f.lastName === assignment.last_name,
         )
 
         if (calendarIndex === -1) {
-          return { ...assignment, showsLtBadge: false }
+          return {
+            ...assignment,
+            showsLtBadge: false,
+            showsCptBadge: false,
+            is_acting_lieutenant: false,
+            is_acting_captain: false,
+          }
         }
 
         const firefighter = calendarFirefighters[calendarIndex]
@@ -154,7 +172,20 @@ export function CalendarCell({
             firefighter.isActingLieutenant !== false &&
             calendarIndex === firstPermanentLieutenantIndex)
 
-        return { ...assignment, showsLtBadge }
+        const showsCptBadge =
+          firefighter.isActingCaptain === true ||
+          (!hasActingCaptain &&
+            firefighter.role === "captain" &&
+            firefighter.isActingCaptain !== false &&
+            calendarIndex === firstPermanentCaptainIndex)
+
+        return {
+          ...assignment,
+          showsLtBadge,
+          showsCptBadge,
+          is_acting_lieutenant: firefighter.isActingLieutenant === true,
+          is_acting_captain: firefighter.isActingCaptain === true,
+        }
       })
 
       setSelectedShift({
@@ -229,8 +260,17 @@ export function CalendarCell({
 
               const firefighters = shift.assigned_firefighters
                 ? shift.assigned_firefighters.split(";").map((entry: string) => {
-                    const [firstName, lastName, role, isExtra, isPartial, startTime, endTime, isActingLieutenant] =
-                      entry.trim().split("|")
+                    const [
+                      firstName,
+                      lastName,
+                      role,
+                      isExtra,
+                      isPartial,
+                      startTime,
+                      endTime,
+                      isActingLieutenant,
+                      isActingCaptain,
+                    ] = entry.trim().split("|")
 
                     return {
                       firstName,
@@ -242,6 +282,7 @@ export function CalendarCell({
                       endTime: endTime || null,
                       isActingLieutenant:
                         isActingLieutenant === "true" ? true : isActingLieutenant === "false" ? false : null,
+                      isActingCaptain: isActingCaptain === "true" ? true : isActingCaptain === "false" ? false : null,
                     }
                   })
                 : []
@@ -266,9 +307,13 @@ export function CalendarCell({
               })
 
               const hasActingLieutenant = firefighters.some((f) => f.isActingLieutenant === true)
+              const hasActingCaptain = firefighters.some((f) => f.isActingCaptain === true)
 
               const firstPermanentLieutenantIndex = firefighters.findIndex(
                 (f) => f.role === "lieutenant" && f.isActingLieutenant !== false,
+              )
+              const firstPermanentCaptainIndex = firefighters.findIndex(
+                (f) => f.role === "captain" && f.isActingCaptain !== false,
               )
 
               return (
@@ -388,13 +433,69 @@ export function CalendarCell({
                         const hasExtraPartialTime =
                           isExtraFirefighter && firefighter.isPartial && firefighter.startTime && firefighter.endTime
 
+                        const replacementIsActingLieutenant = replacement?.replacement_is_acting_lieutenant === true
+                        const replacementIsActingCaptain = replacement?.replacement_is_acting_captain === true
+
+                        if (isAssignedReplacement && (displayFirstName === "Vincent" || displayFirstName === "V")) {
+                          console.log("[v0] Replacement debug:", {
+                            displayFirstName,
+                            displayLastName,
+                            replacement,
+                            replacementIsActingCaptain,
+                            replacementIsActingLieutenant,
+                            hasActingCaptain,
+                            firefighterIsActingCaptain: firefighter.isActingCaptain,
+                            replacement_is_acting_captain_raw: replacement?.replacement_is_acting_captain,
+                            replacement_is_acting_lieutenant_raw: replacement?.replacement_is_acting_lieutenant,
+                          })
+                        }
+
                         const showLtBadge =
                           firefighter.isActingLieutenant === true ||
                           (!hasActingLieutenant &&
                             firefighter.role === "lieutenant" &&
                             firefighter.isActingLieutenant !== false &&
-                            index === firstPermanentLieutenantIndex)
-                        const showCptBadge = firefighter.role === "captain"
+                            index === firstPermanentLieutenantIndex) ||
+                          (isAssignedReplacement &&
+                            replacement?.replaced_role === "lieutenant" &&
+                            !hasActingLieutenant) ||
+                          (isAssignedReplacement && replacementIsActingLieutenant)
+
+                        const showGreenLtBadge =
+                          firefighter.isActingLieutenant === true ||
+                          (isAssignedReplacement &&
+                            replacement?.replaced_role === "lieutenant" &&
+                            !hasActingLieutenant) ||
+                          (isAssignedReplacement && replacementIsActingLieutenant)
+
+                        const showCptBadge =
+                          firefighter.isActingCaptain === true ||
+                          (!hasActingCaptain &&
+                            firefighter.role === "captain" &&
+                            firefighter.isActingCaptain !== false &&
+                            index === firstPermanentCaptainIndex) ||
+                          (isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain) ||
+                          (isAssignedReplacement && replacementIsActingCaptain)
+
+                        if (isAssignedReplacement && (displayFirstName === "Vincent" || displayFirstName === "V")) {
+                          console.log("[v0] showCptBadge calculation:", {
+                            showCptBadge,
+                            condition1_firefighterIsActingCaptain: firefighter.isActingCaptain === true,
+                            condition2_defaultCaptain:
+                              !hasActingCaptain &&
+                              firefighter.role === "captain" &&
+                              firefighter.isActingCaptain !== false &&
+                              index === firstPermanentCaptainIndex,
+                            condition3_replacementOfCaptain:
+                              isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain,
+                            condition4_replacementIsActingCaptain: isAssignedReplacement && replacementIsActingCaptain,
+                          })
+                        }
+
+                        const showGreenCptBadge =
+                          firefighter.isActingCaptain === true ||
+                          (isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain) ||
+                          (isAssignedReplacement && replacementIsActingCaptain)
 
                         return (
                           <div
@@ -413,14 +514,26 @@ export function CalendarCell({
                                         : ""
                             } ${hasPartialLeave && !replacement && !isExchange ? "bg-blue-50 dark:bg-blue-950/20 px-1.5 rounded text-blue-700 dark:text-blue-300" : ""}`}
                           >
-                            {showLtBadge && (
-                              <span className="text-[9px] font-semibold px-1 py-0.5 rounded border border-muted-foreground/20 bg-muted/30 text-muted-foreground mr-1">
-                                Lt
+                            {showCptBadge && (
+                              <span
+                                className={`text-[9px] font-semibold px-1 py-0.5 rounded border ${
+                                  showGreenCptBadge
+                                    ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
+                                    : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
+                                } mr-1`}
+                              >
+                                Cpt
                               </span>
                             )}
-                            {showCptBadge && (
-                              <span className="text-[9px] font-semibold px-1 py-0.5 rounded border border-muted-foreground/20 bg-muted/30 text-muted-foreground mr-1">
-                                Cpt
+                            {showLtBadge && (
+                              <span
+                                className={`text-[9px] font-semibold px-1 py-0.5 rounded border ${
+                                  showGreenLtBadge
+                                    ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
+                                    : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
+                                } mr-1`}
+                              >
+                                Lt
                               </span>
                             )}
                             {isExchange && <span className="text-green-700 dark:text-green-500 mr-1">↔</span>}
