@@ -8,7 +8,7 @@ import Link from "next/link"
 import { ApproveApplicationButton } from "@/components/approve-application-button"
 import { RejectApplicationButton } from "@/components/reject-application-button"
 import { getRoleLabel } from "@/lib/role-labels"
-import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
+import { parseLocalDate, formatLocalDateTime, getPartTimeTeam } from "@/lib/date-utils"
 import { formatReplacementTime } from "@/lib/replacement-utils"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { getFirefighterWeeklyHours } from "@/app/actions/weekly-hours"
@@ -56,6 +56,8 @@ export default async function ReplacementDetailPage({
 
   const replacement = replacementResult[0]
 
+  const partTimeTeam = getPartTimeTeam(replacement.shift_date)
+
   console.log("[v0] Replacement data:", {
     id: replacement.id,
     is_partial: replacement.is_partial,
@@ -75,6 +77,7 @@ export default async function ReplacementDetailPage({
       reviewer.last_name as reviewer_last_name,
       team_info.name as team_name,
       team_info.type as team_type,
+      tm.team_rank,
       EXISTS (
         SELECT 1
         FROM replacements r2
@@ -86,10 +89,21 @@ export default async function ReplacementDetailPage({
           AND ra2.applicant_id = u.id
           AND ra2.status = 'approved'
           AND r2.status = 'assigned'
-      ) as is_already_assigned
+      ) as is_already_assigned,
+      CASE 
+        WHEN team_info.type = 'part_time' AND team_info.name LIKE '%1%' THEN ((${partTimeTeam} - 1 + 3) % 4) + 1
+        WHEN team_info.type = 'part_time' AND team_info.name LIKE '%2%' THEN ((${partTimeTeam} - 2 + 3) % 4) + 1
+        WHEN team_info.type = 'part_time' AND team_info.name LIKE '%3%' THEN ((${partTimeTeam} - 3 + 3) % 4) + 1
+        WHEN team_info.type = 'part_time' AND team_info.name LIKE '%4%' THEN ((${partTimeTeam} - 4 + 3) % 4) + 1
+        WHEN team_info.type = 'part_time' THEN 5
+        WHEN team_info.type = 'temporary' THEN 6
+        WHEN team_info.type = 'permanent' THEN 7
+        ELSE 11
+      END as sort_priority
     FROM replacement_applications ra
     JOIN users u ON ra.applicant_id = u.id
     LEFT JOIN users reviewer ON ra.reviewed_by = reviewer.id
+    LEFT JOIN team_members tm ON u.id = tm.user_id
     LEFT JOIN LATERAL (
       SELECT 
         CASE 
@@ -97,27 +111,16 @@ export default async function ReplacementDetailPage({
           ELSE t.name
         END as name,
         t.type
-      FROM team_members tm
-      JOIN teams t ON tm.team_id = t.id
-      WHERE tm.user_id = u.id
+      FROM team_members tm2
+      JOIN teams t ON tm2.team_id = t.id
+      WHERE tm2.user_id = u.id
       ORDER BY 
         CASE WHEN t.name = 'Pompiers réguliers' THEN 0 ELSE 1 END,
         t.id
       LIMIT 1
     ) team_info ON true
     WHERE ra.replacement_id = ${replacementId}
-    ORDER BY 
-      CASE 
-        WHEN team_info.type = 'part_time' AND team_info.name LIKE '%1%' THEN 1
-        WHEN team_info.type = 'part_time' AND team_info.name LIKE '%2%' THEN 2
-        WHEN team_info.type = 'part_time' AND team_info.name LIKE '%3%' THEN 3
-        WHEN team_info.type = 'part_time' AND team_info.name LIKE '%4%' THEN 4
-        WHEN team_info.type = 'part_time' THEN 5
-        WHEN team_info.type = 'temporary' THEN 6
-        WHEN team_info.type = 'permanent' THEN 7
-        ELSE 11
-      END,
-      ra.applied_at DESC
+    ORDER BY sort_priority, tm.team_rank ASC NULLS LAST, ra.applied_at DESC
   `
 
   const getShiftTypeLabel = (type: string) => {
@@ -216,13 +219,16 @@ export default async function ReplacementDetailPage({
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <CardTitle className="text-2xl">
+                <CardTitle className="text-2xl flex items-center gap-3">
                   {parseLocalDate(replacement.shift_date).toLocaleDateString("fr-CA", {
                     weekday: "long",
                     year: "numeric",
                     month: "long",
                     day: "numeric",
                   })}
+                  <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-sm font-semibold px-3 py-1">
+                    Équipe É{partTimeTeam}
+                  </Badge>
                 </CardTitle>
                 <CardDescription>
                   {replacement.first_name} {replacement.last_name} • {replacement.team_name} •{" "}

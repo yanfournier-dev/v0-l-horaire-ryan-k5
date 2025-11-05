@@ -2,14 +2,12 @@ import { getSession } from "@/app/actions/auth"
 import { getTeamMembers, getAvailableFirefighters } from "@/app/actions/teams"
 import { redirect } from "next/navigation"
 import { sql } from "@/lib/db"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { AddMemberDialog } from "@/components/add-member-dialog"
-import { RemoveMemberButton } from "@/components/remove-member-button"
 import { getTeamColor } from "@/lib/colors"
-import { parseLocalDate } from "@/lib/date-utils"
+import { TeamMembersSortableList } from "@/components/team-members-sortable-list"
 
 export const dynamic = "force-dynamic"
 
@@ -31,30 +29,6 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
   const team = teamResult[0]
   const members = await getTeamMembers(teamId)
   const availableFirefighters = user.is_admin ? await getAvailableFirefighters(teamId) : []
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "captain":
-        return "Capitaine"
-      case "lieutenant":
-        return "Lieutenant"
-      case "firefighter":
-        return "Pompier"
-      default:
-        return role
-    }
-  }
-
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "captain":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-      case "lieutenant":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-    }
-  }
 
   return (
     <div className="p-6">
@@ -80,39 +54,7 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {members.map((member: any) => (
-          <Card key={member.id}>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">
-                    {member.first_name} {member.last_name}
-                  </CardTitle>
-                  <CardDescription>{member.email}</CardDescription>
-                </div>
-                <Badge className={getRoleBadgeColor(member.role)}>{getRoleLabel(member.role)}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {member.phone && <p className="text-sm text-muted-foreground mb-2">📞 {member.phone}</p>}
-              <p className="text-xs text-muted-foreground mb-3">
-                Membre depuis {parseLocalDate(member.joined_at).toLocaleDateString("fr-CA")}
-              </p>
-
-              {user.is_admin && <RemoveMemberButton teamId={teamId} userId={member.id} />}
-            </CardContent>
-          </Card>
-        ))}
-
-        {members.length === 0 && (
-          <Card className="col-span-full">
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">Aucun membre dans cette équipe</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      <TeamMembersSortableList members={members} teamId={teamId} isAdmin={user.is_admin} />
     </div>
   )
 }

@@ -45,11 +45,13 @@ export async function getTeamMembers(teamId: number) {
       u.email,
       u.role,
       u.phone,
-      tm.joined_at
+      tm.joined_at,
+      tm.team_rank
     FROM team_members tm
     JOIN users u ON tm.user_id = u.id
     WHERE tm.team_id = ${teamId}
     ORDER BY 
+      tm.team_rank ASC NULLS LAST,
       CASE u.role 
         WHEN 'captain' THEN 1 
         WHEN 'lieutenant' THEN 2 
@@ -286,5 +288,30 @@ export async function createTeam(data: {
       success: false,
       message: "Erreur lors de la création de l'équipe",
     }
+  }
+}
+
+// New actions to reorder team members
+export async function reorderTeamMembers(teamId: number, userIds: number[]) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    // Update ranks based on the new order
+    for (let i = 0; i < userIds.length; i++) {
+      await sql`
+        UPDATE team_members 
+        SET team_rank = ${i + 1}
+        WHERE team_id = ${teamId} AND user_id = ${userIds[i]}
+      `
+    }
+
+    revalidatePath(`/dashboard/teams/${teamId}`)
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] Error reordering team members:", error)
+    return { error: "Erreur lors du réordonnancement" }
   }
 }

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { getRoleLabel } from "@/lib/role-labels"
-import { parseLocalDate, formatLocalDateTime } from "@/lib/date-utils"
+import { parseLocalDate, formatLocalDateTime, getPartTimeTeam } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 
 export const dynamic = "force-dynamic"
@@ -57,6 +57,9 @@ export default async function ShiftCandidatesPage({
   }
 
   const firstReplacement = replacements[0]
+
+  const partTimeTeam = getPartTimeTeam(firstReplacement.shift_date)
+  console.log("[v0] Part-time team for date", firstReplacement.shift_date, "is:", partTimeTeam)
 
   // Get all applications for all replacements in this shift
   const replacementIds = replacements.map((r: any) => r.id)
@@ -184,19 +187,22 @@ export default async function ShiftCandidatesPage({
 
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 mb-2">
               <Badge className={getShiftTypeColor(firstReplacement.shift_type)}>
                 {getShiftTypeLabel(firstReplacement.shift_type).split(" ")[0]}
               </Badge>
-              <CardTitle className="text-2xl">
-                {parseLocalDate(firstReplacement.shift_date).toLocaleDateString("fr-CA", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </CardTitle>
+              <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-sm font-semibold px-3 py-1">
+                Équipe É{partTimeTeam}
+              </Badge>
             </div>
+            <CardTitle className="text-2xl">
+              {parseLocalDate(firstReplacement.shift_date).toLocaleDateString("fr-CA", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </CardTitle>
             <CardDescription>
               {firstReplacement.team_name} • {replacements.length} remplacement
               {replacements.length > 1 ? "s" : ""}
