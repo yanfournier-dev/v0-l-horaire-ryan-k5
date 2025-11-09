@@ -55,7 +55,7 @@ interface ShiftAssignmentDrawerProps {
     team_name: string
     team_color?: string
     team_id: number
-    date: Date
+    date: Date | string // Date can be a string (ISO) or a Date object
     exchanges?: Array<any> // Add exchanges to shift type
   } | null
   teamFirefighters: Array<{
@@ -163,25 +163,33 @@ export function ShiftAssignmentDrawer({
   }
 
   useEffect(() => {
-    if (open) {
+    if (open && shift) {
       const fetchReplacements = async () => {
         setLoadingReplacements(true)
+        const shiftDate = typeof shift.date === "string" ? new Date(shift.date) : shift.date
         console.log("[v0] Drawer - shift.date object:", shift.date)
-        console.log("[v0] Drawer - shift.date.toString():", shift.date.toString())
+        console.log("[v0] Drawer - shift.date.toString():", shiftDate.toString())
         console.log("[v0] Drawer - shift.date local components:", {
-          year: shift.date.getFullYear(),
-          month: shift.date.getMonth(),
-          day: shift.date.getDate(),
+          year: shiftDate.getFullYear(),
+          month: shiftDate.getMonth(),
+          day: shiftDate.getDate(),
         })
         console.log("[v0] Drawer - shift.date UTC components:", {
-          year: shift.date.getUTCFullYear(),
-          month: shift.date.getUTCMonth(),
-          day: shift.date.getUTCDate(),
+          year: shiftDate.getUTCFullYear(),
+          month: shiftDate.getUTCMonth(),
+          day: shiftDate.getUTCDate(),
         })
-        const shiftDate = formatDateForDB(shift.date)
-        console.log("[v0] Drawer - formatted shiftDate for query:", shiftDate)
+        const shiftDateFormatted = formatDateForDB(shiftDate)
+        console.log("[v0] Drawer - formatted shiftDate for query:", shiftDateFormatted)
 
-        const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
+        const data = await getReplacementsForShift(shiftDateFormatted, shift.shift_type, shift.team_id)
+
+        console.log("[v0] Drawer - getReplacementsForShift result:", data.length, "replacements")
+        if (data.length > 0) {
+          console.log("[v0] Drawer - First replacement:", data[0])
+        }
+
+        setReplacements(data)
 
         const assigned = data.filter(
           (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
@@ -234,8 +242,12 @@ export function ShiftAssignmentDrawer({
 
   const refreshReplacements = async () => {
     setLoadingReplacements(true)
-    const shiftDate = formatDateForDB(shift.date)
-    const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
+    const shiftDate = typeof shift.date === "string" ? new Date(shift.date) : shift.date
+    const shiftDateFormatted = formatDateForDB(shiftDate)
+    const data = await getReplacementsForShift(shiftDateFormatted, shift.shift_type, shift.team_id)
+
+    console.log("[v0] Drawer - refreshReplacements result:", data.length, "replacements")
+
     setReplacements(data)
 
     const assigned = data.filter(
@@ -286,8 +298,9 @@ export function ShiftAssignmentDrawer({
     }
 
     if (!deadlineSeconds || deadlineSeconds === 0) {
-      const shiftDate = formatDateForDB(shift.date)
-      const autoDeadline = calculateAutoDeadline(shiftDate)
+      const shiftDate = typeof shift.date === "string" ? new Date(shift.date) : shift.date
+      const shiftDateFormatted = formatDateForDB(shiftDate)
+      const autoDeadline = calculateAutoDeadline(shiftDateFormatted)
       const now = new Date()
 
       if (autoDeadline < now) {
@@ -304,10 +317,11 @@ export function ShiftAssignmentDrawer({
 
     console.log("[v0] handleCreateReplacement - deadlineSeconds:", deadlineSeconds)
 
-    const shiftDate = formatDateForDB(shift.date)
+    const shiftDate = typeof shift.date === "string" ? new Date(shift.date) : shift.date
+    const shiftDateFormatted = formatDateForDB(shiftDate)
     const result = await createReplacementFromShift(
       selectedFirefighter.id,
-      shiftDate,
+      shiftDateFormatted,
       shift.shift_type,
       shift.team_id,
       isPartial,
@@ -324,7 +338,7 @@ export function ShiftAssignmentDrawer({
 
     toast.success("Demande de remplacement créée avec succès")
 
-    const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
+    const data = await getReplacementsForShift(shiftDateFormatted, shift.shift_type, shift.team_id)
     setReplacements(data)
 
     setIsLoading(false)
@@ -454,8 +468,9 @@ export function ShiftAssignmentDrawer({
     }
 
     if (!extraDeadlineSeconds || extraDeadlineSeconds === 0) {
-      const shiftDate = formatDateForDB(shift.date)
-      const autoDeadline = calculateAutoDeadline(shiftDate)
+      const shiftDate = typeof shift.date === "string" ? new Date(shift.date) : shift.date
+      const shiftDateFormatted = formatDateForDB(shiftDate)
+      const autoDeadline = calculateAutoDeadline(shiftDateFormatted)
       const now = new Date()
 
       if (autoDeadline < now) {
@@ -472,10 +487,11 @@ export function ShiftAssignmentDrawer({
 
     console.log("[v0] handleCreateExtraRequest - extraDeadlineSeconds:", extraDeadlineSeconds)
 
-    const shiftDate = formatDateForDB(shift.date)
+    const shiftDate = typeof shift.date === "string" ? new Date(shift.date) : shift.date
+    const shiftDateFormatted = formatDateForDB(shiftDate)
 
     const result = await createExtraFirefighterReplacement(
-      shiftDate,
+      shiftDateFormatted,
       shift.shift_type,
       shift.team_id,
       isExtraPartial,
@@ -539,8 +555,9 @@ export function ShiftAssignmentDrawer({
     toast.success(`${replacementName} a été retiré du remplacement`)
 
     // Refresh replacements list
-    const shiftDate = formatDateForDB(shift.date)
-    const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
+    const shiftDate = typeof shift.date === "string" ? new Date(shift.date) : shift.date
+    const shiftDateFormatted = formatDateForDB(shiftDate)
+    const data = await getReplacementsForShift(shiftDateFormatted, shift.shift_type, shift.team_id)
     setReplacements(data)
 
     setIsLoading(false)
@@ -671,6 +688,11 @@ export function ShiftAssignmentDrawer({
     })
   }
 
+  const isDeadlineExpired = (deadline: string | null) => {
+    if (!deadline) return false
+    return new Date(deadline) < new Date()
+  }
+
   return (
     <>
       {shift && (
@@ -685,7 +707,8 @@ export function ShiftAssignmentDrawer({
                     <Badge className={getShiftTypeColor(shift.shift_type)}>{getShiftTypeLabel(shift.shift_type)}</Badge>
                   </div>
                   <div className="text-sm">
-                    Jour {shift.cycle_day} • {shift.date.toLocaleDateString("fr-CA")}
+                    Jour {shift.cycle_day} •{" "}
+                    {(typeof shift.date === "string" ? new Date(shift.date) : shift.date).toLocaleDateString("fr-CA")}
                   </div>
                   <div className="text-sm">
                     {shift.start_time.slice(0, 5)} - {shift.end_time.slice(0, 5)}
@@ -706,6 +729,83 @@ export function ShiftAssignmentDrawer({
                 Ajouter un pompier supplémentaire
               </Button>
             </div>
+
+            {replacements.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold mb-3">Remplacements pour ce quart:</h3>
+                <div className="space-y-3">
+                  {replacements.map((replacement) => {
+                    const isExpired = isDeadlineExpired(replacement.application_deadline)
+                    const isAssigned = replacement.status === "assigned"
+                    const approvedApp = replacement.applications?.find((app: any) => app.status === "approved")
+
+                    return (
+                      <Card
+                        key={replacement.id}
+                        className={
+                          isAssigned
+                            ? "border-gray-300 bg-gray-50/30"
+                            : isExpired
+                              ? "border-red-300 bg-red-50/30"
+                              : "border-orange-300 bg-orange-50/30"
+                        }
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  Remplacer {replacement.first_name} {replacement.last_name}
+                                </p>
+                                {isAssigned && approvedApp ? (
+                                  <Badge className="bg-gray-100 text-gray-800">
+                                    Déjà assigné à {approvedApp.first_name} {approvedApp.last_name}
+                                  </Badge>
+                                ) : isExpired ? (
+                                  <Badge className="bg-red-100 text-red-800">Délai échu</Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-800">Disponible</Badge>
+                                )}
+                              </div>
+                              {replacement.is_partial && replacement.start_time && replacement.end_time && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Partiel: {replacement.start_time.slice(0, 5)} - {replacement.end_time.slice(0, 5)}
+                                </p>
+                              )}
+                              {!isAdmin && !isAssigned && !isExpired && (
+                                <div className="mt-2">
+                                  <ApplyForReplacementButton
+                                    replacementId={replacement.id}
+                                    isAdmin={false}
+                                    firefighters={[]}
+                                    onSuccess={refreshReplacements}
+                                  />
+                                </div>
+                              )}
+                              {isAdmin && replacement.applications && replacement.applications.length > 0 && (
+                                <div className="mt-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      router.push(`/dashboard/replacements/${replacement.id}`)
+                                    }}
+                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  >
+                                    <Users className="h-4 w-4 mr-1" />
+                                    Voir les candidats ({replacement.applications.length})
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 space-y-3">
               {displayedAssignments.map((assignment, index) => {
@@ -851,7 +951,7 @@ export function ShiftAssignmentDrawer({
                             </div>
                           )}
                           {isReplacementAssigned && assignedFirefighterName && (
-                            <div className="mt-2 flex items-center gap-2">
+                            <div className="mt-2">
                               <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
                                 <span className="text-green-700 mr-1">✓</span>
                                 Remplacé par {assignedFirefighterName}
@@ -864,7 +964,7 @@ export function ShiftAssignmentDrawer({
                                     handleRemoveReplacementAssignment(replacement.id, assignedFirefighterName)
                                   }
                                   disabled={isLoading || loadingReplacements}
-                                  className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
