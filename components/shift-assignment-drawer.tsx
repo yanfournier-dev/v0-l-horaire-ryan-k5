@@ -166,11 +166,22 @@ export function ShiftAssignmentDrawer({
     if (open) {
       const fetchReplacements = async () => {
         setLoadingReplacements(true)
+        console.log("[v0] Drawer - shift.date object:", shift.date)
+        console.log("[v0] Drawer - shift.date.toString():", shift.date.toString())
+        console.log("[v0] Drawer - shift.date local components:", {
+          year: shift.date.getFullYear(),
+          month: shift.date.getMonth(),
+          day: shift.date.getDate(),
+        })
+        console.log("[v0] Drawer - shift.date UTC components:", {
+          year: shift.date.getUTCFullYear(),
+          month: shift.date.getUTCMonth(),
+          day: shift.date.getUTCDate(),
+        })
         const shiftDate = formatDateForDB(shift.date)
+        console.log("[v0] Drawer - formatted shiftDate for query:", shiftDate)
 
         const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
-
-        setReplacements(data)
 
         const assigned = data.filter(
           (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
