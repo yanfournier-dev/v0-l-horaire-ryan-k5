@@ -167,18 +167,23 @@ export function ShiftAssignmentDrawer({
       const fetchReplacements = async () => {
         setLoadingReplacements(true)
         const shiftDate = typeof shift.date === "string" ? new Date(shift.date) : shift.date
-        console.log("[v0] Drawer - shift.date object:", shift.date)
-        console.log("[v0] Drawer - shift.date.toString():", shiftDate.toString())
-        console.log("[v0] Drawer - shift.date local components:", {
+
+        console.log("[v0] Drawer - shift.date raw:", shift.date)
+        console.log("[v0] Drawer - typeof shift.date:", typeof shift.date)
+        console.log("[v0] Drawer - shiftDate after parsing:", shiftDate)
+        console.log("[v0] Drawer - shiftDate.toString():", shiftDate.toString())
+        console.log("[v0] Drawer - shiftDate.toISOString():", shiftDate.toISOString())
+        console.log("[v0] Drawer - shiftDate local components:", {
           year: shiftDate.getFullYear(),
           month: shiftDate.getMonth(),
           day: shiftDate.getDate(),
         })
-        console.log("[v0] Drawer - shift.date UTC components:", {
+        console.log("[v0] Drawer - shiftDate UTC components:", {
           year: shiftDate.getUTCFullYear(),
           month: shiftDate.getUTCMonth(),
           day: shiftDate.getUTCDate(),
         })
+
         const shiftDateFormatted = formatDateForDB(shiftDate)
         console.log("[v0] Drawer - formatted shiftDate for query:", shiftDateFormatted)
 
@@ -199,7 +204,6 @@ export function ShiftAssignmentDrawer({
           assigned.map(async (r: any) => {
             const approvedApp = r.applications.find((app: any) => app.status === "approved")
 
-            // Fetch shift_assignments for this replacement firefighter
             const assignmentResult = await fetch("/api/get-shift-assignment", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
