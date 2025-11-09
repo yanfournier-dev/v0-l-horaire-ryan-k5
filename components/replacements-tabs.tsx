@@ -93,12 +93,14 @@ export function ReplacementsTabs({
     return groups
   }
 
-  const openReplacements = allReplacements.filter((r) => {
+  const replacementsToDisplay = isAdmin ? allReplacements : recentReplacements
+
+  const openReplacements = replacementsToDisplay.filter((r) => {
     if (r.status !== "open") return false
     const isExpired = r.application_deadline && new Date(r.application_deadline) < new Date()
     return !isExpired
   })
-  const assignedReplacements = allReplacements.filter((r) => r.status === "assigned")
+  const assignedReplacements = replacementsToDisplay.filter((r) => r.status === "assigned")
   const pendingApplications = userApplications.filter((app: any) => app.status === "pending")
 
   const sortedOpenReplacements = sortReplacements(openReplacements)

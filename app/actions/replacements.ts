@@ -564,17 +564,74 @@ export async function deleteReplacement(replacementId: number) {
   }
 
   try {
+    const replacementDetails = await sql`
+      SELECT r.*, u.first_name, u.last_name
+      FROM replacements r
+      LEFT JOIN users u ON r.user_id = u.id
+      WHERE r.id = ${replacementId}
+    `
+
+    console.log("[v0] deleteReplacement - Deleting replacement:", {
+      id: replacementId,
+      details: replacementDetails[0],
+    })
+
+    if (replacementDetails.length > 0) {
+      const { shift_date, shift_type, team_id } = replacementDetails[0]
+
+      const cycleConfig = await sql`
+        SELECT start_date, cycle_length_days
+        FROM cycle_config
+        WHERE is_active = true
+        LIMIT 1
+      `
+
+      if (cycleConfig.length > 0) {
+        const { start_date, cycle_length_days } = cycleConfig[0]
+        const startDate = new Date(start_date)
+        const shiftDateObj = new Date(shift_date)
+        const daysDiff = Math.floor((shiftDateObj.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+        const cycleDay = (daysDiff % cycle_length_days) + 1
+
+        const shiftResult = await sql`
+          SELECT id FROM shifts
+          WHERE team_id = ${team_id}
+            AND cycle_day = ${cycleDay}
+            AND shift_type = ${shift_type}
+          LIMIT 1
+        `
+
+        if (shiftResult.length > 0) {
+          const shiftId = shiftResult[0].id
+          console.log("[v0] deleteReplacement - Removing all shift_assignments for shiftId:", shiftId)
+
+          // This allows the calendar to reset to default state (showing permanent captain/lieutenant badges)
+          await sql`
+            DELETE FROM shift_assignments
+            WHERE shift_id = ${shiftId}
+          `
+
+          console.log("[v0] deleteReplacement - All shift_assignments removed")
+        }
+      }
+    }
+
     await sql`
       DELETE FROM replacements WHERE id = ${replacementId}
     `
 
+    console.log("[v0] deleteReplacement - Replacement deleted successfully")
+
     revalidatePath("/dashboard/replacements")
     revalidatePath("/dashboard/calendar")
+    revalidatePath("/dashboard")
 
     try {
+      console.log("[v0] deleteReplacement - Invalidating cache")
       invalidateCache()
+      console.log("[v0] deleteReplacement - Cache invalidated successfully")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("[v0] deleteReplacement - Error invalidating cache:", cacheError)
     }
 
     return { success: true }
@@ -719,6 +776,12 @@ export async function updateReplacementAssignment(replacementId: number, assigne
         UPDATE replacement_applications
         SET status = 'rejected'
         WHERE replacement_id = ${replacementId} AND status = 'approved'
+      `
+
+      await sql`
+        UPDATE replacement_applications
+        SET status = 'pending', reviewed_by = NULL, reviewed_at = NULL
+        WHERE replacement_id = ${replacementId} AND status = 'rejected'
       `
 
       await sql`
@@ -914,12 +977,62 @@ export async function removeReplacementAssignment(replacementId: number) {
   }
 
   try {
-    const approvedApp = await sql`
-      SELECT ra.applicant_id, r.shift_date, r.shift_type
-      FROM replacement_applications ra
-      JOIN replacements r ON ra.replacement_id = r.id
-      WHERE ra.replacement_id = ${replacementId} AND ra.status = 'approved'
+    const replacementDetails = await sql`
+      SELECT r.shift_date, r.shift_type, r.team_id, ra.applicant_id
+      FROM replacements r
+      LEFT JOIN replacement_applications ra ON r.id = ra.replacement_id AND ra.status = 'approved'
+      WHERE r.id = ${replacementId}
     `
+
+    if (replacementDetails.length > 0) {
+      const { shift_date, shift_type, team_id, applicant_id } = replacementDetails[0]
+
+      const cycleConfig = await sql`
+        SELECT start_date, cycle_length_days
+        FROM cycle_config
+        WHERE is_active = true
+        LIMIT 1
+      `
+
+      if (cycleConfig.length > 0) {
+        const { start_date, cycle_length_days } = cycleConfig[0]
+        const startDate = new Date(start_date)
+        const shiftDateObj = new Date(shift_date)
+        const daysDiff = Math.floor((shiftDateObj.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+        const cycleDay = (daysDiff % cycle_length_days) + 1
+
+        const shiftResult = await sql`
+          SELECT id FROM shifts
+          WHERE team_id = ${team_id}
+            AND cycle_day = ${cycleDay}
+            AND shift_type = ${shift_type}
+          LIMIT 1
+        `
+
+        if (shiftResult.length > 0) {
+          const shiftId = shiftResult[0].id
+          console.log("[v0] removeReplacementAssignment - Removing all shift_assignments for shiftId:", shiftId)
+
+          await sql`
+            DELETE FROM shift_assignments
+            WHERE shift_id = ${shiftId}
+          `
+
+          console.log("[v0] removeReplacementAssignment - All shift_assignments removed")
+        }
+      }
+
+      if (applicant_id) {
+        await createNotification(
+          applicant_id,
+          "Assignation retirée",
+          `Votre assignation au remplacement du ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"}) a été retirée.`,
+          "assignment_removed",
+          replacementId,
+          "replacement",
+        )
+      }
+    }
 
     await sql`
       UPDATE replacement_applications
@@ -928,22 +1041,16 @@ export async function removeReplacementAssignment(replacementId: number) {
     `
 
     await sql`
+      UPDATE replacement_applications
+      SET status = 'pending', reviewed_by = NULL, reviewed_at = NULL
+      WHERE replacement_id = ${replacementId} AND status = 'rejected'
+    `
+
+    await sql`
       UPDATE replacements
       SET status = 'open'
       WHERE id = ${replacementId}
     `
-
-    if (approvedApp.length > 0) {
-      const { applicant_id, shift_date, shift_type } = approvedApp[0]
-      await createNotification(
-        applicant_id,
-        "Assignation retirée",
-        `Votre assignation au remplacement du ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"}) a été retirée.`,
-        "assignment_removed",
-        replacementId,
-        "replacement",
-      )
-    }
 
     revalidatePath("/dashboard/replacements")
     revalidatePath("/dashboard/calendar")
@@ -1023,5 +1130,53 @@ export async function getExpiredReplacements() {
       console.error("[v0] getExpiredReplacements: Rate limiting detected - too many requests")
     }
     return []
+  }
+}
+
+export async function reactivateApplication(applicationId: number) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    // Check if the replacement is not assigned
+    const appResult = await sql`
+      SELECT r.status, ra.status as application_status
+      FROM replacement_applications ra
+      JOIN replacements r ON ra.replacement_id = r.id
+      WHERE ra.id = ${applicationId}
+    `
+
+    if (appResult.length === 0) {
+      return { error: "Candidature non trouvée" }
+    }
+
+    if (appResult[0].status === "assigned") {
+      return { error: "Impossible de réactiver une candidature pour un remplacement déjà assigné" }
+    }
+
+    if (appResult[0].application_status !== "rejected") {
+      return { error: "Seules les candidatures rejetées peuvent être réactivées" }
+    }
+
+    await sql`
+      UPDATE replacement_applications
+      SET status = 'pending', reviewed_by = NULL, reviewed_at = NULL
+      WHERE id = ${applicationId}
+    `
+
+    revalidatePath("/dashboard/replacements")
+
+    try {
+      invalidateCache()
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] reactivateApplication: Error", error)
+    return { error: "Erreur lors de la réactivation" }
   }
 }

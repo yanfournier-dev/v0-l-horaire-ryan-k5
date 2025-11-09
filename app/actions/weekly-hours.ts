@@ -172,3 +172,120 @@ export async function getFirefighterWeeklyHours(userId: number, weekDate: string
     return 0
   }
 }
+
+/**
+ * Calculate the total scheduled hours for multiple firefighters in a given week
+ * This is an optimized version that fetches data for all firefighters in batch
+ * to reduce the number of database queries
+ *
+ * @param userIds - Array of firefighter user IDs
+ * @param weekDate - Any date within the week to calculate hours for
+ * @returns Map of user ID to total scheduled hours for the week
+ */
+export async function getBatchFirefighterWeeklyHours(
+  userIds: number[],
+  weekDate: string | Date,
+): Promise<Map<number, number>> {
+  const hoursMap = new Map<number, number>()
+
+  if (userIds.length === 0) {
+    return hoursMap
+  }
+
+  try {
+    const date = parseLocalDate(weekDate)
+    const weekStart = getWeekStart(date)
+    const weekEnd = getWeekEnd(date)
+
+    const weekStartStr = formatDateStr(weekStart)
+    const weekEndStr = formatDateStr(weekEnd)
+
+    const cycleConfig = await sql`
+      SELECT start_date, cycle_length_days
+      FROM cycle_config
+      WHERE is_active = true
+      LIMIT 1
+    `
+
+    if (cycleConfig.length === 0) {
+      // Return 0 hours for all users if no cycle config
+      userIds.forEach((id) => hoursMap.set(id, 0))
+      return hoursMap
+    }
+
+    const { start_date, cycle_length_days } = cycleConfig[0]
+    const cycleStartDate = parseLocalDate(start_date)
+
+    // Calculate cycle days for the entire week
+    const cycleDays: number[] = []
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(weekStart)
+      currentDate.setDate(weekStart.getDate() + i)
+      cycleDays.push(getCycleDay(currentDate, cycleStartDate, cycle_length_days))
+    }
+
+    const [teams, regularShifts, replacementShifts, extraAssignments] = await Promise.all([
+      sql`
+        SELECT user_id, team_id
+        FROM team_members
+        WHERE user_id = ANY(${userIds})
+      `,
+      sql`
+        SELECT tm.user_id, s.shift_type, s.cycle_day
+        FROM shifts s
+        JOIN team_members tm ON s.team_id = tm.team_id
+        WHERE tm.user_id = ANY(${userIds})
+          AND s.cycle_day = ANY(${cycleDays})
+      `,
+      sql`
+        SELECT ra.applicant_id as user_id, r.shift_type, r.is_partial, r.start_time, r.end_time, r.shift_date
+        FROM replacements r
+        JOIN replacement_applications ra ON r.id = ra.replacement_id
+        WHERE ra.applicant_id = ANY(${userIds})
+          AND ra.status = 'approved'
+          AND r.status = 'assigned'
+          AND r.shift_date >= ${weekStartStr}
+          AND r.shift_date <= ${weekEndStr}
+      `,
+      sql`
+        SELECT sa.user_id, sa.is_partial, sa.start_time, sa.end_time, s.shift_type, s.cycle_day
+        FROM shift_assignments sa
+        JOIN shifts s ON sa.shift_id = s.id
+        WHERE sa.user_id = ANY(${userIds})
+          AND sa.is_extra = true
+          AND s.cycle_day = ANY(${cycleDays})
+      `,
+    ])
+
+    userIds.forEach((id) => hoursMap.set(id, 0))
+
+    for (const shift of regularShifts) {
+      const currentHours = hoursMap.get(shift.user_id) || 0
+      hoursMap.set(shift.user_id, currentHours + calculateShiftHours(shift.shift_type, false, null, null))
+    }
+
+    for (const shift of replacementShifts) {
+      const currentHours = hoursMap.get(shift.user_id) || 0
+      hoursMap.set(
+        shift.user_id,
+        currentHours + calculateShiftHours(shift.shift_type, shift.is_partial, shift.start_time, shift.end_time),
+      )
+    }
+
+    for (const assignment of extraAssignments) {
+      const currentHours = hoursMap.get(assignment.user_id) || 0
+      hoursMap.set(
+        assignment.user_id,
+        currentHours +
+          calculateShiftHours(assignment.shift_type, assignment.is_partial, assignment.start_time, assignment.end_time),
+      )
+    }
+
+    return hoursMap
+  } catch (error) {
+    console.error("[v0] getBatchFirefighterWeeklyHours: Error:", error)
+    // Return 0 hours for all users on error
+    userIds.forEach((id) => hoursMap.set(id, 0))
+    return hoursMap
+  }
+}

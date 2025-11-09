@@ -67,6 +67,8 @@ export function ApplyForReplacementButton({
   }
 
   if (isAdmin) {
+    const sortedFirefighters = [...firefighters].sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
+
     return (
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
@@ -93,9 +95,9 @@ export function ApplyForReplacementButton({
                 <SelectValue placeholder="Sélectionner un pompier" />
               </SelectTrigger>
               <SelectContent>
-                {firefighters.map((firefighter) => (
+                {sortedFirefighters.map((firefighter) => (
                   <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
-                    {firefighter.first_name} {firefighter.last_name}
+                    {firefighter.last_name} {firefighter.first_name}
                   </SelectItem>
                 ))}
               </SelectContent>

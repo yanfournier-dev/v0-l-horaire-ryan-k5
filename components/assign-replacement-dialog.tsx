@@ -51,6 +51,8 @@ export function AssignReplacementDialog({
 
   const isReplacingLieutenant = replacedFirefighterRole === "lieutenant"
 
+  const sortedFirefighters = [...firefighters].sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
+
   const handleAssign = async () => {
     if (!selectedFirefighterId) {
       toast.error("Veuillez sélectionner un pompier")
@@ -122,9 +124,9 @@ export function AssignReplacementDialog({
                 <SelectValue placeholder="Sélectionner un pompier" />
               </SelectTrigger>
               <SelectContent>
-                {firefighters.map((firefighter) => (
+                {sortedFirefighters.map((firefighter) => (
                   <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
-                    {firefighter.first_name} {firefighter.last_name} ({firefighter.role})
+                    {firefighter.last_name} {firefighter.first_name} ({firefighter.role})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -139,11 +141,13 @@ export function AssignReplacementDialog({
                   <SelectValue placeholder="Sélectionner le lieutenant (par défaut: le remplaçant)" />
                 </SelectTrigger>
                 <SelectContent>
-                  {allShiftFirefighters.map((firefighter) => (
-                    <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
-                      {firefighter.first_name} {firefighter.last_name}
-                    </SelectItem>
-                  ))}
+                  {allShiftFirefighters
+                    .sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
+                    .map((firefighter) => (
+                      <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
+                        {firefighter.last_name} {firefighter.first_name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

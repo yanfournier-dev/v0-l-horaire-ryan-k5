@@ -4,6 +4,10 @@ export function getTeamColor(teamName: string, color?: string) {
     return getColorClasses(color)
   }
 
+  if (!teamName) {
+    return getColorClasses("gray")
+  }
+
   // Fallback to name-based colors
   if (teamName.includes("1")) return getColorClasses("custom-green") // Yellow-green, distinct from blue
   if (teamName.includes("2")) return getColorClasses("blue") // Pure blue

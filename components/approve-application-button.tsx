@@ -16,6 +16,7 @@ import { approveApplication } from "@/app/actions/replacements"
 import { setActingLieutenant, setActingCaptain } from "@/app/actions/shift-assignments"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { AlertTriangle } from "lucide-react"
 
 interface ApproveApplicationButtonProps {
   applicationId: number
@@ -32,6 +33,14 @@ interface ApproveApplicationButtonProps {
   }>
   shiftId?: number
   replacementFirefighterId?: number
+  actualWeeklyHours?: number
+  shiftType?: string
+  teamPriorityCandidates?: Array<{
+    user_id: number
+    first_name: string
+    last_name: string
+    team_rank: number
+  }>
 }
 
 export function ApproveApplicationButton({
@@ -44,9 +53,13 @@ export function ApproveApplicationButton({
   shiftFirefighters,
   shiftId,
   replacementFirefighterId,
+  actualWeeklyHours = 0,
+  shiftType,
+  teamPriorityCandidates = [],
 }: ApproveApplicationButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [showRoleSelectionDialog, setShowRoleSelectionDialog] = useState(false)
+  const [showOvertimeWarning, setShowOvertimeWarning] = useState(false)
   const [selectedLieutenantId, setSelectedLieutenantId] = useState<string>("")
   const [selectedCaptainId, setSelectedCaptainId] = useState<string>("")
   const router = useRouter()
@@ -54,7 +67,34 @@ export function ApproveApplicationButton({
   const isReplacingLieutenant = replacedFirefighterRole === "lieutenant"
   const isReplacingCaptain = replacedFirefighterRole === "captain"
 
+  const calculateReplacementHours = () => {
+    if (isPartial && startTime && endTime) {
+      const [startHour, startMin] = startTime.split(":").map(Number)
+      const [endHour, endMin] = endTime.split(":").map(Number)
+      return endHour - startHour + (endMin - startMin) / 60
+    }
+
+    switch (shiftType) {
+      case "day":
+        return 10
+      case "night":
+        return 14
+      case "full_24h":
+        return 24
+      default:
+        return 0
+    }
+  }
+
   const handleApprove = async () => {
+    const replacementHours = calculateReplacementHours()
+    const totalHours = actualWeeklyHours + replacementHours
+
+    if (totalHours > 42) {
+      setShowOvertimeWarning(true)
+      return
+    }
+
     if ((isReplacingLieutenant || isReplacingCaptain) && shiftFirefighters && shiftId && replacementFirefighterId) {
       if (isReplacingCaptain) {
         const permanentLieutenant = shiftFirefighters.find((f) => f.role === "lieutenant")
@@ -62,6 +102,51 @@ export function ApproveApplicationButton({
           setSelectedCaptainId(permanentLieutenant.id.toString())
         }
       }
+
+      if (isReplacingLieutenant && teamPriorityCandidates.length > 0) {
+        const sortedByRank = [...teamPriorityCandidates].sort((a, b) => (a.team_rank || 999) - (b.team_rank || 999))
+        const bestCandidate = sortedByRank[0]
+        setSelectedLieutenantId(bestCandidate.user_id.toString())
+        console.log(
+          "[v0] Auto-selected team priority candidate for lieutenant:",
+          bestCandidate.first_name,
+          bestCandidate.last_name,
+          "with rank",
+          bestCandidate.team_rank,
+        )
+      }
+
+      setShowRoleSelectionDialog(true)
+      return
+    }
+
+    await performApproval()
+  }
+
+  const handleOvertimeConfirm = async () => {
+    setShowOvertimeWarning(false)
+
+    if ((isReplacingLieutenant || isReplacingCaptain) && shiftFirefighters && shiftId && replacementFirefighterId) {
+      if (isReplacingCaptain) {
+        const permanentLieutenant = shiftFirefighters.find((f) => f.role === "lieutenant")
+        if (permanentLieutenant) {
+          setSelectedCaptainId(permanentLieutenant.id.toString())
+        }
+      }
+
+      if (isReplacingLieutenant && teamPriorityCandidates.length > 0) {
+        const sortedByRank = [...teamPriorityCandidates].sort((a, b) => (a.team_rank || 999) - (b.team_rank || 999))
+        const bestCandidate = sortedByRank[0]
+        setSelectedLieutenantId(bestCandidate.user_id.toString())
+        console.log(
+          "[v0] Auto-selected team priority candidate for lieutenant after overtime:",
+          bestCandidate.first_name,
+          bestCandidate.last_name,
+          "with rank",
+          bestCandidate.team_rank,
+        )
+      }
+
       setShowRoleSelectionDialog(true)
       return
     }
@@ -131,9 +216,7 @@ export function ApproveApplicationButton({
     (isReplacingLieutenant || isReplacingCaptain) && shiftFirefighters && replacementFirefighterId
       ? [
           ...shiftFirefighters.filter((f) => {
-            // For captain replacement, exclude the captain from the list
             if (isReplacingCaptain) return f.role !== "captain"
-            // For lieutenant replacement, exclude the lieutenant from the list
             if (isReplacingLieutenant) return f.role !== "lieutenant"
             return true
           }),
@@ -146,10 +229,16 @@ export function ApproveApplicationButton({
         ].filter(Boolean)
       : []
 
+  const sortedShiftFirefighters = [...allShiftFirefighters].sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
+
   const permanentLieutenant = shiftFirefighters?.find((f) => f.role === "lieutenant")
   const defaultCaptainName = permanentLieutenant
-    ? `${permanentLieutenant.first_name} ${permanentLieutenant.last_name}`
+    ? `${permanentLieutenant.last_name} ${permanentLieutenant.first_name}`
     : "Lieutenant permanent"
+
+  const sortedTeamPriorityCandidates = [...teamPriorityCandidates].sort(
+    (a, b) => (a.team_rank || 999) - (b.team_rank || 999),
+  )
 
   return (
     <>
@@ -161,6 +250,37 @@ export function ApproveApplicationButton({
       >
         {isLoading ? "Assignation..." : "Assigner"}
       </Button>
+
+      <Dialog open={showOvertimeWarning} onOpenChange={setShowOvertimeWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Dépassement de 42 heures
+            </DialogTitle>
+            <div className="text-muted-foreground text-sm space-y-2 pt-2">
+              <p>
+                <strong>{firefighterName}</strong> a actuellement <strong>{actualWeeklyHours}h</strong> planifiées cette
+                semaine.
+              </p>
+              <p>
+                Ce remplacement ajoute <strong>{calculateReplacementHours()}h</strong>, pour un total de{" "}
+                <strong className="text-amber-600">{actualWeeklyHours + calculateReplacementHours()}h</strong> dans la
+                semaine.
+              </p>
+              <p className="text-foreground font-medium pt-2">Voulez-vous quand même assigner ce pompier?</p>
+            </div>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOvertimeWarning(false)} disabled={isLoading}>
+              Annuler
+            </Button>
+            <Button onClick={handleOvertimeConfirm} disabled={isLoading} className="bg-amber-600 hover:bg-amber-700">
+              Assigner quand même
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showRoleSelectionDialog} onOpenChange={setShowRoleSelectionDialog}>
         <DialogContent>
@@ -183,9 +303,9 @@ export function ApproveApplicationButton({
                     <SelectValue placeholder={`Par défaut: ${defaultCaptainName}`} />
                   </SelectTrigger>
                   <SelectContent>
-                    {allShiftFirefighters.map((firefighter) => (
+                    {sortedShiftFirefighters.map((firefighter) => (
                       <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
-                        {firefighter.first_name} {firefighter.last_name}
+                        {firefighter.last_name} {firefighter.first_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -202,21 +322,42 @@ export function ApproveApplicationButton({
                 <SelectTrigger id="lieutenant">
                   <SelectValue
                     placeholder={
-                      isReplacingLieutenant ? `Par défaut: ${firefighterName}` : "Sélectionner un lieutenant"
+                      isReplacingLieutenant && sortedTeamPriorityCandidates.length > 0
+                        ? `Par défaut: ${sortedTeamPriorityCandidates[0].last_name} ${sortedTeamPriorityCandidates[0].first_name} (priorité équipe)`
+                        : isReplacingLieutenant
+                          ? `Par défaut: ${firefighterName}`
+                          : "Sélectionner un lieutenant"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {allShiftFirefighters.map((firefighter) => (
+                  {sortedTeamPriorityCandidates.length > 0 && (
+                    <>
+                      {sortedTeamPriorityCandidates.map((candidate) => (
+                        <SelectItem key={candidate.user_id} value={candidate.user_id.toString()}>
+                          {candidate.last_name} {candidate.first_name}{" "}
+                          <span className="text-muted-foreground text-xs">
+                            (priorité équipe - rang {candidate.team_rank})
+                          </span>
+                        </SelectItem>
+                      ))}
+                      <SelectItem disabled value="separator">
+                        ──────────
+                      </SelectItem>
+                    </>
+                  )}
+                  {sortedShiftFirefighters.map((firefighter) => (
                     <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
-                      {firefighter.first_name} {firefighter.last_name}
+                      {firefighter.last_name} {firefighter.first_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {isReplacingLieutenant && (
                 <p className="text-xs text-muted-foreground">
-                  Si aucun n'est sélectionné, {firefighterName} sera le lieutenant
+                  {sortedTeamPriorityCandidates.length > 0
+                    ? `Par défaut, ${sortedTeamPriorityCandidates[0].last_name} ${sortedTeamPriorityCandidates[0].first_name} (priorité équipe) sera le lieutenant`
+                    : `Si aucun n'est sélectionné, ${firefighterName} sera le lieutenant`}
                 </p>
               )}
             </div>

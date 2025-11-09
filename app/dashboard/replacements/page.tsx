@@ -22,13 +22,24 @@ export default async function ReplacementsPage({
   const user = await getSession()
   if (!user) redirect("/login")
 
-  const recentReplacements = await getRecentReplacements()
-  const userApplications = await getUserApplications(user.id)
-  const allReplacements = user.is_admin ? await getAllReplacements() : []
-  const firefighters = user.is_admin ? await getAllFirefighters() : []
-  const pendingRequests = user.is_admin ? await getPendingReplacementRequests() : []
-  const userRequests = await getUserReplacementRequests(user.id)
-  const expiredReplacements = user.is_admin ? await getExpiredReplacements() : []
+  // Batch 1: High priority queries (needed for all users)
+  const [recentReplacements, userApplications] = await Promise.all([
+    getRecentReplacements(),
+    getUserApplications(user.id),
+  ])
+
+  // Batch 2: Medium priority queries (needed for main display)
+  const [allReplacements, userRequests] = await Promise.all([
+    user.is_admin ? getAllReplacements() : Promise.resolve([]),
+    getUserReplacementRequests(user.id),
+  ])
+
+  // Batch 3: Low priority queries (admin-only features)
+  const [firefighters, pendingRequests, expiredReplacements] = await Promise.all([
+    user.is_admin ? getAllFirefighters() : Promise.resolve([]),
+    user.is_admin ? getPendingReplacementRequests() : Promise.resolve([]),
+    user.is_admin ? getExpiredReplacements() : Promise.resolve([]),
+  ])
 
   const initialTab = searchParams.tab || "available"
 

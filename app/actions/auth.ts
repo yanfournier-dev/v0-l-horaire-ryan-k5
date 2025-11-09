@@ -229,8 +229,8 @@ export async function login(formData: FormData) {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
-  if (!email || !password) {
-    return { error: "Email et mot de passe requis" }
+  if (!email) {
+    return { error: "Email requis" }
   }
 
   try {
@@ -241,15 +241,22 @@ export async function login(formData: FormData) {
     `
 
     if (result.length === 0) {
-      return { error: "Email ou mot de passe incorrect" }
+      return { error: "Email incorrect" }
     }
 
     const user = result[0]
-    const isValid = await verifyPassword(password, user.password_hash)
 
-    if (!isValid) {
-      return { error: "Email ou mot de passe incorrect" }
+    if (user.password_hash !== null && user.password_hash !== undefined) {
+      // If user has a password set, verify it
+      if (!password) {
+        return { error: "Mot de passe requis pour cet utilisateur" }
+      }
+      const isValid = await verifyPassword(password, user.password_hash)
+      if (!isValid) {
+        return { error: "Mot de passe incorrect" }
+      }
     }
+    // If password_hash is NULL, allow login with email only
 
     await createSession(user.id)
   } catch (error) {

@@ -113,7 +113,7 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
     setAutoApprove(true)
   }
 
-  const sortedFirefighters = [...allFirefighters].sort((a, b) => a.first_name.localeCompare(b.first_name, "fr"))
+  const sortedFirefighters = [...allFirefighters].sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -148,7 +148,7 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
                 <SelectContent>
                   {sortedFirefighters.map((ff) => (
                     <SelectItem key={ff.id} value={ff.id.toString()}>
-                      {ff.first_name} {ff.last_name}
+                      {ff.last_name} {ff.first_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -226,10 +226,10 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
                   </SelectTrigger>
                   <SelectContent>
                     {[...availableFirefighters]
-                      .sort((a, b) => a.first_name.localeCompare(b.first_name, "fr"))
+                      .sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
                       .map((ff) => (
                         <SelectItem key={ff.id} value={ff.id.toString()}>
-                          {ff.first_name} {ff.last_name} - {ff.team_name} ({ff.shift_type})
+                          {ff.last_name} {ff.first_name} - {ff.team_name} ({ff.shift_type})
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -254,14 +254,14 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
               <h3 className="font-medium">Résumé de l'échange</h3>
               <div className="text-sm space-y-1">
                 <p>
-                  <strong>Demandeur:</strong> {allFirefighters.find((f) => f.id === requesterId)?.first_name}{" "}
-                  {allFirefighters.find((f) => f.id === requesterId)?.last_name}
+                  <strong>Demandeur:</strong> {allFirefighters.find((f) => f.id === requesterId)?.last_name}{" "}
+                  {allFirefighters.find((f) => f.id === requesterId)?.first_name}
                 </p>
                 <p>
                   <strong>Quart à échanger:</strong> {requesterDate} - {selectedRequesterShift?.shift_type}
                 </p>
                 <p className="mt-2">
-                  <strong>Avec:</strong> {selectedTarget?.first_name} {selectedTarget?.last_name}
+                  <strong>Avec:</strong> {selectedTarget?.last_name} {selectedTarget?.first_name}
                 </p>
                 <p>
                   <strong>Quart souhaité:</strong> {targetDate} - {selectedTarget?.shift_type}

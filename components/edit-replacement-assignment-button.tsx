@@ -43,7 +43,7 @@ export function EditReplacementAssignmentButton({
     setIsLoading(true)
     const result = await getAvailableFirefighters(replacementId)
     if (Array.isArray(result)) {
-      setFirefighters(result)
+      setFirefighters(result.sort((a, b) => a.last_name.localeCompare(b.last_name, "fr")))
     } else {
       alert(result.error || "Erreur lors du chargement des pompiers")
     }
@@ -111,7 +111,7 @@ export function EditReplacementAssignmentButton({
                 <SelectContent>
                   {firefighters.map((firefighter) => (
                     <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
-                      {firefighter.first_name} {firefighter.last_name}
+                      {firefighter.last_name} {firefighter.first_name}
                       {firefighter.team_name && ` - ${firefighter.team_name}`}
                       {firefighter.application_status === "pending" && " (a postulé)"}
                       {firefighter.application_status === "approved" && " (assigné)"}

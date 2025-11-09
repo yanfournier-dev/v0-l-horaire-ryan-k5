@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ApproveApplicationButton } from "@/components/approve-application-button"
 import { RejectApplicationButton } from "@/components/reject-application-button"
+import { ReactivateApplicationButton } from "@/components/reactivate-application-button"
 import { getRoleLabel } from "@/lib/role-labels"
 import { parseLocalDate, formatLocalDateTime, getPartTimeTeam } from "@/lib/date-utils"
 import { formatReplacementTime } from "@/lib/replacement-utils"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
-import { getFirefighterWeeklyHours } from "@/app/actions/weekly-hours"
+import { getBatchFirefighterWeeklyHours } from "@/app/actions/weekly-hours"
+import { AddManualApplicationDialog } from "@/components/add-manual-application-dialog"
 
 export const dynamic = "force-dynamic"
 
@@ -66,7 +68,7 @@ export default async function ReplacementDetailPage({
   })
 
   const applications = await sql`
-    SELECT 
+    SELECT
       ra.*,
       u.first_name,
       u.last_name,
@@ -77,7 +79,9 @@ export default async function ReplacementDetailPage({
       reviewer.last_name as reviewer_last_name,
       team_info.name as team_name,
       team_info.type as team_type,
-      tm.team_rank,
+      team_info.team_rank,
+      team_info.team_number,
+      team_info.team_id as candidate_team_id,
       EXISTS (
         SELECT 1
         FROM replacements r2
@@ -91,37 +95,93 @@ export default async function ReplacementDetailPage({
           AND r2.status = 'assigned'
       ) as is_already_assigned,
       CASE 
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND u.role = 'lieutenant'
+             AND team_info.type = 'part_time'
+        THEN true
+        ELSE false
+      END as has_collective_agreement_priority,
+      CASE 
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND team_info.type = 'permanent'
+             AND team_info.team_id = ${replacement.team_id}
+        THEN true
+        ELSE false
+      END as has_team_priority,
+      CASE 
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND u.role = 'lieutenant'
+             AND team_info.type = 'part_time'
+             AND team_info.name LIKE '%1%'
+        THEN 0 + ((${partTimeTeam} - 1 + 3) % 4) * 0.01
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND u.role = 'lieutenant'
+             AND team_info.type = 'part_time'
+             AND team_info.name LIKE '%2%'
+        THEN 0 + ((${partTimeTeam} - 2 + 3) % 4) * 0.01
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND u.role = 'lieutenant'
+             AND team_info.type = 'part_time'
+             AND team_info.name LIKE '%3%'
+        THEN 0 + ((${partTimeTeam} - 3 + 3) % 4) * 0.01
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND u.role = 'lieutenant'
+             AND team_info.type = 'part_time'
+             AND team_info.name LIKE '%4%'
+        THEN 0 + ((${partTimeTeam} - 4 + 3) % 4) * 0.01
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND team_info.type = 'permanent'
+             AND team_info.team_id = ${replacement.team_id}
+        THEN 0.5
         WHEN team_info.type = 'part_time' AND team_info.name LIKE '%1%' THEN ((${partTimeTeam} - 1 + 3) % 4) + 1
         WHEN team_info.type = 'part_time' AND team_info.name LIKE '%2%' THEN ((${partTimeTeam} - 2 + 3) % 4) + 1
         WHEN team_info.type = 'part_time' AND team_info.name LIKE '%3%' THEN ((${partTimeTeam} - 3 + 3) % 4) + 1
         WHEN team_info.type = 'part_time' AND team_info.name LIKE '%4%' THEN ((${partTimeTeam} - 4 + 3) % 4) + 1
         WHEN team_info.type = 'part_time' THEN 5
-        WHEN team_info.type = 'temporary' THEN 6
-        WHEN team_info.type = 'permanent' THEN 7
-        ELSE 11
+        WHEN team_info.type = 'temporary' THEN 10
+        WHEN team_info.type = 'permanent' THEN 20
+        ELSE 99
       END as sort_priority
     FROM replacement_applications ra
     JOIN users u ON ra.applicant_id = u.id
     LEFT JOIN users reviewer ON ra.reviewed_by = reviewer.id
-    LEFT JOIN team_members tm ON u.id = tm.user_id
     LEFT JOIN LATERAL (
       SELECT 
         CASE 
           WHEN t.type = 'permanent' THEN 'Pompiers réguliers'
           ELSE t.name
         END as name,
-        t.type
-      FROM team_members tm2
-      JOIN teams t ON tm2.team_id = t.id
-      WHERE tm2.user_id = u.id
+        t.type,
+        t.id as team_id,
+        tm.team_rank,
+        CASE 
+          WHEN t.name LIKE '%1%' THEN 1
+          WHEN t.name LIKE '%2%' THEN 2
+          WHEN t.name LIKE '%3%' THEN 3
+          WHEN t.name LIKE '%4%' THEN 4
+          ELSE 0
+        END as team_number
+      FROM team_members tm
+      JOIN teams t ON tm.team_id = t.id
+      WHERE tm.user_id = u.id
       ORDER BY 
         CASE WHEN t.name = 'Pompiers réguliers' THEN 0 ELSE 1 END,
         t.id
       LIMIT 1
     ) team_info ON true
     WHERE ra.replacement_id = ${replacementId}
-    ORDER BY sort_priority, tm.team_rank ASC NULLS LAST, ra.applied_at DESC
+    ORDER BY 
+      sort_priority ASC, 
+      team_info.team_rank ASC NULLS LAST,
+      ra.id
   `
+
+  console.log("[v0] Candidates from database:")
+  applications.forEach((app: any, index: number) => {
+    console.log(
+      `[v0] ${index + 1}. ${app.first_name} ${app.last_name} - Team: ${app.team_name} (${app.team_type}) - Rank: ${app.team_rank} - Sort Priority: ${app.sort_priority}`,
+    )
+  })
 
   const getShiftTypeLabel = (type: string) => {
     switch (type) {
@@ -162,15 +222,20 @@ export default async function ReplacementDetailPage({
     }
   }
 
-  const applicationsWithHours = await Promise.all(
-    applications.map(async (app: any) => {
-      const weeklyHours = await getFirefighterWeeklyHours(app.user_id, replacement.shift_date)
-      return {
-        ...app,
-        weeklyHours,
-      }
-    }),
-  )
+  const userIds = applications.map((app: any) => app.user_id)
+  const weeklyHoursMap = await getBatchFirefighterWeeklyHours(userIds, replacement.shift_date)
+
+  const applicationsWithHours = applications.map((app: any) => {
+    const calculatedHours = weeklyHoursMap.get(app.user_id) || 0
+    // For permanent firefighters, always display 42h
+    const displayHours = app.team_type === "permanent" ? 42 : calculatedHours
+
+    return {
+      ...app,
+      weeklyHours: displayHours,
+      actualWeeklyHours: calculatedHours, // Keep actual hours for warning calculation
+    }
+  })
 
   const shiftResult = await sql`
     SELECT id FROM shifts
@@ -205,6 +270,149 @@ export default async function ReplacementDetailPage({
     shiftId,
     teamFirefighters: teamFirefighters.length,
   })
+
+  const priorityCandidates = applicationsWithHours.filter((app: any) => app.has_collective_agreement_priority)
+  const teamPriorityCandidates = applicationsWithHours.filter((app: any) => app.has_team_priority)
+  const regularCandidates = applicationsWithHours.filter(
+    (app: any) => !app.has_collective_agreement_priority && !app.has_team_priority,
+  )
+
+  const allFirefighters = await sql`
+    SELECT 
+      u.id,
+      u.first_name,
+      u.last_name,
+      u.role,
+      u.email,
+      team_info.name as team_name
+    FROM users u
+    LEFT JOIN LATERAL (
+      SELECT 
+        CASE 
+          WHEN t.type = 'permanent' THEN 'Pompiers réguliers'
+          ELSE t.name
+        END as name
+      FROM team_members tm2
+      JOIN teams t ON tm2.team_id = t.id
+      WHERE tm2.user_id = u.id
+      ORDER BY 
+        CASE WHEN t.name = 'Pompiers réguliers' THEN 0 ELSE 1 END,
+        t.id
+      LIMIT 1
+    ) team_info ON true
+    WHERE u.id != ${replacement.leave_user_id || replacement.user_id}
+    ORDER BY u.last_name, u.first_name
+  `
+
+  const existingApplicantIds = applicationsWithHours.map((app: any) => app.user_id)
+
+  const partTimeCandidates = regularCandidates.filter((app: any) => app.team_type === "part_time")
+  const temporaryCandidates = regularCandidates.filter((app: any) => app.team_type === "temporary")
+  const permanentCandidates = regularCandidates.filter((app: any) => app.team_type === "permanent")
+
+  // Group part-time candidates by team number
+  const partTimeByTeam = {
+    1: partTimeCandidates.filter((app: any) => app.team_number === 1),
+    2: partTimeCandidates.filter((app: any) => app.team_number === 2),
+    3: partTimeCandidates.filter((app: any) => app.team_number === 3),
+    4: partTimeCandidates.filter((app: any) => app.team_number === 4),
+  }
+
+  // Calculate rotation order: team before current week has priority
+  // If É4 is on duty: É3, É2, É1, É4
+  const rotationOrder = []
+  for (let i = 0; i < 4; i++) {
+    const teamNum = ((partTimeTeam - 1 + 3 - i) % 4) + 1
+    rotationOrder.push(teamNum)
+  }
+
+  // Render function for application card
+  const renderApplicationCard = (application: any) => {
+    const isAlreadyAssigned = application.is_already_assigned
+    const cannotBeAssigned = application.has_team_priority
+
+    return (
+      <div
+        key={application.id}
+        className={`flex items-center gap-4 p-4 border rounded-lg transition-colors ${
+          isAlreadyAssigned ? "bg-muted/50 opacity-60 border-muted" : "bg-card hover:bg-accent/50"
+        }`}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className={`font-semibold text-foreground ${isAlreadyAssigned ? "line-through" : ""}`}>
+              {application.last_name} {application.first_name}
+            </span>
+            <span className="text-sm text-muted-foreground">{getRoleLabel(application.role)}</span>
+            <span className="text-sm text-muted-foreground">{application.email}</span>
+            {application.has_collective_agreement_priority && (
+              <Badge className="bg-amber-500 text-white hover:bg-amber-600 font-semibold">Priorité</Badge>
+            )}
+            {application.has_team_priority && (
+              <Badge className="bg-blue-600 text-white hover:bg-blue-700 font-semibold">Priorité équipe</Badge>
+            )}
+            {!application.has_collective_agreement_priority && !application.has_team_priority && (
+              <span className="text-sm text-muted-foreground">{application.team_name}</span>
+            )}
+            {(application.has_collective_agreement_priority || application.has_team_priority) && (
+              <span className="text-sm text-muted-foreground">{application.team_name}</span>
+            )}
+            <Badge variant="outline" className="text-blue-600 border-blue-600">
+              {application.weeklyHours}h cette semaine
+            </Badge>
+            {isAlreadyAssigned && (
+              <Badge variant="outline" className="text-orange-600 border-orange-600 bg-orange-50 dark:bg-orange-950">
+                Déjà assigné à un autre remplacement
+              </Badge>
+            )}
+            <span className="text-sm text-muted-foreground">
+              Postulé le {formatLocalDateTime(application.applied_at)}
+            </span>
+            {application.status !== "pending" && application.reviewer_first_name && (
+              <span className="text-sm text-muted-foreground">
+                {application.status === "approved" ? "Approuvée" : "Rejetée"} par {application.reviewer_first_name}{" "}
+                {application.reviewer_last_name} le{" "}
+                {parseLocalDate(application.reviewed_at).toLocaleDateString("fr-CA")}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge className={getStatusColor(application.status)}>{getStatusLabel(application.status)}</Badge>
+          {cannotBeAssigned && (
+            <span className="text-sm text-muted-foreground italic">Candidat pour rôle de lieutenant uniquement</span>
+          )}
+          {!cannotBeAssigned && application.status === "pending" && !isAlreadyAssigned && (
+            <>
+              <ApproveApplicationButton
+                applicationId={application.id}
+                firefighterName={`${application.last_name} ${application.first_name}`}
+                isPartial={replacement.is_partial}
+                startTime={replacement.start_time}
+                endTime={replacement.end_time}
+                replacedFirefighterRole={replacement.replaced_role}
+                shiftFirefighters={teamFirefighters}
+                shiftId={shiftId}
+                replacementFirefighterId={application.user_id}
+                actualWeeklyHours={application.actualWeeklyHours || application.weeklyHours}
+                shiftType={replacement.shift_type}
+                teamPriorityCandidates={teamPriorityCandidates.map((c: any) => ({
+                  user_id: c.user_id,
+                  first_name: c.first_name,
+                  last_name: c.last_name,
+                  team_rank: c.team_rank,
+                }))}
+              />
+              <RejectApplicationButton applicationId={application.id} />
+            </>
+          )}
+          {!cannotBeAssigned && application.status === "rejected" && (
+            <ReactivateApplicationButton applicationId={application.id} replacementStatus={replacement.status} />
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6">
@@ -248,9 +456,16 @@ export default async function ReplacementDetailPage({
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-foreground mb-4">
-          Candidats pour ce remplacement ({applicationsWithHours.length})
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-foreground">
+            Candidats pour ce remplacement ({applicationsWithHours.length})
+          </h2>
+          <AddManualApplicationDialog
+            replacementId={replacementId}
+            availableFirefighters={allFirefighters}
+            existingApplicantIds={existingApplicantIds}
+          />
+        </div>
 
         {applicationsWithHours.length === 0 ? (
           <Card>
@@ -260,88 +475,55 @@ export default async function ReplacementDetailPage({
           </Card>
         ) : (
           <div className="space-y-6">
-            {Object.entries(
-              applicationsWithHours.reduce((acc: any, app: any) => {
-                const teamKey = app.team_name || "Sans équipe"
-                if (!acc[teamKey]) {
-                  acc[teamKey] = []
-                }
-                acc[teamKey].push(app)
-                return acc
-              }, {}),
-            ).map(([teamName, teamApps]: [string, any]) => (
-              <div key={teamName}>
-                <h3 className="text-lg font-semibold mb-3 text-foreground">{teamName}</h3>
-                <div className="space-y-2">
-                  {teamApps.map((application: any) => {
-                    const isAlreadyAssigned = application.is_already_assigned
-
-                    return (
-                      <div
-                        key={application.id}
-                        className={`flex items-center gap-4 p-4 border rounded-lg transition-colors ${
-                          isAlreadyAssigned ? "bg-muted/50 opacity-60 border-muted" : "bg-card hover:bg-accent/50"
-                        }`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span
-                              className={`font-semibold text-foreground ${isAlreadyAssigned ? "line-through" : ""}`}
-                            >
-                              {application.first_name} {application.last_name}
-                            </span>
-                            <span className="text-sm text-muted-foreground">{getRoleLabel(application.role)}</span>
-                            <span className="text-sm text-muted-foreground">{application.email}</span>
-                            <Badge variant="outline" className="text-blue-600 border-blue-600">
-                              {application.weeklyHours}h cette semaine
-                            </Badge>
-                            {isAlreadyAssigned && (
-                              <Badge
-                                variant="outline"
-                                className="text-orange-600 border-orange-600 bg-orange-50 dark:bg-orange-950"
-                              >
-                                Déjà assigné à un autre remplacement
-                              </Badge>
-                            )}
-                            <span className="text-sm text-muted-foreground">
-                              Postulé le {formatLocalDateTime(application.applied_at)}
-                            </span>
-                            {application.status !== "pending" && application.reviewer_first_name && (
-                              <span className="text-sm text-muted-foreground">
-                                {application.status === "approved" ? "Approuvée" : "Rejetée"} par{" "}
-                                {application.reviewer_first_name} {application.reviewer_last_name} le{" "}
-                                {parseLocalDate(application.reviewed_at).toLocaleDateString("fr-CA")}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge className={getStatusColor(application.status)}>
-                            {getStatusLabel(application.status)}
-                          </Badge>
-                          {application.status === "pending" && !isAlreadyAssigned && (
-                            <>
-                              <ApproveApplicationButton
-                                applicationId={application.id}
-                                firefighterName={`${application.first_name} ${application.last_name}`}
-                                isPartial={replacement.is_partial}
-                                startTime={replacement.start_time}
-                                endTime={replacement.end_time}
-                                replacedFirefighterRole={replacement.replaced_role}
-                                shiftFirefighters={teamFirefighters}
-                                shiftId={shiftId}
-                                replacementFirefighterId={application.user_id}
-                              />
-                              <RejectApplicationButton applicationId={application.id} />
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+            {priorityCandidates.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-foreground flex items-center gap-2">
+                  Candidats prioritaires (convention collective)
+                  <Badge className="bg-amber-500 text-white hover:bg-amber-600 font-semibold">
+                    {priorityCandidates.length}
+                  </Badge>
+                </h3>
+                <div className="space-y-2">{priorityCandidates.map(renderApplicationCard)}</div>
               </div>
-            ))}
+            )}
+
+            {teamPriorityCandidates.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-foreground">
+                  Pompiers permanents de {replacement.team_name} (priorité pour rôle de lieutenant)
+                  <Badge className="bg-blue-600 text-white hover:bg-blue-700 font-semibold">
+                    {teamPriorityCandidates.length}
+                  </Badge>
+                </h3>
+                <div className="space-y-2">{teamPriorityCandidates.map(renderApplicationCard)}</div>
+              </div>
+            )}
+
+            {rotationOrder.map((teamNum) => {
+              const teamCandidates = partTimeByTeam[teamNum as 1 | 2 | 3 | 4]
+              if (teamCandidates.length === 0) return null
+
+              return (
+                <div key={`team-${teamNum}`}>
+                  <h3 className="text-lg font-semibold mb-3 text-foreground">Équipe Temps Partiel {teamNum}</h3>
+                  <div className="space-y-2">{teamCandidates.map(renderApplicationCard)}</div>
+                </div>
+              )
+            })}
+
+            {temporaryCandidates.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-foreground">Pompiers temporaires</h3>
+                <div className="space-y-2">{temporaryCandidates.map(renderApplicationCard)}</div>
+              </div>
+            )}
+
+            {permanentCandidates.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-foreground">Pompiers réguliers</h3>
+                <div className="space-y-2">{permanentCandidates.map(renderApplicationCard)}</div>
+              </div>
+            )}
           </div>
         )}
       </div>

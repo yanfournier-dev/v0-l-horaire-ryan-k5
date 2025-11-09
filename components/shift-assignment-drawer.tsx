@@ -880,7 +880,7 @@ export function ShiftAssignmentDrawer({
                                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                 >
                                   <Users className="h-4 w-4 mr-1" />
-                                  Voir les candidats
+                                  Voir les candidats ({replacement.applications.length})
                                 </Button>
                               )}
                               {isAdmin && (

@@ -70,23 +70,18 @@ export default async function CalendarPage({
       days: generateMonthView(year, month, cycleStartDate),
     }))
 
-    const allShifts = await getAllShiftsWithAssignments()
-
     const firstDay = allMonthsDays[0].days[0]?.date
     const lastDay =
       allMonthsDays[allMonthsDays.length - 1].days[allMonthsDays[allMonthsDays.length - 1].days.length - 1]?.date
 
-    const replacements =
-      firstDay && lastDay ? await getReplacementsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : []
+    const allShifts = await getAllShiftsWithAssignments()
 
-    const leaves =
-      firstDay && lastDay ? await getLeavesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : []
-
-    const exchanges =
-      firstDay && lastDay ? await getExchangesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : []
-
-    const shiftNotes =
-      firstDay && lastDay ? await getShiftNotesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : []
+    const [replacements, leaves, exchanges, shiftNotes] = await Promise.all([
+      firstDay && lastDay ? getReplacementsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+      firstDay && lastDay ? getLeavesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+      firstDay && lastDay ? getExchangesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+      firstDay && lastDay ? getShiftNotesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+    ])
 
     const replacementMap: Record<string, any[]> = {}
     replacements.forEach((repl: any) => {

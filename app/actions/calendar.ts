@@ -327,119 +327,173 @@ export async function getAllShiftsWithAssignments() {
 
 export async function getShiftWithAssignments(shiftId: number) {
   try {
-    const shift = await sql`
+    const result = await sql`
+      WITH shift_info AS (
+        SELECT 
+          s.id,
+          s.team_id,
+          s.cycle_day,
+          s.shift_type,
+          s.start_time,
+          s.end_time,
+          t.name as team_name,
+          t.type as team_type,
+          t.color as team_color
+        FROM shifts s
+        JOIN teams t ON s.team_id = t.id
+        WHERE s.id = ${shiftId}
+      ),
+      team_members_data AS (
+        SELECT 
+          tm.id,
+          tm.user_id,
+          false as is_extra,
+          false as is_partial,
+          NULL::text as start_time,
+          NULL::text as end_time,
+          NULL as replacement_id,
+          NULL as replacement_status,
+          u.first_name,
+          u.last_name,
+          u.role,
+          u.email,
+          1 as source_order
+        FROM team_members tm
+        JOIN users u ON tm.user_id = u.id
+        JOIN shift_info si ON tm.team_id = si.team_id
+        ORDER BY 
+          CASE u.role 
+            WHEN 'captain' THEN 1 
+            WHEN 'lieutenant' THEN 2 
+            WHEN 'pp1' THEN 3 
+            WHEN 'pp2' THEN 4 
+            WHEN 'pp3' THEN 5 
+            WHEN 'pp4' THEN 6 
+            WHEN 'pp5' THEN 7 
+            WHEN 'pp6' THEN 8 
+            ELSE 9 
+          END,
+          u.last_name
+      ),
+      extra_firefighters_data AS (
+        SELECT 
+          sa.id,
+          sa.user_id,
+          sa.is_extra,
+          COALESCE(sa.is_partial, false) as is_partial,
+          sa.start_time::text as start_time,
+          sa.end_time::text as end_time,
+          NULL as replacement_id,
+          NULL as replacement_status,
+          u.first_name,
+          u.last_name,
+          u.role,
+          u.email,
+          2 as source_order
+        FROM shift_assignments sa
+        JOIN users u ON sa.user_id = u.id
+        WHERE sa.shift_id = ${shiftId} AND sa.is_extra = true
+        ORDER BY 
+          CASE u.role 
+            WHEN 'captain' THEN 1 
+            WHEN 'lieutenant' THEN 2 
+            WHEN 'pp1' THEN 3 
+            WHEN 'pp2' THEN 4 
+            WHEN 'pp3' THEN 5 
+            WHEN 'pp4' THEN 6 
+            WHEN 'pp5' THEN 7 
+            WHEN 'pp6' THEN 8 
+            ELSE 9 
+          END,
+          u.last_name
+      ),
+      cycle_config_data AS (
+        SELECT start_date, cycle_length_days
+        FROM cycle_config
+        WHERE is_active = true
+        LIMIT 1
+      )
       SELECT 
-        s.id,
-        s.team_id,
-        s.cycle_day,
-        s.shift_type,
-        s.start_time,
-        s.end_time,
-        t.name as team_name,
-        t.type as team_type,
-        t.color as team_color
-      FROM shifts s
-      JOIN teams t ON s.team_id = t.id
-      WHERE s.id = ${shiftId}
+        json_build_object(
+          'id', si.id,
+          'team_id', si.team_id,
+          'cycle_day', si.cycle_day,
+          'shift_type', si.shift_type,
+          'start_time', si.start_time,
+          'end_time', si.end_time,
+          'team_name', si.team_name,
+          'team_type', si.team_type,
+          'team_color', si.team_color,
+          'cycle_start_date', cc.start_date,
+          'cycle_length_days', cc.cycle_length_days
+        ) as shift_data,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', tm.id,
+              'user_id', tm.user_id,
+              'is_extra', tm.is_extra,
+              'is_partial', tm.is_partial,
+              'start_time', tm.start_time,
+              'end_time', tm.end_time,
+              'replacement_id', tm.replacement_id,
+              'replacement_status', tm.replacement_status,
+              'first_name', tm.first_name,
+              'last_name', tm.last_name,
+              'role', tm.role,
+              'email', tm.email
+            ) ORDER BY tm.source_order, 
+              CASE tm.role 
+                WHEN 'captain' THEN 1 
+                WHEN 'lieutenant' THEN 2 
+                WHEN 'pp1' THEN 3 
+                WHEN 'pp2' THEN 4 
+                WHEN 'pp3' THEN 5 
+                WHEN 'pp4' THEN 6 
+                WHEN 'pp5' THEN 7 
+                WHEN 'pp6' THEN 8 
+                ELSE 9 
+              END,
+              tm.last_name
+          ) FILTER (WHERE tm.id IS NOT NULL),
+          '[]'::json
+        ) as assignments_data
+      FROM shift_info si
+      CROSS JOIN cycle_config_data cc
+      LEFT JOIN (
+        SELECT * FROM team_members_data
+        UNION ALL
+        SELECT * FROM extra_firefighters_data
+      ) tm ON true
+      GROUP BY si.id, si.team_id, si.cycle_day, si.shift_type, si.start_time, si.end_time, 
+               si.team_name, si.team_type, si.team_color, cc.start_date, cc.cycle_length_days
     `.catch((err) => {
       const errorMessage = err?.message || String(err)
       if (errorMessage.includes("Too Many")) {
         console.error("[v0] getShiftWithAssignments: Rate limit exceeded, please wait a moment and try again")
       } else {
-        console.error("[v0] getShiftWithAssignments: Shift query failed", errorMessage)
+        console.error("[v0] getShiftWithAssignments: Combined query failed", errorMessage)
       }
       throw err
     })
 
-    if (!Array.isArray(shift) || shift.length === 0) return null
+    if (!Array.isArray(result) || result.length === 0) return null
 
-    const teamMembers = await sql`
-      SELECT 
-        tm.id,
-        tm.user_id,
-        false as is_extra,
-        false as is_partial,
-        NULL as start_time,
-        NULL as end_time,
-        NULL as replacement_id,
-        NULL as replacement_status,
-        u.first_name,
-        u.last_name,
-        u.role,
-        u.email
-      FROM team_members tm
-      JOIN users u ON tm.user_id = u.id
-      WHERE tm.team_id = ${shift[0].team_id}
-      ORDER BY 
-        CASE u.role 
-          WHEN 'captain' THEN 1 
-          WHEN 'lieutenant' THEN 2 
-          WHEN 'pp1' THEN 3 
-          WHEN 'pp2' THEN 4 
-          WHEN 'pp3' THEN 5 
-          WHEN 'pp4' THEN 6 
-          WHEN 'pp5' THEN 7 
-          WHEN 'pp6' THEN 8 
-          ELSE 9 
-        END,
-        u.last_name
-    `.catch((err) => {
-      console.error("[v0] getShiftWithAssignments: Team members query failed", err?.message || err)
-      return []
-    })
+    const { shift_data, assignments_data } = result[0]
+    const shift = shift_data
+    const assignments = assignments_data || []
 
-    const extraFirefighters = await sql`
-      SELECT 
-        sa.id,
-        sa.user_id,
-        sa.is_extra,
-        COALESCE(sa.is_partial, false) as is_partial,
-        sa.start_time,
-        sa.end_time,
-        NULL as replacement_id,
-        NULL as replacement_status,
-        u.first_name,
-        u.last_name,
-        u.role,
-        u.email
-      FROM shift_assignments sa
-      JOIN users u ON sa.user_id = u.id
-      WHERE sa.shift_id = ${shiftId} AND sa.is_extra = true
-      ORDER BY 
-        CASE u.role 
-          WHEN 'captain' THEN 1 
-          WHEN 'lieutenant' THEN 2 
-          WHEN 'pp1' THEN 3 
-          WHEN 'pp2' THEN 4 
-          WHEN 'pp3' THEN 5 
-          WHEN 'pp4' THEN 6 
-          WHEN 'pp5' THEN 7 
-          WHEN 'pp6' THEN 8 
-          ELSE 9 
-        END,
-        u.last_name
-    `.catch((err) => {
-      console.error("[v0] getShiftWithAssignments: Extra firefighters query failed", err?.message || err)
-      return []
-    })
-
-    const cycleConfig = await sql`
-      SELECT start_date, cycle_length_days
-      FROM cycle_config
-      WHERE is_active = true
-      LIMIT 1
-    `.catch((err) => {
-      console.error("[v0] getShiftWithAssignments: Cycle config query failed", err?.message || err)
-      return []
-    })
+    if (!shift || !shift.team_name) {
+      console.error("[v0] getShiftWithAssignments: Invalid shift data returned")
+      return null
+    }
 
     let extraReplacementRequests: any[] = []
-    if (Array.isArray(cycleConfig) && cycleConfig.length > 0) {
-      const { start_date, cycle_length_days } = cycleConfig[0]
-      const startDate = new Date(start_date)
-      const cycleDay = shift[0].cycle_day
-      const shiftType = shift[0].shift_type
-      const teamId = shift[0].team_id
+    if (shift.cycle_start_date && shift.cycle_length_days) {
+      const startDate = new Date(shift.cycle_start_date)
+      const cycleDay = shift.cycle_day
+      const shiftType = shift.shift_type
+      const teamId = shift.team_id
 
       const allExtraRequests = await sql`
         SELECT 
@@ -464,7 +518,7 @@ export async function getShiftWithAssignments(shiftId: number) {
           .filter((req: any) => {
             const reqDate = new Date(req.shift_date)
             const daysSinceStart = Math.floor((reqDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-            const reqCycleDay = (daysSinceStart % cycle_length_days) + 1
+            const reqCycleDay = (daysSinceStart % shift.cycle_length_days) + 1
 
             return reqCycleDay === cycleDay && req.shift_type === shiftType && req.team_id === teamId
           })
@@ -485,15 +539,9 @@ export async function getShiftWithAssignments(shiftId: number) {
       }
     }
 
-    const assignments = [
-      ...(Array.isArray(teamMembers) ? teamMembers : []),
-      ...(Array.isArray(extraFirefighters) ? extraFirefighters : []),
-      ...extraReplacementRequests,
-    ]
-
     return {
-      ...shift[0],
-      assignments,
+      ...shift,
+      assignments: [...assignments, ...extraReplacementRequests],
     }
   } catch (error: any) {
     const errorMessage = error?.message || String(error)

@@ -25,6 +25,8 @@ export function AddMemberDialog({ teamId, availableFirefighters }: AddMemberDial
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
+  const sortedFirefighters = [...availableFirefighters].sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
+
   const handleSubmit = async () => {
     if (!selectedUserId) return
 
@@ -56,9 +58,9 @@ export function AddMemberDialog({ teamId, availableFirefighters }: AddMemberDial
               <SelectValue placeholder="Sélectionner un pompier" />
             </SelectTrigger>
             <SelectContent>
-              {availableFirefighters.map((firefighter) => (
+              {sortedFirefighters.map((firefighter) => (
                 <SelectItem key={firefighter.id} value={firefighter.id.toString()}>
-                  {firefighter.first_name} {firefighter.last_name} ({firefighter.role})
+                  {firefighter.last_name} {firefighter.first_name} ({firefighter.role})
                 </SelectItem>
               ))}
             </SelectContent>
