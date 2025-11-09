@@ -87,21 +87,6 @@ export function CalendarCell({
     }
 
     try {
-      console.log("[v0] Calendar cell clicked - day.date raw:", day.date)
-      console.log("[v0] Calendar cell clicked - day.date type:", typeof day.date)
-      console.log("[v0] Calendar cell clicked - day.date.toString():", day.date.toString())
-      console.log("[v0] Calendar cell clicked - day.date.toISOString():", day.date.toISOString())
-      console.log("[v0] Calendar cell clicked - day.date local components:", {
-        year: day.date.getFullYear(),
-        month: day.date.getMonth(),
-        day: day.date.getDate(),
-      })
-      console.log("[v0] Calendar cell clicked - day.date UTC components:", {
-        year: day.date.getUTCFullYear(),
-        month: day.date.getUTCMonth(),
-        day: day.date.getUTCDate(),
-      })
-
       const shiftDetails = await getShiftWithAssignments(shift.id)
       const firefighters = await getTeamFirefighters(shift.team_id)
 
@@ -265,7 +250,7 @@ export function CalendarCell({
               {getDayOfWeekLabel(day.dayOfWeek)}
             </span>
             <span className="text-sm md:text-base font-bold">
-              {day.date.getDate()} {getMonthLabel(day.date.getMonth())}
+              {day.date.getUTCDate()} {getMonthLabel(day.date.getUTCMonth())}
             </span>
           </CardTitle>
         </CardHeader>

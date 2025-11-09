@@ -643,8 +643,6 @@ export async function deleteReplacement(replacementId: number) {
 
 export async function getReplacementsForShift(shiftDate: string, shiftType: string, teamId: number) {
   try {
-    console.log("[v0] getReplacementsForShift called with:", { shiftDate, shiftType, teamId })
-
     const replacements = await sql`
       SELECT 
         r.*,
@@ -675,21 +673,6 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
         AND r.status != 'cancelled'
       ORDER BY r.created_at DESC
     `
-
-    console.log("[v0] getReplacementsForShift result:", replacements.length, "replacements")
-    if (replacements.length > 0) {
-      replacements.forEach((r, index) => {
-        console.log(`[v0] Replacement ${index + 1}:`, {
-          id: r.id,
-          user_id: r.user_id,
-          first_name: r.first_name,
-          last_name: r.last_name,
-          status: r.status,
-          application_deadline: r.application_deadline,
-          is_partial: r.is_partial,
-        })
-      })
-    }
 
     return replacements.map((r) => ({
       ...r,

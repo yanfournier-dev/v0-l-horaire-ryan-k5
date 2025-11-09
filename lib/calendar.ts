@@ -71,7 +71,7 @@ export function generateMonthView(year: number, month: number, cycleStartDate: D
   // Add padding days from previous month to start on Sunday
   const firstDayOfWeek = firstDay.getDay()
   for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-    const date = new Date(year, month, -i, 0, 0, 0, 0)
+    const date = new Date(year, month, -i)
     const cycleDay = getCycleDay(date, cycleStartDate)
     days.push({
       date,
@@ -84,7 +84,7 @@ export function generateMonthView(year: number, month: number, cycleStartDate: D
 
   // Add all days of the current month
   for (let day = 1; day <= lastDay.getDate(); day++) {
-    const date = new Date(year, month, day, 0, 0, 0, 0)
+    const date = new Date(year, month, day)
     const cycleDay = getCycleDay(date, cycleStartDate)
     days.push({
       date,
@@ -99,7 +99,7 @@ export function generateMonthView(year: number, month: number, cycleStartDate: D
   const remainingDays = 7 - (days.length % 7)
   if (remainingDays < 7) {
     for (let i = 1; i <= remainingDays; i++) {
-      const date = new Date(year, month + 1, i, 0, 0, 0, 0)
+      const date = new Date(year, month + 1, i)
       const cycleDay = getCycleDay(date, cycleStartDate)
       days.push({
         date,
