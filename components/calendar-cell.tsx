@@ -250,7 +250,7 @@ export function CalendarCell({
               {getDayOfWeekLabel(day.dayOfWeek)}
             </span>
             <span className="text-sm md:text-base font-bold">
-              {day.date.getUTCDate()} {getMonthLabel(day.date.getUTCMonth())}
+              {day.date.getDate()} {getMonthLabel(day.date.getMonth())}
             </span>
           </CardTitle>
         </CardHeader>
