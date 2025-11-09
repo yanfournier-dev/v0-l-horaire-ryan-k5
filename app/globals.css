@@ -122,4 +122,56 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Adding mobile landscape optimizations for calendar */
+  @media (orientation: landscape) and (max-width: 1023px) {
+    /* Optimiser le calendrier pour mode paysage mobile uniquement */
+    .calendar-cell-landscape {
+      min-height: 100px !important;
+    }
+
+    .calendar-cell-landscape .card-header {
+      padding: 0.25rem !important;
+    }
+
+    .calendar-cell-landscape .card-content {
+      padding: 0.25rem !important;
+    }
+
+    .calendar-cell-landscape .shift-container {
+      padding: 0.375rem !important;
+      margin-bottom: 0.25rem !important;
+    }
+
+    .calendar-cell-landscape .firefighter-name {
+      font-size: 9px !important;
+      line-height: 1.2 !important;
+      padding: 0 !important;
+    }
+
+    .calendar-cell-landscape .badge {
+      font-size: 8px !important;
+      padding: 0 0.25rem !important;
+    }
+
+    .calendar-cell-landscape .date-header {
+      font-size: 10px !important;
+    }
+
+    .calendar-cell-landscape .shift-type-badge {
+      font-size: 8px !important;
+      padding: 0 0.25rem !important;
+    }
+
+    .calendar-cell-landscape .role-badge {
+      font-size: 7px !important;
+      padding: 0.125rem 0.25rem !important;
+      margin-right: 0.25rem !important;
+    }
+
+    .calendar-cell-landscape .time-indicator {
+      font-size: 8px !important;
+      margin-left: 0.25rem !important;
+    }
+  }
 }

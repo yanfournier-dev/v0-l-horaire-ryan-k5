@@ -242,17 +242,19 @@ export function CalendarCell({
     <>
       <Card
         id={`day-${dateStr}`}
-        className={`${day.isToday ? "ring-1 ring-blue-400/50 shadow-md" : ""} ${!isCurrentMonth ? "opacity-40" : ""} hover:shadow-md transition-all duration-200 h-full border-border/50`}
+        className={`calendar-cell-landscape ${day.isToday ? "ring-1 ring-blue-400/50 shadow-md" : ""} ${!isCurrentMonth ? "opacity-40" : ""} hover:shadow-md transition-all duration-200 h-full border-border/50`}
       >
-        <CardHeader className="pb-1.5 p-2.5 border-b border-border/30">
-          <CardTitle className="text-sm font-semibold text-foreground/90 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground/80 font-normal">{getDayOfWeekLabel(day.dayOfWeek)}</span>
-            <span className="text-base font-bold">
+        <CardHeader className="card-header pb-1 p-1.5 md:pb-1.5 md:p-2.5 border-b border-border/30">
+          <CardTitle className="date-header text-xs md:text-sm font-semibold text-foreground/90 flex items-center justify-between">
+            <span className="text-[10px] md:text-xs text-muted-foreground/80 font-normal">
+              {getDayOfWeekLabel(day.dayOfWeek)}
+            </span>
+            <span className="text-sm md:text-base font-bold">
               {day.date.getUTCDate()} {getMonthLabel(day.date.getUTCMonth())}
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-2 space-y-1.5">
+        <CardContent className="card-content p-1 md:p-2 space-y-1 md:space-y-1.5">
           {shifts.length > 0 ? (
             shifts.map((shift, shiftIndex) => {
               const shiftReplacements = replacements[shiftIndex] || []
@@ -319,7 +321,7 @@ export function CalendarCell({
               return (
                 <div
                   key={shift.id}
-                  className={`space-y-1 p-2 rounded-md border ${isAdmin ? "cursor-pointer hover:bg-accent/30" : ""} transition-colors`}
+                  className={`shift-container space-y-0.5 md:space-y-1 p-1.5 md:p-2 rounded-md border ${isAdmin ? "cursor-pointer hover:bg-accent/30" : ""} transition-colors`}
                   style={{
                     backgroundColor: getTeamBackgroundColor(shift.team_name, shift.team_color),
                     borderColor: getTeamBorderColor(shift.team_name, shift.team_color),
@@ -329,7 +331,7 @@ export function CalendarCell({
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <Badge
                       variant="outline"
-                      className="text-[10px] font-medium px-1.5 py-0"
+                      className="shift-type-badge text-[9px] md:text-[10px] font-medium px-1 md:px-1.5 py-0"
                       style={{
                         backgroundColor:
                           shift.shift_type === "full_24h"
@@ -355,7 +357,7 @@ export function CalendarCell({
                     </Badge>
                   </div>
                   {firefighters.length > 0 ? (
-                    <div className="text-xs leading-relaxed text-foreground/80 space-y-0">
+                    <div className="text-[10px] md:text-xs leading-snug md:leading-relaxed text-foreground/80 space-y-0">
                       {firefighters.map((firefighter, index) => {
                         const replacement = shiftReplacements.find(
                           (r: any) =>
@@ -500,7 +502,7 @@ export function CalendarCell({
                         return (
                           <div
                             key={index}
-                            className={`truncate py-0.5 ${
+                            className={`firefighter-name truncate py-0 md:py-0.5 ${
                               isExchange
                                 ? "font-semibold"
                                 : isExtraFirefighter
@@ -512,63 +514,65 @@ export function CalendarCell({
                                       : isAssignedReplacement
                                         ? "font-semibold"
                                         : ""
-                            } ${hasPartialLeave && !replacement && !isExchange ? "bg-blue-50 dark:bg-blue-950/20 px-1.5 rounded text-blue-700 dark:text-blue-300" : ""}`}
+                            } ${hasPartialLeave && !replacement && !isExchange ? "bg-blue-50 dark:bg-blue-950/20 px-1 md:px-1.5 rounded text-blue-700 dark:text-blue-300" : ""}`}
                           >
                             {showCptBadge && (
                               <span
-                                className={`text-[9px] font-semibold px-1 py-0.5 rounded border ${
+                                className={`role-badge text-[8px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0.5 rounded border ${
                                   showGreenCptBadge
                                     ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
                                     : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
-                                } mr-1`}
+                                } mr-0.5 md:mr-1`}
                               >
                                 Cpt
                               </span>
                             )}
                             {showLtBadge && (
                               <span
-                                className={`text-[9px] font-semibold px-1 py-0.5 rounded border ${
+                                className={`role-badge text-[8px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0.5 rounded border ${
                                   showGreenLtBadge
                                     ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
                                     : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
-                                } mr-1`}
+                                } mr-0.5 md:mr-1`}
                               >
                                 Lt
                               </span>
                             )}
-                            {isExchange && <span className="text-green-700 dark:text-green-500 mr-1">↔</span>}
+                            {isExchange && <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1">↔</span>}
                             {isApprovedNotAssigned && !isExchange && (
-                              <span className="text-gray-600 dark:text-gray-400 mr-1">⏳</span>
+                              <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1">⏳</span>
                             )}
                             {isAssignedReplacement && !isExchange && (
-                              <span className="text-green-700 dark:text-green-500 mr-1">✓</span>
+                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1">✓</span>
                             )}
                             {isExtraFirefighter && !isExchange && (
-                              <span className="inline-block scale-125 text-green-700 dark:text-green-500 mr-1">+</span>
+                              <span className="inline-block scale-125 text-green-700 dark:text-green-500 mr-0.5 md:mr-1">
+                                +
+                              </span>
                             )}
                             {hasExtraPartialTime && !isExchange && (
-                              <span className="text-amber-500 dark:text-amber-400 font-bold mr-1">*</span>
+                              <span className="text-amber-500 dark:text-amber-400 font-bold mr-0.5 md:mr-1">*</span>
                             )}
                             {displayFirstName === "Pompier" && displayLastName === "supplémentaire"
                               ? "Pompier supplémentaire"
                               : formatFirefighterName(displayFirstName, displayLastName)}
                             {isExchange && exchangePartialTimes && (
-                              <span className="ml-1 text-[10px] font-normal text-gray-600 dark:text-gray-400">
+                              <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-gray-600 dark:text-gray-400">
                                 ({exchangePartialTimes})
                               </span>
                             )}
                             {hasPartialReplacement && !isExchange && (
-                              <span className="ml-1 text-[10px] font-normal text-gray-600 dark:text-gray-400">
+                              <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-gray-600 dark:text-gray-400">
                                 ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
                               </span>
                             )}
                             {hasExtraPartialTime && !isExchange && (
-                              <span className="ml-1 text-[10px] font-normal text-amber-600 dark:text-amber-400">
+                              <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-amber-600 dark:text-amber-400">
                                 ({firefighter.startTime!.slice(0, 5)}-{firefighter.endTime!.slice(0, 5)})
                               </span>
                             )}
                             {hasPartialLeave && !isExchange && (
-                              <span className="ml-1 text-[10px] font-normal text-blue-600 dark:text-blue-400">
+                              <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-blue-600 dark:text-blue-400">
                                 ({firefighterLeave.start_time.slice(0, 5)}-{firefighterLeave.end_time.slice(0, 5)})
                               </span>
                             )}
@@ -577,16 +581,16 @@ export function CalendarCell({
                       })}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground/60 italic">Aucun pompier assigné</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground/60 italic">Aucun pompier assigné</p>
                   )}
                   {shift.has_note && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-full mt-1 h-6 text-xs font-semibold text-foreground hover:text-foreground hover:bg-accent/50"
+                      className="w-full mt-0.5 md:mt-1 h-5 md:h-6 text-[10px] md:text-xs font-semibold text-foreground hover:text-foreground hover:bg-accent/50"
                       onClick={(e) => handleNoteClick(shift, e)}
                     >
-                      <FileText className="h-3 w-3 mr-1" />
+                      <FileText className="h-2.5 md:h-3 w-2.5 md:w-3 mr-0.5 md:mr-1" />
                       Voir la note
                     </Button>
                   )}
@@ -594,7 +598,7 @@ export function CalendarCell({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-full mt-1 h-6 text-xs text-muted-foreground/50 hover:text-muted-foreground opacity-40 hover:opacity-70"
+                      className="w-full mt-0.5 md:mt-1 h-5 md:h-6 text-[10px] md:text-xs text-muted-foreground/50 hover:text-muted-foreground opacity-40 hover:opacity-70"
                       onClick={(e) => handleNoteClick(shift, e)}
                     >
                       Note
@@ -604,7 +608,7 @@ export function CalendarCell({
               )
             })
           ) : (
-            <p className="text-xs text-muted-foreground/60 text-center py-4">Aucun quart</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground/60 text-center py-2 md:py-4">Aucun quart</p>
           )}
         </CardContent>
       </Card>
