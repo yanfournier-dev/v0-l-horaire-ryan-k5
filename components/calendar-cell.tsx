@@ -142,14 +142,8 @@ export function CalendarCell({
 
       const hasActingLieutenant = calendarFirefighters.some((f) => f.isActingLieutenant === true)
       const hasActingCaptain = calendarFirefighters.some((f) => f.isActingCaptain === true)
-      const firstPermanentLieutenantIndex = calendarFirefighters.findIndex(
-        (f) => f.role === "lieutenant" && f.isActingLieutenant !== false,
-      )
-      const firstPermanentCaptainIndex = calendarFirefighters.findIndex(
-        (f) => f.role === "captain" && f.isActingCaptain !== false,
-      )
 
-      const assignmentsWithLtBadge = (shiftDetails?.assignments || []).map((assignment: any) => {
+      const assignmentsWithLtBadge = firefighters.map((assignment: any) => {
         const calendarIndex = calendarFirefighters.findIndex(
           (f) => f.firstName === assignment.first_name && f.lastName === assignment.last_name,
         )
@@ -167,17 +161,11 @@ export function CalendarCell({
         const firefighter = calendarFirefighters[calendarIndex]
         const showsLtBadge =
           firefighter.isActingLieutenant === true ||
-          (!hasActingLieutenant &&
-            firefighter.role === "lieutenant" &&
-            firefighter.isActingLieutenant !== false &&
-            calendarIndex === firstPermanentLieutenantIndex)
+          (!hasActingLieutenant && firefighter.role === "lieutenant" && firefighter.isActingLieutenant !== true)
 
         const showsCptBadge =
           firefighter.isActingCaptain === true ||
-          (!hasActingCaptain &&
-            firefighter.role === "captain" &&
-            firefighter.isActingCaptain !== false &&
-            calendarIndex === firstPermanentCaptainIndex)
+          (!hasActingCaptain && firefighter.role === "captain" && firefighter.isActingCaptain !== true)
 
         return {
           ...assignment,
@@ -189,9 +177,10 @@ export function CalendarCell({
       })
 
       setSelectedShift({
-        ...shiftDetails,
+        ...shift,
         date: day.date,
         exchanges: shiftExchanges,
+        assignments: assignmentsWithLtBadge, // Declare shiftDetails variable before using it
       })
       setTeamFirefighters(firefighters)
       setCurrentAssignments(assignmentsWithLtBadge)
@@ -289,6 +278,18 @@ export function CalendarCell({
                   })
                 : []
 
+              if (day.date.getDate() === 28 && day.date.getMonth() === 10) {
+                // November (month 10)
+                console.log(`[v0] Nov 28 - Shift ${shift.shift_type}:`, {
+                  firefighters: firefighters.map((f) => ({
+                    name: `${f.firstName} ${f.lastName}`,
+                    role: f.role,
+                    isActingLt: f.isActingLieutenant,
+                    isActingCpt: f.isActingCaptain,
+                  })),
+                })
+              }
+
               const roleOrder: Record<string, number> = {
                 captain: 1,
                 lieutenant: 2,
@@ -311,12 +312,45 @@ export function CalendarCell({
               const hasActingLieutenant = firefighters.some((f) => f.isActingLieutenant === true)
               const hasActingCaptain = firefighters.some((f) => f.isActingCaptain === true)
 
-              const firstPermanentLieutenantIndex = firefighters.findIndex(
-                (f) => f.role === "lieutenant" && f.isActingLieutenant !== false,
-              )
-              const firstPermanentCaptainIndex = firefighters.findIndex(
-                (f) => f.role === "captain" && f.isActingCaptain !== false,
-              )
+              if (day.date.getDate() === 28 && day.date.getMonth() === 10) {
+                console.log(`[v0] Nov 28 - Badge logic:`, {
+                  hasActingLt: hasActingLieutenant,
+                  hasActingCpt: hasActingCaptain,
+                })
+              }
+
+              const assignmentsWithLtBadge = firefighters.map((assignment: any) => {
+                const calendarIndex = firefighters.findIndex(
+                  (f) => f.firstName === assignment.first_name && f.lastName === assignment.last_name,
+                )
+
+                if (calendarIndex === -1) {
+                  return {
+                    ...assignment,
+                    showsLtBadge: false,
+                    showsCptBadge: false,
+                    is_acting_lieutenant: false,
+                    is_acting_captain: false,
+                  }
+                }
+
+                const firefighter = firefighters[calendarIndex]
+                const showsLtBadge =
+                  firefighter.isActingLieutenant === true ||
+                  (!hasActingLieutenant && firefighter.role === "lieutenant" && firefighter.isActingLieutenant !== true)
+
+                const showsCptBadge =
+                  firefighter.isActingCaptain === true ||
+                  (!hasActingCaptain && firefighter.role === "captain" && firefighter.isActingCaptain !== true)
+
+                return {
+                  ...assignment,
+                  showsLtBadge,
+                  showsCptBadge,
+                  is_acting_lieutenant: firefighter.isActingLieutenant === true,
+                  is_acting_captain: firefighter.isActingCaptain === true,
+                }
+              })
 
               return (
                 <div
@@ -438,26 +472,11 @@ export function CalendarCell({
                         const replacementIsActingLieutenant = replacement?.replacement_is_acting_lieutenant === true
                         const replacementIsActingCaptain = replacement?.replacement_is_acting_captain === true
 
-                        if (isAssignedReplacement && (displayFirstName === "Vincent" || displayFirstName === "V")) {
-                          console.log("[v0] Replacement debug:", {
-                            displayFirstName,
-                            displayLastName,
-                            replacement,
-                            replacementIsActingCaptain,
-                            replacementIsActingLieutenant,
-                            hasActingCaptain,
-                            firefighterIsActingCaptain: firefighter.isActingCaptain,
-                            replacement_is_acting_captain_raw: replacement?.replacement_is_acting_captain,
-                            replacement_is_acting_lieutenant_raw: replacement?.replacement_is_acting_lieutenant,
-                          })
-                        }
-
                         const showLtBadge =
                           firefighter.isActingLieutenant === true ||
                           (!hasActingLieutenant &&
                             firefighter.role === "lieutenant" &&
-                            firefighter.isActingLieutenant !== false &&
-                            index === firstPermanentLieutenantIndex) ||
+                            firefighter.isActingLieutenant !== true) ||
                           (isAssignedReplacement &&
                             replacement?.replaced_role === "lieutenant" &&
                             !hasActingLieutenant) ||
@@ -474,25 +493,9 @@ export function CalendarCell({
                           firefighter.isActingCaptain === true ||
                           (!hasActingCaptain &&
                             firefighter.role === "captain" &&
-                            firefighter.isActingCaptain !== false &&
-                            index === firstPermanentCaptainIndex) ||
+                            firefighter.isActingCaptain !== true) ||
                           (isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain) ||
                           (isAssignedReplacement && replacementIsActingCaptain)
-
-                        if (isAssignedReplacement && (displayFirstName === "Vincent" || displayFirstName === "V")) {
-                          console.log("[v0] showCptBadge calculation:", {
-                            showCptBadge,
-                            condition1_firefighterIsActingCaptain: firefighter.isActingCaptain === true,
-                            condition2_defaultCaptain:
-                              !hasActingCaptain &&
-                              firefighter.role === "captain" &&
-                              firefighter.isActingCaptain !== false &&
-                              index === firstPermanentCaptainIndex,
-                            condition3_replacementOfCaptain:
-                              isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain,
-                            condition4_replacementIsActingCaptain: isAssignedReplacement && replacementIsActingCaptain,
-                          })
-                        }
 
                         const showGreenCptBadge =
                           firefighter.isActingCaptain === true ||

@@ -135,20 +135,17 @@ export function ShiftAssignmentDrawer({
   useEffect(() => {
     if (open) {
       scrollPositionRef.current = window.scrollY
-      console.log("[v0] Drawer opened: Saved scroll position:", scrollPositionRef.current)
     }
   }, [open])
 
   const refreshAndClose = () => {
     const scrollPosition = scrollPositionRef.current
-    console.log("[v0] refreshAndClose: Using saved scroll position:", scrollPosition)
 
     router.refresh()
     onOpenChange(false)
 
     const restoreScroll = () => {
       window.scrollTo(0, scrollPosition)
-      console.log("[v0] refreshAndClose: Restored scroll to:", scrollPosition)
     }
 
     // Using 6 attempts with delays up to 1500ms for reliability
@@ -238,7 +235,7 @@ export function ShiftAssignmentDrawer({
         const assignmentResult = await fetch("/api/get-shift-assignment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: JSON.JSONstringify({
             shiftId: shift.id,
             userId: approvedApp.applicant_id,
           }),
@@ -290,8 +287,6 @@ export function ShiftAssignmentDrawer({
 
   const executeCreateReplacement = async () => {
     setIsLoading(true)
-
-    console.log("[v0] handleCreateReplacement - deadlineSeconds:", deadlineSeconds)
 
     const shiftDate = formatDateForDB(shift.date)
     const result = await createReplacementFromShift(
@@ -458,8 +453,6 @@ export function ShiftAssignmentDrawer({
 
   const executeCreateExtraRequest = async () => {
     setIsLoading(true)
-
-    console.log("[v0] handleCreateExtraRequest - extraDeadlineSeconds:", extraDeadlineSeconds)
 
     const shiftDate = formatDateForDB(shift.date)
 
@@ -898,8 +891,9 @@ export function ShiftAssignmentDrawer({
                                   size="sm"
                                   variant="outline"
                                   onClick={() => {
+                                    const firefighterId = assignment.user_id || assignment.id
                                     setSelectedFirefighter({
-                                      id: assignment.user_id,
+                                      id: firefighterId,
                                       first_name: assignment.first_name,
                                       last_name: assignment.last_name,
                                     })
@@ -914,7 +908,9 @@ export function ShiftAssignmentDrawer({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleRemoveCaptain(assignment.user_id, displayName)}
+                                    onClick={() =>
+                                      handleRemoveCaptain(assignment.user_id || assignment.id, displayName)
+                                    }
                                     disabled={isLoading || loadingReplacements}
                                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                   >
@@ -924,7 +920,7 @@ export function ShiftAssignmentDrawer({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleSetCaptain(assignment.user_id, displayName)}
+                                    onClick={() => handleSetCaptain(assignment.user_id || assignment.id, displayName)}
                                     disabled={isLoading || loadingReplacements}
                                     className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                                   >
@@ -935,7 +931,9 @@ export function ShiftAssignmentDrawer({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleRemoveLieutenant(assignment.user_id, displayName)}
+                                    onClick={() =>
+                                      handleRemoveLieutenant(assignment.user_id || assignment.id, displayName)
+                                    }
                                     disabled={isLoading || loadingReplacements}
                                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                   >
@@ -945,7 +943,10 @@ export function ShiftAssignmentDrawer({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleSetLieutenant(assignment.user_id, displayName)}
+                                    onClick={() => {
+                                      const firefighterId = assignment.user_id || assignment.id
+                                      handleSetLieutenant(firefighterId, displayName)
+                                    }}
                                     disabled={isLoading || loadingReplacements}
                                     className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                   >
@@ -960,7 +961,7 @@ export function ShiftAssignmentDrawer({
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleRemoveCaptain(assignment.user_id, displayName)}
+                                  onClick={() => handleRemoveCaptain(assignment.user_id || assignment.id, displayName)}
                                   disabled={isLoading || loadingReplacements}
                                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                 >
@@ -970,7 +971,7 @@ export function ShiftAssignmentDrawer({
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleSetCaptain(assignment.user_id, displayName)}
+                                  onClick={() => handleSetCaptain(assignment.user_id || assignment.id, displayName)}
                                   disabled={isLoading || loadingReplacements}
                                   className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                                 >
@@ -981,7 +982,9 @@ export function ShiftAssignmentDrawer({
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleRemoveLieutenant(assignment.user_id, displayName)}
+                                  onClick={() =>
+                                    handleRemoveLieutenant(assignment.user_id || assignment.id, displayName)
+                                  }
                                   disabled={isLoading || loadingReplacements}
                                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                 >
@@ -991,7 +994,7 @@ export function ShiftAssignmentDrawer({
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleSetLieutenant(assignment.user_id, displayName)}
+                                  onClick={() => handleSetLieutenant(assignment.user_id || assignment.id, displayName)}
                                   disabled={isLoading || loadingReplacements}
                                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                 >
