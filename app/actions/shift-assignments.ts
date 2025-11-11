@@ -478,17 +478,17 @@ export async function setActingLieutenant(shiftId: number, userId: number) {
 
     console.log("[v0] setActingLieutenant - Success")
 
-    revalidatePath("/dashboard/calendar")
+    revalidatePath("/dashboard/calendar", "max")
+    revalidatePath("/dashboard", "max")
 
     try {
       invalidateCache()
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      // Silently handle cache errors
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] Error setting acting lieutenant:", error)
     return { error: "Erreur lors de la désignation du lieutenant" }
   }
 }
@@ -576,17 +576,17 @@ export async function setActingCaptain(shiftId: number, userId: number) {
 
     console.log("[v0] setActingCaptain - Success")
 
-    revalidatePath("/dashboard/calendar")
+    revalidatePath("/dashboard/calendar", "max")
+    revalidatePath("/dashboard", "max")
 
     try {
       invalidateCache()
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      // Silently handle cache errors
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] Error setting acting captain:", error)
     return { error: "Erreur lors de la désignation du capitaine" }
   }
 }
@@ -673,12 +673,13 @@ export async function removeActingLieutenant(shiftId: number, userId: number) {
 
     console.log("[v0] removeActingLieutenant: Success")
 
-    revalidatePath("/dashboard/calendar")
+    revalidatePath("/dashboard/calendar", "max")
+    revalidatePath("/dashboard", "max")
 
     try {
       invalidateCache()
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      // Silently handle cache errors
     }
 
     return { success: true }
@@ -770,12 +771,13 @@ export async function removeActingCaptain(shiftId: number, userId: number) {
 
     console.log("[v0] removeActingCaptain: Success")
 
-    revalidatePath("/dashboard/calendar")
+    revalidatePath("/dashboard/calendar", "max")
+    revalidatePath("/dashboard", "max")
 
     try {
       invalidateCache()
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      // Silently handle cache errors
     }
 
     return { success: true }
