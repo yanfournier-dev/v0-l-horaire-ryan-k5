@@ -58,7 +58,7 @@ export default async function DashboardLayout({
                 Tableau de bord
               </Button>
             </Link>
-            <Link href="/dashboard/calendar" scroll={false}>
+            <Link href="/dashboard/calendar?scrollToToday=true" scroll={false}>
               <Button variant="ghost" size="sm">
                 Calendrier
               </Button>

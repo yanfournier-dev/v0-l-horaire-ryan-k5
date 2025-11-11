@@ -9,10 +9,21 @@ export function TodayButton() {
     const todayElement = document.getElementById(`day-${todayStr}`)
 
     if (todayElement) {
-      todayElement.scrollIntoView({
-        behavior: "instant",
-        block: "center",
+      const elementPosition = todayElement.getBoundingClientRect().top + window.scrollY
+      const offsetPosition = elementPosition - 100
+
+      console.log("[v0] TodayButton - scroll calculation:", {
+        elementPosition,
+        offsetPosition,
+        currentScroll: window.scrollY,
       })
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "instant",
+      })
+
+      sessionStorage.setItem("calendar-scroll-position", offsetPosition.toString())
     }
   }
 
