@@ -426,8 +426,8 @@ export async function setActingLieutenant(shiftId: number, userId: number) {
       `
     }
 
-    revalidatePath("/dashboard/calendar")
-    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/calendar", "max")
+    revalidatePath("/dashboard", "max")
 
     try {
       invalidateCache()
@@ -506,8 +506,8 @@ export async function setActingCaptain(shiftId: number, userId: number) {
       `
     }
 
-    revalidatePath("/dashboard/calendar")
-    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/calendar", "max")
+    revalidatePath("/dashboard", "max")
 
     try {
       invalidateCache()
@@ -600,8 +600,8 @@ export async function removeActingLieutenant(shiftId: number, userId: number) {
       }
     }
 
-    revalidatePath("/dashboard/calendar")
-    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/calendar", "max")
+    revalidatePath("/dashboard", "max")
 
     try {
       invalidateCache()
@@ -694,8 +694,8 @@ export async function removeActingCaptain(shiftId: number, userId: number) {
       }
     }
 
-    revalidatePath("/dashboard/calendar")
-    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/calendar", "max")
+    revalidatePath("/dashboard", "max")
 
     try {
       invalidateCache()
