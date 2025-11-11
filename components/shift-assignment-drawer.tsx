@@ -150,14 +150,7 @@ export function ShiftAssignmentDrawer({
       sessionStorage.setItem("calendar-scroll-position", position.toString())
     }
     onOpenChange(false)
-
-    if (process.env.NEXT_PUBLIC_VERCEL_ENV === "production") {
-      setTimeout(() => {
-        const currentPath = window.location.pathname
-        const timestamp = Date.now()
-        window.location.href = `${currentPath}?_refresh=${timestamp}`
-      }, 1000)
-    }
+    // </CHANGE> Removed window.location.href reload - rollback to previous state
   }, [onOpenChange])
 
   useEffect(() => {
@@ -236,7 +229,7 @@ export function ShiftAssignmentDrawer({
         const assignmentResult = await fetch("/api/get-shift-assignment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: JSON.JSON.stringify({
             shiftId: shift.id,
             userId: approvedApp.applicant_id,
           }),
