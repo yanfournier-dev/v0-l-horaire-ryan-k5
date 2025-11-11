@@ -5,6 +5,7 @@ import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 import {
   sendEmail,
+  sendBatchEmails,
   getReplacementAvailableEmail,
   getApplicationRejectedEmail,
   getApplicationApprovedEmail,
@@ -186,7 +187,12 @@ export async function createNotification(
 
     if (user.enable_email === true && user.email) {
       console.log("[v0] Sending email notification to:", user.email)
-      await sendEmailNotification(type, user.email, fullName, message, relatedId, userId)
+      try {
+        await sendEmailNotification(type, user.email, fullName, message, relatedId, userId)
+      } catch (emailError) {
+        console.error("[v0] Email sending failed but notification created:", emailError)
+        await notifyAdminsOfEmailFailure(user.email, type, emailError)
+      }
     } else {
       console.log("[v0] Email not sent - enable_email:", user.enable_email, "has email:", !!user.email)
     }
@@ -198,6 +204,42 @@ export async function createNotification(
   }
 }
 
+async function notifyAdminsOfEmailFailure(recipientEmail: string, notificationType: string, error: any) {
+  try {
+    const admins = await sql`
+      SELECT id FROM users WHERE role = 'admin'
+    `
+
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const typeMap: Record<string, string> = {
+      replacement_available: "Remplacement disponible",
+      replacement_accepted: "Remplacement accepté",
+      replacement_rejected: "Remplacement rejeté",
+      application_approved: "Candidature approuvée",
+      application_rejected: "Candidature rejetée",
+      exchange_request: "Demande d'échange",
+      exchange_approved: "Échange approuvé",
+      exchange_rejected: "Échange rejeté",
+    }
+
+    const notificationTitle = typeMap[notificationType] || notificationType
+
+    for (const admin of admins) {
+      await sql`
+        INSERT INTO notifications (user_id, title, message, type)
+        VALUES (
+          ${admin.id}, 
+          ${"Échec d'envoi d'email"}, 
+          ${"L'email de notification '" + notificationTitle + "' à " + recipientEmail + " a échoué: " + errorMessage},
+          ${"system"}
+        )
+      `
+    }
+  } catch (notifyError) {
+    console.error("[v0] Failed to notify admins of email failure:", notifyError)
+  }
+}
+
 async function sendEmailNotification(
   type: string,
   email: string,
@@ -206,6 +248,11 @@ async function sendEmailNotification(
   relatedId?: number,
   userId?: number,
 ) {
+  if (process.env.VERCEL_ENV !== "production") {
+    console.log("[v0] Skipping email in preview - notification created in-app only")
+    return
+  }
+
   console.log(
     "[v0] sendEmailNotification called - type:",
     type,
@@ -545,19 +592,18 @@ async function sendEmailNotification(
 
   if (emailContent) {
     console.log("[v0] Calling sendEmail with subject:", emailContent.subject)
-    try {
-      const result = await sendEmail({
-        to: email,
-        subject: emailContent.subject,
-        html: emailContent.html,
-      })
-      if (result.isTestModeRestriction) {
-        console.log("[v0] Email skipped due to Resend test mode - notification still created in database")
-      } else {
-        console.log("[v0] sendEmail result:", result)
-      }
-    } catch (error) {
-      console.error("[v0] sendEmail error:", error)
+    const result = await sendEmail({
+      to: email,
+      subject: emailContent.subject,
+      html: emailContent.html,
+    })
+    if (result.isTestModeRestriction) {
+      console.log("[v0] Email skipped due to Resend test mode - notification still created in database")
+    } else {
+      console.log("[v0] sendEmail result:", result)
+    }
+    if (!result.success) {
+      throw new Error(result.error?.message || "Email sending failed")
     }
   } else {
     console.log("[v0] No email content generated for type:", type)
@@ -614,14 +660,14 @@ export async function updateUserPreferences(
         ) VALUES (
           ${userId},
           ${preferences.enable_app ?? true},
-          ${preferences.enable_email ?? true},
-          ${preferences.notify_replacement_available ?? true},
-          ${preferences.notify_replacement_accepted ?? true},
-          ${preferences.notify_replacement_rejected ?? true},
-          ${preferences.notify_schedule_change ?? true},
-          ${preferences.notify_exchange_request ?? true},
-          ${preferences.notify_exchange_approved ?? true},
-          ${preferences.notify_exchange_rejected ?? true}
+          ${preferences.enable_email ?? false},
+          ${preferences.notify_replacement_available ?? false},
+          ${preferences.notify_replacement_accepted ?? false},
+          ${preferences.notify_replacement_rejected ?? false},
+          ${preferences.notify_schedule_change ?? false},
+          ${preferences.notify_exchange_request ?? false},
+          ${preferences.notify_exchange_approved ?? false},
+          ${preferences.notify_exchange_rejected ?? false}
         )
       `
     } else {
@@ -647,5 +693,238 @@ export async function updateUserPreferences(
   } catch (error) {
     console.error("[v0] Update preferences error:", error)
     return { error: "Erreur lors de la mise à jour des préférences" }
+  }
+}
+
+export async function createBatchNotificationsInApp(
+  userIds: number[],
+  title: string,
+  message: string,
+  type: string,
+  relatedId: number | null,
+  relatedType: string | null,
+) {
+  if (userIds.length === 0) return
+
+  try {
+    console.log(`[v0] Creating ${userIds.length} notifications with sequential inserts`)
+
+    for (let i = 0; i < userIds.length; i++) {
+      const userId = userIds[i]
+
+      await sql`
+        INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
+        VALUES (${userId}, ${title}, ${message}, ${type}, ${relatedId}, ${relatedType})
+      `
+
+      if (i < userIds.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 150))
+      }
+    }
+
+    console.log(`[v0] Created ${userIds.length} notifications successfully`)
+  } catch (error) {
+    console.error("[v0] Batch notification creation error:", error)
+    throw error
+  }
+}
+
+export async function createBatchNotifications(
+  notifications: Array<{
+    userId: number
+    title: string
+    message: string
+    type: string
+    relatedId?: number
+    relatedType?: string
+  }>,
+) {
+  if (notifications.length === 0) {
+    return { success: true }
+  }
+
+  try {
+    console.log("[v0] Creating batch notifications for", notifications.length, "users")
+
+    // Insert all notifications in a single query
+    await createBatchNotificationsInApp(
+      notifications.map((n) => n.userId),
+      notifications[0].title,
+      notifications[0].message,
+      notifications[0].type,
+      notifications[0].relatedId || null,
+      notifications[0].relatedType || null,
+    )
+
+    console.log("[v0] Batch notifications created successfully")
+
+    const type = notifications[0]?.type
+    const relatedId = notifications[0]?.relatedId
+
+    if (type === "replacement_available" && relatedId) {
+      // Send emails in background with delays, don't wait for completion
+      ;(async () => {
+        for (let i = 0; i < notifications.length; i++) {
+          const n = notifications[i]
+
+          // Add delay between emails to avoid rate limiting (except for first one)
+          if (i > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 500))
+          }
+
+          try {
+            const userPrefs = await sql`
+              SELECT 
+                u.email,
+                u.first_name,
+                u.last_name,
+                np.enable_email,
+                np.notify_replacement_available
+              FROM users u
+              LEFT JOIN notification_preferences np ON u.id = np.user_id
+              WHERE u.id = ${n.userId}
+            `
+
+            if (userPrefs.length > 0) {
+              const user = userPrefs[0]
+              const shouldSendEmail =
+                user.enable_email === true &&
+                (user.notify_replacement_available === true || user.notify_replacement_available === null)
+
+              if (shouldSendEmail && user.email) {
+                const fullName = `${user.first_name} ${user.last_name}`
+                await sendEmailNotification(type, user.email, fullName, n.message, relatedId, n.userId)
+              }
+            }
+          } catch (error) {
+            console.error("[v0] Error sending email to user", n.userId, ":", error)
+          }
+        }
+      })().catch((error) => console.error("[v0] Batch email background process error:", error))
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] Batch notification error:", error)
+    return { error: "Erreur lors de la création des notifications" }
+  }
+}
+
+export async function sendBatchReplacementEmails(replacementId: number, firefighterToReplaceName: string) {
+  // Only send emails in production
+  if (process.env.VERCEL_ENV !== "production") {
+    console.log("[v0] Skipping batch emails in preview environment")
+    return { success: true, skipped: true }
+  }
+
+  try {
+    // Get replacement details
+    const replacement = await sql`
+      SELECT 
+        r.shift_date, 
+        r.shift_type, 
+        r.is_partial, 
+        r.start_time, 
+        r.end_time
+      FROM replacements r
+      WHERE r.id = ${replacementId}
+    `
+
+    if (replacement.length === 0) {
+      console.error("[v0] Replacement not found for batch emails")
+      return { success: false, error: "Replacement not found" }
+    }
+
+    const r = replacement[0]
+    const partialHours =
+      r.is_partial && r.start_time && r.end_time
+        ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+        : null
+
+    // Get all users who should receive emails
+    const eligibleUsers = await sql`
+      SELECT 
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        np.enable_email,
+        np.notify_replacement_available
+      FROM users u
+      LEFT JOIN notification_preferences np ON u.id = np.user_id
+      WHERE (np.enable_email IS NULL OR np.enable_email = true)
+        AND (np.notify_replacement_available IS NULL OR np.notify_replacement_available = true)
+        AND u.email IS NOT NULL
+    `
+
+    console.log("[v0] Found", eligibleUsers.length, "users for batch emails")
+
+    if (eligibleUsers.length === 0) {
+      return { success: true, sent: 0 }
+    }
+
+    // Generate all email contents
+    const emails = await Promise.all(
+      eligibleUsers.map(async (user) => {
+        const fullName = `${user.first_name} ${user.last_name}`
+
+        // Generate token for this user
+        const applyToken = crypto.randomUUID()
+        const expiresAt = new Date()
+        expiresAt.setDate(expiresAt.getDate() + 7)
+
+        await sql`
+          INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
+          VALUES (${applyToken}, ${replacementId}, ${user.id}, ${expiresAt})
+          ON CONFLICT (user_id, replacement_id) 
+          DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
+        `
+
+        const emailContent = await getReplacementAvailableEmail(
+          fullName,
+          parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
+          r.shift_type,
+          firefighterToReplaceName,
+          r.is_partial,
+          partialHours,
+          applyToken,
+        )
+
+        return {
+          to: user.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+        }
+      }),
+    )
+
+    // Send all emails in one batch request
+    const result = await sendBatchEmails(emails)
+
+    if (!result.success) {
+      // Notify admins of batch failure
+      const admins = await sql`
+        SELECT id FROM users WHERE role = 'admin'
+      `
+
+      const errorMessage = result.error instanceof Error ? result.error.message : String(result.error)
+
+      for (const admin of admins) {
+        await sql`
+          INSERT INTO notifications (user_id, title, message, type)
+          VALUES (
+            ${admin.id}, 
+            ${"Échec d'envoi d'emails en batch"}, 
+            ${"L'envoi en batch de " + emails.length + " emails de notification 'Remplacement disponible' a échoué: " + errorMessage},
+            ${"system_error"}
+          )
+        `
+      }
+    }
+
+    return result
+  } catch (error) {
+    console.error("[v0] sendBatchReplacementEmails error:", error)
+    return { success: false, error }
   }
 }

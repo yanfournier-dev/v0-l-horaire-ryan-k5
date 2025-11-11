@@ -22,6 +22,12 @@ export async function sendEmail({
   subject: string
   html: string
 }) {
+  if (process.env.VERCEL_ENV !== "production") {
+    console.log("[v0] Skipping email in preview environment - notification will still be created in-app")
+    console.log("[v0] Email would have been sent to:", to, "with subject:", subject)
+    return { success: true, skipped: true }
+  }
+
   console.log("[v0] ========== EMAIL SEND ATTEMPT ==========")
   console.log("[v0] To:", to)
   console.log("[v0] Subject:", subject)
@@ -83,6 +89,69 @@ export async function sendEmail({
     return { success: true, data }
   } catch (error) {
     console.error("[v0] Email send exception:", error)
+    console.log("[v0] ========================================")
+    return { success: false, error }
+  }
+}
+
+export async function sendBatchEmails(
+  emails: Array<{
+    to: string
+    subject: string
+    html: string
+  }>,
+) {
+  // Skip in non-production environments
+  if (process.env.VERCEL_ENV !== "production") {
+    console.log("[v0] Skipping batch emails in preview environment -", emails.length, "emails would have been sent")
+    return { success: true, skipped: true, count: emails.length }
+  }
+
+  console.log("[v0] ========== BATCH EMAIL SEND ATTEMPT ==========")
+  console.log("[v0] Number of emails:", emails.length)
+
+  const resend = getResendClient()
+  if (!resend) {
+    console.log("[v0] Batch emails not sent - Resend not configured")
+    return { success: false, error: "Email service not configured" }
+  }
+
+  let verifiedEmail = process.env.RESEND_VERIFIED_EMAIL
+  if (verifiedEmail) {
+    verifiedEmail = verifiedEmail.replace(/^RESEND_VERIFIED_EMAIL=/i, "").trim()
+  }
+
+  // Filter out emails that don't match verified email in test mode
+  const emailsToSend = verifiedEmail ? emails.filter((email) => email.to === verifiedEmail) : emails
+
+  if (emailsToSend.length === 0) {
+    console.log("[v0] All emails filtered out due to test mode restrictions")
+    return { success: true, sent: 0, filtered: emails.length }
+  }
+
+  try {
+    console.log("[v0] Calling Resend batch API with", emailsToSend.length, "emails...")
+
+    // Use Resend batch.send() API
+    const { data, error } = await resend.batch.send(
+      emailsToSend.map((email) => ({
+        from: "L'horaire Ryan <notifications@resend.dev>",
+        to: email.to,
+        subject: email.subject,
+        html: email.html,
+      })),
+    )
+
+    if (error) {
+      console.error("[v0] Resend batch API returned error:", error)
+      return { success: false, error }
+    }
+
+    console.log("[v0] Batch emails sent successfully!", data)
+    console.log("[v0] ========================================")
+    return { success: true, data, sent: emailsToSend.length }
+  } catch (error) {
+    console.error("[v0] Batch email send exception:", error)
     console.log("[v0] ========================================")
     return { success: false, error }
   }

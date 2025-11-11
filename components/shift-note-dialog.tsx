@@ -3,6 +3,16 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { createOrUpdateShiftNote, deleteShiftNote } from "@/app/actions/shift-notes"
@@ -39,6 +49,7 @@ export function ShiftNoteDialog({
   const [note, setNote] = useState(existingNote?.note || "")
   const [isLoading, setIsLoading] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const router = useRouter()
 
   const scrollToToday = (attempt = 1, maxAttempts = 10) => {
@@ -79,15 +90,12 @@ export function ShiftNoteDialog({
   }
 
   const handleDelete = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette note ?")) {
-      return
-    }
-
     setIsDeleting(true)
     const result = await deleteShiftNote(shiftId, shiftDate)
     setIsDeleting(false)
 
     if (result.success) {
+      setShowDeleteConfirm(false)
       onOpenChange(false)
       router.refresh()
     } else {
@@ -112,79 +120,98 @@ export function ShiftNoteDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            Note pour le quart - {teamName} ({getShiftTypeLabel(shiftType)})
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground">{formatDate(shiftDate)}</p>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Note pour le quart - {teamName} ({getShiftTypeLabel(shiftType)})
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">{formatDate(shiftDate)}</p>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {existingNote && (
-            <div className="text-xs text-muted-foreground">
-              {existingNote.creator_first_name && existingNote.creator_last_name && (
-                <p>
-                  Créée par {existingNote.creator_first_name} {existingNote.creator_last_name}
-                </p>
+          <div className="space-y-4">
+            {existingNote && (
+              <div className="text-xs text-muted-foreground">
+                {existingNote.creator_first_name && existingNote.creator_last_name && (
+                  <p>
+                    Créée par {existingNote.creator_first_name} {existingNote.creator_last_name}
+                  </p>
+                )}
+                <p>Dernière modification: {new Date(existingNote.updated_at).toLocaleString("fr-CA")}</p>
+              </div>
+            )}
+
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Inscrivez une note pour ce quart (situations particulières, détails sur les heures effectuées, etc.)"
+              className="min-h-[200px]"
+              disabled={!isAdmin}
+            />
+
+            {!isAdmin && (
+              <p className="text-sm text-muted-foreground italic">
+                Seuls les administrateurs peuvent créer ou modifier des notes.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="flex justify-between">
+            <div>
+              {existingNote && isAdmin && (
+                <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)} disabled={isDeleting}>
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Suppression...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Supprimer
+                    </>
+                  )}
+                </Button>
               )}
-              <p>Dernière modification: {new Date(existingNote.updated_at).toLocaleString("fr-CA")}</p>
             </div>
-          )}
-
-          <Textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Inscrivez une note pour ce quart (situations particulières, détails sur les heures effectuées, etc.)"
-            className="min-h-[200px]"
-            disabled={!isAdmin}
-          />
-
-          {!isAdmin && (
-            <p className="text-sm text-muted-foreground italic">
-              Seuls les administrateurs peuvent créer ou modifier des notes.
-            </p>
-          )}
-        </div>
-
-        <DialogFooter className="flex justify-between">
-          <div>
-            {existingNote && isAdmin && (
-              <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Suppression...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Supprimer
-                  </>
-                )}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                {isAdmin ? "Annuler" : "Fermer"}
               </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {isAdmin ? "Annuler" : "Fermer"}
-            </Button>
-            {isAdmin && (
-              <Button onClick={handleSave} disabled={isLoading || !note.trim()}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sauvegarde...
-                  </>
-                ) : (
-                  "Sauvegarder"
-                )}
-              </Button>
-            )}
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              {isAdmin && (
+                <Button onClick={handleSave} disabled={isLoading || !note.trim()}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sauvegarde...
+                    </>
+                  ) : (
+                    "Sauvegarder"
+                  )}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-white hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

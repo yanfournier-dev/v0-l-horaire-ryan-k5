@@ -17,10 +17,10 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
   const [preferences, setPreferences] = useState({
     enable_app: initialPreferences?.enable_app ?? true,
     enable_email: initialPreferences?.enable_email ?? false,
-    notify_replacement_available: initialPreferences?.notify_replacement_available ?? true,
-    notify_replacement_accepted: initialPreferences?.notify_replacement_accepted ?? true,
-    notify_replacement_rejected: initialPreferences?.notify_replacement_rejected ?? true,
-    notify_schedule_change: initialPreferences?.notify_schedule_change ?? true,
+    notify_replacement_available: initialPreferences?.notify_replacement_available ?? false,
+    notify_replacement_accepted: initialPreferences?.notify_replacement_accepted ?? false,
+    notify_replacement_rejected: initialPreferences?.notify_replacement_rejected ?? false,
+    notify_schedule_change: initialPreferences?.notify_schedule_change ?? false,
   })
 
   const [saving, setSaving] = useState(false)

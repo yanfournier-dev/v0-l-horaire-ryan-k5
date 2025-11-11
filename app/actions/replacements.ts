@@ -2,7 +2,7 @@
 
 import { sql, invalidateCache } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
-import { createNotification } from "./notifications"
+import { createNotification, sendBatchReplacementEmails, createBatchNotificationsInApp } from "./notifications"
 import { calculateAutoDeadline, formatLocalDate } from "@/lib/date-utils"
 import { revalidatePath } from "next/cache"
 
@@ -226,6 +226,52 @@ export async function createReplacementFromShift(
       RETURNING id
     `
 
+    const replacementId = result[0].id
+
+    const firefighterInfo = await sql`
+      SELECT first_name, last_name FROM users WHERE id = ${userId}
+    `
+    const firefighterToReplaceName =
+      firefighterInfo.length > 0 ? `${firefighterInfo[0].first_name} ${firefighterInfo[0].last_name}` : "Pompier"
+
+    const eligibleUsers = await sql`
+      SELECT DISTINCT u.id
+      FROM users u
+      LEFT JOIN notification_preferences np ON u.id = np.user_id
+      WHERE u.id != ${userId}
+        AND (np.notify_replacement_available IS NULL OR np.notify_replacement_available = true)
+        AND u.id NOT IN (
+          SELECT user_id
+          FROM leaves
+          WHERE start_date <= ${shiftDate}
+            AND end_date >= ${shiftDate}
+            AND status = 'approved'
+        )
+    `
+
+    console.log("[v0] Sending notifications to", eligibleUsers.length, "eligible users")
+
+    // Create in-app notifications for all eligible users
+    if (eligibleUsers.length > 0) {
+      const userIds = eligibleUsers.map((u) => u.id)
+      createBatchNotificationsInApp(
+        userIds,
+        "Nouveau remplacement disponible",
+        `Remplacement pour ${firefighterToReplaceName} le ${formatLocalDate(shiftDate)} (${shiftType === "day" ? "Jour" : "Nuit"})`,
+        "replacement_available",
+        replacementId,
+        "replacement",
+      ).catch((error) => {
+        console.error("[v0] Background notification creation failed:", error)
+      })
+    }
+
+    if (process.env.VERCEL_ENV === "production") {
+      sendBatchReplacementEmails(replacementId, firefighterToReplaceName).catch((error) => {
+        console.error("[v0] Batch email sending failed:", error)
+      })
+    }
+
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
@@ -233,7 +279,7 @@ export async function createReplacementFromShift(
       console.error("Error invalidating cache:", cacheError)
     }
 
-    return { success: true, id: result[0].id }
+    return { success: true, id: replacementId }
   } catch (error) {
     console.error("createReplacementFromShift: Error", error)
     return { error: "Erreur lors de la création du remplacement" }
@@ -635,6 +681,47 @@ export async function createExtraFirefighterReplacement(
       RETURNING id
     `
 
+    const replacementId = result[0].id
+
+    const firefighterToReplaceName = "Pompier supplémentaire"
+
+    const eligibleUsers = await sql`
+      SELECT DISTINCT u.id
+      FROM users u
+      LEFT JOIN notification_preferences np ON u.id = np.user_id
+      WHERE (np.notify_replacement_available IS NULL OR np.notify_replacement_available = true)
+        AND u.id NOT IN (
+          SELECT user_id
+          FROM leaves
+          WHERE start_date <= ${shiftDate}
+            AND end_date >= ${shiftDate}
+            AND status = 'approved'
+        )
+    `
+
+    console.log("[v0] Sending notifications to", eligibleUsers.length, "eligible users")
+
+    // Create in-app notifications for all eligible users
+    if (eligibleUsers.length > 0) {
+      const userIds = eligibleUsers.map((u) => u.id)
+      createBatchNotificationsInApp(
+        userIds,
+        "Nouveau remplacement disponible",
+        `Remplacement (pompier supplémentaire) le ${formatLocalDate(shiftDate)} (${shiftType === "day" ? "Jour" : "Nuit"})`,
+        "replacement_available",
+        replacementId,
+        "replacement",
+      ).catch((error) => {
+        console.error("[v0] Background notification creation failed:", error)
+      })
+    }
+
+    if (process.env.VERCEL_ENV === "production") {
+      sendBatchReplacementEmails(replacementId, firefighterToReplaceName).catch((error) => {
+        console.error("[v0] Batch email sending failed:", error)
+      })
+    }
+
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
@@ -642,7 +729,7 @@ export async function createExtraFirefighterReplacement(
       console.error("[v0] Error invalidating cache:", cacheError)
     }
 
-    return { success: true, id: result[0].id }
+    return { success: true, id: replacementId }
   } catch (error) {
     console.error("[v0] createExtraFirefighterReplacement: Error", error)
     return { error: "Erreur lors de la création de la demande" }
