@@ -267,9 +267,12 @@ export async function createReplacementFromShift(
     }
 
     if (process.env.VERCEL_ENV === "production") {
+      console.log("[v0] PRODUCTION: Attempting to send batch emails for replacement", replacementId)
       sendBatchReplacementEmails(replacementId, firefighterToReplaceName).catch((error) => {
-        console.error("[v0] Batch email sending failed:", error)
+        console.error("[v0] PRODUCTION: Batch email sending failed:", error)
       })
+    } else {
+      console.log("[v0] V0 PREVIEW: Skipping batch emails")
     }
 
     try {
@@ -717,9 +720,12 @@ export async function createExtraFirefighterReplacement(
     }
 
     if (process.env.VERCEL_ENV === "production") {
+      console.log("[v0] PRODUCTION: Attempting to send batch emails for replacement", replacementId)
       sendBatchReplacementEmails(replacementId, firefighterToReplaceName).catch((error) => {
-        console.error("[v0] Batch email sending failed:", error)
+        console.error("[v0] PRODUCTION: Batch email sending failed:", error)
       })
+    } else {
+      console.log("[v0] V0 PREVIEW: Skipping batch emails")
     }
 
     try {

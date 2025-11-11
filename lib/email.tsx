@@ -107,12 +107,13 @@ export async function sendBatchEmails(
     return { success: true, skipped: true, count: emails.length }
   }
 
-  console.log("[v0] ========== BATCH EMAIL SEND ATTEMPT ==========")
+  console.log("[v0] ========== BATCH EMAIL SEND ATTEMPT (PRODUCTION) ==========")
+  console.log("[v0] Environment:", process.env.VERCEL_ENV)
   console.log("[v0] Number of emails:", emails.length)
 
   const resend = getResendClient()
   if (!resend) {
-    console.log("[v0] Batch emails not sent - Resend not configured")
+    console.error("[v0] PRODUCTION ERROR: Resend not configured")
     return { success: false, error: "Email service not configured" }
   }
 
@@ -121,8 +122,12 @@ export async function sendBatchEmails(
     verifiedEmail = verifiedEmail.replace(/^RESEND_VERIFIED_EMAIL=/i, "").trim()
   }
 
+  console.log("[v0] RESEND_VERIFIED_EMAIL configured:", !!verifiedEmail)
+
   // Filter out emails that don't match verified email in test mode
   const emailsToSend = verifiedEmail ? emails.filter((email) => email.to === verifiedEmail) : emails
+
+  console.log("[v0] Emails to send after filtering:", emailsToSend.length)
 
   if (emailsToSend.length === 0) {
     console.log("[v0] All emails filtered out due to test mode restrictions")
@@ -143,15 +148,19 @@ export async function sendBatchEmails(
     )
 
     if (error) {
-      console.error("[v0] Resend batch API returned error:", error)
+      console.error("[v0] PRODUCTION ERROR: Resend batch API returned error:", error)
+      console.error("[v0] Error details:", JSON.stringify(error, null, 2))
       return { success: false, error }
     }
 
-    console.log("[v0] Batch emails sent successfully!", data)
+    console.log("[v0] PRODUCTION SUCCESS: Batch emails sent successfully!")
+    console.log("[v0] Response data:", data)
     console.log("[v0] ========================================")
     return { success: true, data, sent: emailsToSend.length }
   } catch (error) {
-    console.error("[v0] Batch email send exception:", error)
+    console.error("[v0] PRODUCTION EXCEPTION: Batch email send exception:", error)
+    console.error("[v0] Exception type:", error instanceof Error ? error.constructor.name : typeof error)
+    console.error("[v0] Exception message:", error instanceof Error ? error.message : String(error))
     console.log("[v0] ========================================")
     return { success: false, error }
   }
