@@ -141,34 +141,22 @@ export function ShiftAssignmentDrawer({
   const refreshAndClose = () => {
     const scrollPosition = scrollPositionRef.current
 
-    if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
-      // In production, we need a hard refresh to bypass Next.js aggressive caching
-      router.refresh()
-      onOpenChange(false)
+    router.refresh()
+    onOpenChange(false)
 
-      // Force a full page reload after a short delay to ensure changes are visible
-      setTimeout(() => {
-        window.location.reload()
-      }, 100)
-    } else {
-      // In development (v0 preview), use the gentle refresh
-      router.refresh()
-      onOpenChange(false)
-
-      const restoreScroll = () => {
-        window.scrollTo(0, scrollPosition)
-      }
-
-      // Using 6 attempts with delays up to 1500ms for reliability
-      requestAnimationFrame(() => {
-        restoreScroll()
-        setTimeout(restoreScroll, 100)
-        setTimeout(restoreScroll, 300)
-        setTimeout(restoreScroll, 600)
-        setTimeout(restoreScroll, 1000)
-        setTimeout(restoreScroll, 1500)
-      })
+    const restoreScroll = () => {
+      window.scrollTo(0, scrollPosition)
     }
+
+    // Using multiple attempts with delays for reliability
+    requestAnimationFrame(() => {
+      restoreScroll()
+      setTimeout(restoreScroll, 100)
+      setTimeout(restoreScroll, 300)
+      setTimeout(restoreScroll, 600)
+      setTimeout(restoreScroll, 1000)
+      setTimeout(restoreScroll, 1500)
+    })
   }
 
   useEffect(() => {
