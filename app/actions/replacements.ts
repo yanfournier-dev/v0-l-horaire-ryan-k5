@@ -38,10 +38,7 @@ export async function getUserApplications(userId: number) {
 
     return applications
   } catch (error) {
-    console.error("[v0] getUserApplications: Error", error instanceof Error ? error.message : String(error))
-    if (error instanceof Error && error.message.includes("Too Many")) {
-      console.error("[v0] getUserApplications: Rate limiting detected - too many requests")
-    }
+    console.error("getUserApplications: Error", error instanceof Error ? error.message : String(error))
     return []
   }
 }
@@ -203,8 +200,6 @@ export async function createReplacementFromShift(
   }
 
   try {
-    console.log("[v0] createReplacementFromShift - deadlineSeconds received:", deadlineSeconds)
-
     let applicationDeadline = null
     let deadlineDuration = null
 
@@ -212,12 +207,10 @@ export async function createReplacementFromShift(
       const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
       applicationDeadline = new Date(deadlineTimestamp).toISOString()
       deadlineDuration = Math.max(1, Math.floor(deadlineSeconds / 60))
-      console.log("[v0] createReplacementFromShift - calculated applicationDeadline:", applicationDeadline)
     } else {
       const autoDeadline = calculateAutoDeadline(shiftDate)
       applicationDeadline = autoDeadline.toISOString()
       deadlineDuration = null
-      console.log("[v0] createReplacementFromShift - auto deadline:", applicationDeadline)
     }
 
     const result = await sql`
@@ -233,20 +226,18 @@ export async function createReplacementFromShift(
       RETURNING id
     `
 
-    console.log("[v0] createReplacementFromShift - replacement created with id:", result[0].id)
-
     revalidatePath("/dashboard/calendar")
     revalidatePath("/dashboard/replacements")
 
     try {
       invalidateCache()
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true, id: result[0].id }
   } catch (error) {
-    console.error("[v0] createReplacementFromShift: Error", error)
+    console.error("createReplacementFromShift: Error", error)
     return { error: "Erreur lors de la création du remplacement" }
   }
 }
@@ -734,7 +725,6 @@ export async function updateReplacementAssignment(replacementId: number, assigne
 
 export async function getAvailableFirefighters(replacementId: number) {
   try {
-    // First, get the shift date from the replacement
     const replacement = await sql`
       SELECT shift_date, shift_type FROM replacements WHERE id = ${replacementId}
     `
@@ -1044,7 +1034,6 @@ export async function reactivateApplication(applicationId: number) {
   }
 
   try {
-    // Check if the replacement is not assigned
     const appResult = await sql`
       SELECT r.status, ra.status as application_status
       FROM replacement_applications ra

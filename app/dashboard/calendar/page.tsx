@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { CalendarView } from "@/components/calendar-view"
 import { TodayButton } from "@/components/today-button"
-import { ScrollToToday } from "@/components/scroll-to-today"
+import { PreserveScroll } from "@/components/preserve-scroll"
 
 export const dynamic = "force-dynamic"
 
@@ -71,8 +71,7 @@ export default async function CalendarPage({
     }))
 
     const firstDay = allMonthsDays[0].days[0]?.date
-    const lastDay =
-      allMonthsDays[allMonthsDays.length - 1].days[allMonthsDays[allMonthsDays.length - 1].days.length - 1]?.date
+    const lastDay = allMonthsDays[allMonthsDays.length - 1].days[allMonthsDays.length - 1]?.date
 
     const allShifts = await getAllShiftsWithAssignments()
 
@@ -162,8 +161,7 @@ export default async function CalendarPage({
 
     return (
       <div className="p-4 md:p-6">
-        <ScrollToToday />
-
+        <PreserveScroll />
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">

@@ -123,6 +123,11 @@
     @apply bg-background text-foreground;
   }
 
+  /* Preserve scroll position during Next.js re-renders triggered by revalidatePath */
+  html {
+    scroll-behavior: auto !important;
+  }
+
   /* Adding mobile landscape optimizations for calendar */
   @media (orientation: landscape) and (max-width: 1023px) {
     /* Optimiser le calendrier pour mode paysage mobile uniquement */

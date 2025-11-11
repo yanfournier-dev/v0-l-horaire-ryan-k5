@@ -53,27 +53,27 @@ export default async function DashboardLayout({
           </div>
 
           <nav className="hidden md:flex gap-2 overflow-x-auto">
-            <Link href="/dashboard">
+            <Link href="/dashboard" scroll={false}>
               <Button variant="ghost" size="sm">
                 Tableau de bord
               </Button>
             </Link>
-            <Link href="/dashboard/calendar">
+            <Link href="/dashboard/calendar" scroll={false}>
               <Button variant="ghost" size="sm">
                 Calendrier
               </Button>
             </Link>
-            <Link href="/dashboard/replacements">
+            <Link href="/dashboard/replacements" scroll={false}>
               <Button variant="ghost" size="sm">
                 Remplacements
               </Button>
             </Link>
-            <Link href="/dashboard/exchanges">
+            <Link href="/dashboard/exchanges" scroll={false}>
               <Button variant="ghost" size="sm">
                 Échanges
               </Button>
             </Link>
-            <Link href="/dashboard/notifications">
+            <Link href="/dashboard/notifications" scroll={false}>
               <Button variant="ghost" size="sm" className="relative">
                 Notifications
                 <Suspense fallback={null}>
@@ -81,23 +81,23 @@ export default async function DashboardLayout({
                 </Suspense>
               </Button>
             </Link>
-            <Link href="/dashboard/teams">
+            <Link href="/dashboard/teams" scroll={false}>
               <Button variant="ghost" size="sm">
                 Équipes
               </Button>
             </Link>
-            <Link href="/dashboard/firefighters">
+            <Link href="/dashboard/firefighters" scroll={false}>
               <Button variant="ghost" size="sm">
                 Pompiers
               </Button>
             </Link>
-            <Link href="/dashboard/settings">
+            <Link href="/dashboard/settings" scroll={false}>
               <Button variant="ghost" size="sm">
                 Paramètres
               </Button>
             </Link>
             {user.isAdmin && (
-              <Link href="/dashboard/admin/run-scripts">
+              <Link href="/dashboard/admin/run-scripts" scroll={false}>
                 <Button variant="ghost" size="sm">
                   Scripts SQL
                 </Button>

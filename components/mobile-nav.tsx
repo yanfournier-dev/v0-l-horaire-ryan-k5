@@ -57,7 +57,7 @@ export function MobileNav({ userName, isAdmin }: MobileNavProps) {
           <div className="px-3 py-2 text-sm text-muted-foreground border-b border-border mb-2">{userName}</div>
 
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
+            <Link key={item.href} href={item.href} scroll={false} onClick={() => setOpen(false)}>
               <Button
                 variant={pathname === item.href ? "secondary" : "ghost"}
                 className="w-full justify-start"

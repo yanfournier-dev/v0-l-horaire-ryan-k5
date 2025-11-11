@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -134,24 +134,23 @@ export function ShiftAssignmentDrawer({
 
   useEffect(() => {
     if (open) {
+      const savedScrollPosition = sessionStorage.getItem("scroll-position")
+      if (savedScrollPosition) {
+        console.log("[v0] useEffect - scrolling to:", savedScrollPosition)
+        window.scrollTo(0, Number.parseInt(savedScrollPosition, 10))
+        sessionStorage.removeItem("scroll-position")
+      }
       scrollPositionRef.current = window.scrollY
     }
   }, [open])
 
-  const refreshAndClose = async () => {
-    const scrollPosition = scrollPositionRef.current
-
-    router.refresh()
-
-    await new Promise((resolve) => setTimeout(resolve, 50))
-
+  const refreshAndClose = useCallback(() => {
+    const position = window.scrollY
+    if (position > 0) {
+      sessionStorage.setItem("calendar-scroll-position", position.toString())
+    }
     onOpenChange(false)
-
-    // Restore scroll position after a short delay
-    setTimeout(() => {
-      window.scrollTo(0, scrollPosition)
-    }, 50)
-  }
+  }, [onOpenChange])
 
   useEffect(() => {
     if (open) {

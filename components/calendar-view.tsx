@@ -39,12 +39,13 @@ export function CalendarView({
   currentMonth,
 }: CalendarViewProps) {
   const [months, setMonths] = useState(initialMonths)
-  const [hasScrolled, setHasScrolled] = useState(false)
   const scrollAnchorRef = useRef<string | null>(null)
 
   const todayStr = getCurrentLocalDate()
 
   useEffect(() => {
+    const hasScrolled = sessionStorage.getItem("calendar-scrolled-to-today")
+
     if (!hasScrolled) {
       setTimeout(() => {
         const todayElement = document.getElementById(`day-${todayStr}`)
@@ -54,10 +55,10 @@ export function CalendarView({
             block: "center",
           })
         }
-        setHasScrolled(true)
+        sessionStorage.setItem("calendar-scrolled-to-today", "true")
       }, 100)
     }
-  }, [hasScrolled, todayStr])
+  }, []) // Empty dependency array - run only once on mount
 
   const loadPreviousMonths = () => {
     const firstMonth = months[0]

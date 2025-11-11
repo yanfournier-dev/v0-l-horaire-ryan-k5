@@ -66,25 +66,14 @@ export function ShiftNoteDialog({
   }
 
   const handleSave = async () => {
-    console.log("[v0] handleSave: Starting save")
     setIsLoading(true)
     const result = await createOrUpdateShiftNote(shiftId, shiftDate, note)
     setIsLoading(false)
 
     if (result.success) {
-      console.log("[v0] handleSave: Save successful, closing dialog")
       onOpenChange(false)
-
-      console.log("[v0] handleSave: Calling router.refresh()")
       router.refresh()
-
-      // Wait for refresh to complete, then scroll to today
-      setTimeout(() => {
-        console.log("[v0] handleSave: Starting scroll to today")
-        scrollToToday()
-      }, 500)
     } else {
-      console.log("[v0] handleSave: Save failed:", result.error)
       alert(result.error || "Erreur lors de la sauvegarde")
     }
   }
@@ -94,25 +83,14 @@ export function ShiftNoteDialog({
       return
     }
 
-    console.log("[v0] handleDelete: Starting delete")
     setIsDeleting(true)
     const result = await deleteShiftNote(shiftId, shiftDate)
     setIsDeleting(false)
 
     if (result.success) {
-      console.log("[v0] handleDelete: Delete successful, closing dialog")
       onOpenChange(false)
-
-      console.log("[v0] handleDelete: Calling router.refresh()")
       router.refresh()
-
-      // Wait for refresh to complete, then scroll to today
-      setTimeout(() => {
-        console.log("[v0] handleDelete: Starting scroll to today")
-        scrollToToday()
-      }, 500)
     } else {
-      console.log("[v0] handleDelete: Delete failed:", result.error)
       alert(result.error || "Erreur lors de la suppression")
     }
   }
