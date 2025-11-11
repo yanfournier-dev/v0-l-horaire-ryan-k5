@@ -142,21 +142,16 @@ export function ShiftAssignmentDrawer({
     const scrollPosition = scrollPositionRef.current
 
     router.refresh()
-    onOpenChange(false)
 
-    const restoreScroll = () => {
-      window.scrollTo(0, scrollPosition)
-    }
+    // Close drawer after a short delay to allow refresh to start
+    setTimeout(() => {
+      onOpenChange(false)
 
-    // Using multiple attempts with delays for reliability
-    requestAnimationFrame(() => {
-      restoreScroll()
-      setTimeout(restoreScroll, 100)
-      setTimeout(restoreScroll, 300)
-      setTimeout(restoreScroll, 600)
-      setTimeout(restoreScroll, 1000)
-      setTimeout(restoreScroll, 1500)
-    })
+      // Restore scroll position after drawer closes
+      setTimeout(() => {
+        window.scrollTo(0, scrollPosition)
+      }, 100)
+    }, 100)
   }
 
   useEffect(() => {
