@@ -149,8 +149,9 @@ export function ShiftAssignmentDrawer({
     if (position > 0) {
       sessionStorage.setItem("calendar-scroll-position", position.toString())
     }
+    router.refresh()
     onOpenChange(false)
-  }, [onOpenChange])
+  }, [onOpenChange, router])
 
   useEffect(() => {
     if (open) {
