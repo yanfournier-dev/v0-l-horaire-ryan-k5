@@ -333,8 +333,10 @@ export function ShiftAssignmentDrawer({
     setEndTime(times.endTime)
   }
 
-  const getReplacementForFirefighter = (firefighterId: number) => {
-    return replacements.find((r) => r.user_id === firefighterId)
+  const getReplacementForFirefighter = (firefighterId: number | undefined) => {
+    if (!firefighterId) return null
+    const found = replacements.find((r) => r.user_id === firefighterId)
+    return found || null
   }
 
   const getRoleLabel = (role: string) => {
@@ -691,7 +693,9 @@ export function ShiftAssignmentDrawer({
 
             <div className="mt-6 space-y-3">
               {displayedAssignments.map((assignment, index) => {
-                const replacement = getReplacementForFirefighter(assignment.user_id)
+                const firefighterId = assignment.user_id || assignment.id
+
+                const replacement = !loadingReplacements ? getReplacementForFirefighter(firefighterId) : null
                 const hasReplacement = !!replacement
 
                 const isReplacementFirefighter = assignment.is_replacement === true

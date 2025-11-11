@@ -36,11 +36,6 @@ export async function getUserApplications(userId: number) {
       ORDER BY ra.applied_at DESC
     `
 
-    console.log("[v0] getUserApplications result:", applications.length, "applications")
-    if (applications.length > 0) {
-      console.log("[v0] First application:", applications[0])
-    }
-
     return applications
   } catch (error) {
     console.error("[v0] getUserApplications: Error", error instanceof Error ? error.message : String(error))
@@ -80,11 +75,6 @@ export async function getRecentReplacements() {
       LIMIT 50
     `
 
-    console.log("[v0] getRecentReplacements result:", replacements.length, "replacements")
-    if (replacements.length > 0) {
-      console.log("[v0] First replacement:", replacements[0])
-    }
-
     return replacements
   } catch (error) {
     console.error("[v0] getRecentReplacements: Error", error instanceof Error ? error.message : String(error))
@@ -119,20 +109,6 @@ export async function getAllReplacements() {
       LEFT JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
       ORDER BY r.shift_date DESC, r.shift_type
     `
-
-    console.log("[v0] getAllReplacements result:", replacements.length, "replacements")
-    replacements.forEach((r, index) => {
-      console.log(`[v0] Replacement ${index + 1}:`, {
-        id: r.id,
-        shift_date: r.shift_date,
-        shift_type: r.shift_type,
-        status: r.status,
-        first_name: r.first_name,
-        last_name: r.last_name,
-        application_deadline: r.application_deadline,
-        application_count: r.application_count,
-      })
-    })
 
     return replacements
   } catch (error) {
@@ -171,8 +147,6 @@ export async function getPendingReplacementRequests() {
       ORDER BY r.shift_date ASC, r.shift_type
     `
 
-    console.log("[v0] getPendingReplacementRequests result:", requests.length, "requests")
-
     return requests
   } catch (error) {
     console.error("[v0] getPendingReplacementRequests: Error", error)
@@ -205,11 +179,6 @@ export async function getUserReplacementRequests(userId: number) {
         AND r.status != 'cancelled'
       ORDER BY r.shift_date DESC, r.shift_type
     `
-
-    console.log("[v0] getUserReplacementRequests result:", requests.length, "requests for user", userId)
-    if (requests.length > 0) {
-      console.log("[v0] First request:", requests[0])
-    }
 
     return requests
   } catch (error) {
@@ -283,28 +252,21 @@ export async function createReplacementFromShift(
 }
 
 export async function applyForReplacement(replacementId: number, firefighterId?: number) {
-  console.log("[v0] applyForReplacement called with replacementId:", replacementId, "firefighterId:", firefighterId)
-
   const user = await getSession()
   if (!user) {
-    console.log("[v0] applyForReplacement: User not authenticated")
     return { error: "Non authentifié" }
   }
 
   if (firefighterId && firefighterId !== user.id && !user.is_admin) {
-    console.log("[v0] applyForReplacement: User not authorized to apply for another firefighter")
     return { error: "Non autorisé" }
   }
 
   const applicantId = firefighterId || user.id
-  console.log("[v0] applyForReplacement: applicantId:", applicantId)
 
   try {
     const replacement = await sql`
       SELECT user_id, application_deadline FROM replacements WHERE id = ${replacementId}
     `
-
-    console.log("[v0] applyForReplacement: replacement found:", replacement.length > 0)
 
     if (replacement.length === 0) {
       return { error: "Remplacement non trouvé" }
@@ -319,7 +281,6 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
     }
 
     if (replacement[0].user_id === applicantId) {
-      console.log("[v0] applyForReplacement: Cannot apply for own replacement")
       return { error: "Vous ne pouvez pas postuler pour votre propre remplacement" }
     }
 
@@ -328,19 +289,15 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
       WHERE replacement_id = ${replacementId} AND applicant_id = ${applicantId}
     `
 
-    console.log("[v0] applyForReplacement: existing application found:", existingApplication.length > 0)
-
     if (existingApplication.length > 0) {
       return { error: "Ce pompier a déjà postulé pour ce remplacement" }
     }
 
-    console.log("[v0] applyForReplacement: Inserting new application")
-    await sql`
+    const insertResult = await sql`
       INSERT INTO replacement_applications (replacement_id, applicant_id, status)
       VALUES (${replacementId}, ${applicantId}, 'pending')
+      RETURNING applied_at
     `
-
-    console.log("[v0] applyForReplacement: Application inserted successfully")
 
     revalidatePath("/dashboard/replacements")
 
@@ -391,8 +348,6 @@ export async function approveApplication(applicationId: number, replacementId: n
   }
 
   try {
-    console.log("[v0] approveApplication called with:", { applicationId, replacementId })
-
     const appResult = await sql`
       SELECT 
         ra.applicant_id, 
@@ -423,14 +378,6 @@ export async function approveApplication(applicationId: number, replacementId: n
       user_id: replacedUserId,
     } = appResult[0]
 
-    console.log("[v0] approveApplication - applicant details:", {
-      applicantId,
-      shift_date,
-      shift_type,
-      team_id,
-      replacedUserId,
-    })
-
     const cycleConfig = await sql`
       SELECT start_date, cycle_length_days
       FROM cycle_config
@@ -448,8 +395,6 @@ export async function approveApplication(applicationId: number, replacementId: n
     const daysDiff = Math.floor((shiftDateObj.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     const cycleDay = (daysDiff % cycle_length_days) + 1
 
-    console.log("[v0] approveApplication - calculated cycleDay:", cycleDay)
-
     const shiftResult = await sql`
       SELECT id FROM shifts
       WHERE team_id = ${team_id}
@@ -463,7 +408,6 @@ export async function approveApplication(applicationId: number, replacementId: n
     }
 
     const shiftId = shiftResult[0].id
-    console.log("[v0] approveApplication - shiftId:", shiftId)
 
     await sql`
       UPDATE replacement_applications
@@ -483,7 +427,6 @@ export async function approveApplication(applicationId: number, replacementId: n
       WHERE id = ${replacementId}
     `
 
-    console.log("[v0] approveApplication - Creating notification for applicant:", applicantId)
     await createNotification(
       applicantId,
       "Remplacement assigné",
@@ -502,7 +445,6 @@ export async function approveApplication(applicationId: number, replacementId: n
       console.error("[v0] Error invalidating cache:", cacheError)
     }
 
-    console.log("[v0] approveApplication - Success, returning shiftId:", shiftId)
     return { success: true, shiftId }
   } catch (error) {
     console.error("[v0] approveApplication: Error", error)
@@ -571,11 +513,6 @@ export async function deleteReplacement(replacementId: number) {
       WHERE r.id = ${replacementId}
     `
 
-    console.log("[v0] deleteReplacement - Deleting replacement:", {
-      id: replacementId,
-      details: replacementDetails[0],
-    })
-
     if (replacementDetails.length > 0) {
       const { shift_date, shift_type, team_id } = replacementDetails[0]
 
@@ -603,15 +540,11 @@ export async function deleteReplacement(replacementId: number) {
 
         if (shiftResult.length > 0) {
           const shiftId = shiftResult[0].id
-          console.log("[v0] deleteReplacement - Removing all shift_assignments for shiftId:", shiftId)
 
-          // This allows the calendar to reset to default state (showing permanent captain/lieutenant badges)
           await sql`
             DELETE FROM shift_assignments
             WHERE shift_id = ${shiftId}
           `
-
-          console.log("[v0] deleteReplacement - All shift_assignments removed")
         }
       }
     }
@@ -620,16 +553,12 @@ export async function deleteReplacement(replacementId: number) {
       DELETE FROM replacements WHERE id = ${replacementId}
     `
 
-    console.log("[v0] deleteReplacement - Replacement deleted successfully")
-
     revalidatePath("/dashboard/replacements")
     revalidatePath("/dashboard/calendar")
     revalidatePath("/dashboard")
 
     try {
-      console.log("[v0] deleteReplacement - Invalidating cache")
       invalidateCache()
-      console.log("[v0] deleteReplacement - Cache invalidated successfully")
     } catch (cacheError) {
       console.error("[v0] deleteReplacement - Error invalidating cache:", cacheError)
     }
@@ -699,8 +628,6 @@ export async function createExtraFirefighterReplacement(
   }
 
   try {
-    console.log("[v0] createExtraFirefighterReplacement - deadlineSeconds received:", deadlineSeconds)
-
     let applicationDeadline = null
     let deadlineDuration = null
 
@@ -726,8 +653,6 @@ export async function createExtraFirefighterReplacement(
       )
       RETURNING id
     `
-
-    console.log("[v0] createExtraFirefighterReplacement - replacement created with id:", result[0].id)
 
     revalidatePath("/dashboard/calendar")
     revalidatePath("/dashboard/replacements")
@@ -757,7 +682,7 @@ export async function updateReplacementAssignment(replacementId: number, assigne
         INSERT INTO replacement_applications (replacement_id, applicant_id, status, reviewed_by, reviewed_at)
         VALUES (${replacementId}, ${assignedTo}, 'approved', ${user.id}, CURRENT_TIMESTAMP)
         ON CONFLICT (replacement_id, applicant_id) 
-        DO UPDATE SET status = 'approved', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
+        DO UPDATE SET status = 'approved', reviewed_by = ${user.id}, reviewed_at = ${user.id}
       `
 
       await sql`
@@ -1011,14 +936,11 @@ export async function removeReplacementAssignment(replacementId: number) {
 
         if (shiftResult.length > 0) {
           const shiftId = shiftResult[0].id
-          console.log("[v0] removeReplacementAssignment - Removing all shift_assignments for shiftId:", shiftId)
 
           await sql`
             DELETE FROM shift_assignments
             WHERE shift_id = ${shiftId}
           `
-
-          console.log("[v0] removeReplacementAssignment - All shift_assignments removed")
         }
       }
 
@@ -1087,19 +1009,6 @@ export async function getExpiredReplacements() {
       ORDER BY r.shift_date ASC
     `
 
-    console.log("[v0] getExpiredReplacements - All open replacements:", allOpenReplacements.length)
-    allOpenReplacements.forEach((r, index) => {
-      console.log(`[v0] Open replacement ${index + 1}:`, {
-        id: r.id,
-        shift_date: r.shift_date,
-        first_name: r.first_name,
-        last_name: r.last_name,
-        application_deadline: r.application_deadline,
-        deadline_passed: r.application_deadline ? new Date(r.application_deadline) < new Date() : false,
-        application_count: r.application_count,
-      })
-    })
-
     const replacements = await sql`
       SELECT 
         r.*,
@@ -1117,11 +1026,6 @@ export async function getExpiredReplacements() {
         AND r.shift_date >= CURRENT_DATE - INTERVAL '7 days'
       ORDER BY r.application_deadline ASC
     `
-
-    console.log("[v0] getExpiredReplacements result:", replacements.length, "replacements")
-    if (replacements.length > 0) {
-      console.log("[v0] First expired replacement:", replacements[0])
-    }
 
     return replacements
   } catch (error) {

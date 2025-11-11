@@ -71,92 +71,31 @@ export function formatLocalDateTime(dateInput: string | Date | null | undefined)
 
   const date = new Date(dateInput)
 
-  date.setHours(date.getHours() - 4)
+  const offsetHours = -5
+  const localTime = new Date(date.getTime() + offsetHours * 60 * 60 * 1000)
 
-  // Get local date components
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  const hours = String(date.getHours()).padStart(2, "0")
-  const minutes = String(date.getMinutes()).padStart(2, "0")
+  const year = localTime.getUTCFullYear()
+  const month = String(localTime.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(localTime.getUTCDate()).padStart(2, "0")
+  const hours = String(localTime.getUTCHours()).padStart(2, "0")
+  const minutes = String(localTime.getUTCMinutes()).padStart(2, "0")
 
-  return `${year}-${month}-${day} à ${hours}:${minutes}`
+  return `${year}-${month}-${day} à ${hours}h${minutes}`
 }
 
-/**
- * Format a Date object to YYYY-MM-DD string using local timezone
- * Use this instead of toISOString() to avoid timezone conversion issues
- *
- * @param date - Date object to format
- * @returns Date string in YYYY-MM-DD format
- */
-export function formatDateForDB(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
+function getSecondSunday(year: number, month: number): Date {
+  const firstDay = new Date(Date.UTC(year, month, 1))
+  const firstDayOfWeek = firstDay.getUTCDay()
+  const firstSunday = 1 + ((7 - firstDayOfWeek) % 7)
+  const secondSunday = firstSunday + 7
+  return new Date(Date.UTC(year, month, secondSunday, 2, 0, 0)) // DST starts at 2am
 }
 
-/**
- * Calculate the automatic deadline for a replacement
- * The deadline is the Monday of the previous week at 5pm (17:00) local time
- *
- * @param shiftDate - The date of the shift (YYYY-MM-DD or Date object)
- * @returns Date object representing the deadline
- *
- * @example
- * // For a shift on Wednesday, November 5, 2025
- * calculateAutoDeadline("2025-11-05")
- * // Returns: Monday, October 27, 2025 at 17:00
- */
-export function calculateAutoDeadline(shiftDate: string | Date): Date {
-  const shift = typeof shiftDate === "string" ? parseLocalDate(shiftDate) : shiftDate
-
-  // Get the day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
-  const dayOfWeek = shift.getDay()
-
-  // Calculate days to subtract to get to Monday of the shift's week
-  // If Sunday (0), go back 6 days; if Monday (1), go back 0 days; etc.
-  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-
-  // Get Monday of the shift's week
-  const mondayOfShiftWeek = new Date(shift)
-  mondayOfShiftWeek.setDate(shift.getDate() - daysToMonday)
-
-  // Subtract 7 days to get Monday of the previous week
-  const mondayOfPreviousWeek = new Date(mondayOfShiftWeek)
-  mondayOfPreviousWeek.setDate(mondayOfShiftWeek.getDate() - 7)
-
-  // Set time to 17:00 (5pm) local time
-  mondayOfPreviousWeek.setHours(17, 0, 0, 0)
-
-  return mondayOfPreviousWeek
-}
-
-/**
- * Format a deadline date for display
- * Returns a clear, unambiguous format like "27 octobre 2025, 17h00"
- *
- * @param deadline - Date object or ISO string
- * @returns Formatted deadline string
- */
-export function formatDeadlineForDisplay(deadline: string | Date): string {
-  const date = typeof deadline === "string" ? new Date(deadline) : deadline
-
-  // Use Intl.DateTimeFormat for localized date formatting
-  const dateFormatter = new Intl.DateTimeFormat("fr-CA", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  })
-
-  const timeFormatter = new Intl.DateTimeFormat("fr-CA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
-
-  return `${dateFormatter.format(date)}, ${timeFormatter.format(date)}`
+function getFirstSunday(year: number, month: number): Date {
+  const firstDay = new Date(Date.UTC(year, month, 1))
+  const firstDayOfWeek = firstDay.getUTCDay()
+  const firstSunday = 1 + ((7 - firstDayOfWeek) % 7)
+  return new Date(Date.UTC(year, month, firstSunday, 2, 0, 0)) // DST ends at 2am
 }
 
 /**
@@ -254,30 +193,106 @@ export function getCurrentLocalDate(): string {
 /**
  * Format a creation date for subtle display
  * Always shows the exact date and time in a compact format
- * Adjusts for EDT timezone (UTC-4)
+ * Uses local timezone automatically (handles EST/EDT)
  *
  * @param dateInput - Date string or Date object
  * @returns Formatted creation date string (e.g., "26 oct., 14:30")
  */
 export function formatCreatedAt(dateInput: string | Date): string {
   const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput
-  const now = new Date()
 
-  date.setHours(date.getHours() - 4)
+  const offsetHours = -5
+  const localTime = new Date(date.getTime() + offsetHours * 60 * 60 * 1000)
 
-  const day = date.getDate()
+  const day = localTime.getUTCDate()
   const monthNames = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
-  const month = monthNames[date.getMonth()]
-  const hours = String(date.getHours()).padStart(2, "0")
-  const minutes = String(date.getMinutes()).padStart(2, "0")
+  const month = monthNames[localTime.getUTCMonth()]
+  const yearValue = localTime.getUTCFullYear()
+  const hours = String(localTime.getUTCHours()).padStart(2, "0")
+  const minutes = String(localTime.getUTCMinutes()).padStart(2, "0")
 
-  // Only show year if it's different from current year
-  const year = date.getFullYear()
+  const now = new Date()
   const currentYear = now.getFullYear()
 
-  if (year !== currentYear) {
-    return `${day} ${month} ${year}, ${hours}:${minutes}`
+  if (yearValue === currentYear) {
+    return `${day} ${month}, ${hours}:${minutes}`
   }
 
-  return `${day} ${month}, ${hours}:${minutes}`
+  return `${day} ${month} ${yearValue}, ${hours}:${minutes}`
+}
+
+/**
+ * Format a deadline date for display
+ * Returns a clear, unambiguous format like "27 octobre 2025, 17h00"
+ *
+ * @param deadline - Date object or ISO string
+ * @returns Formatted deadline string
+ */
+export function formatDeadlineForDisplay(deadline: string | Date): string {
+  const date = typeof deadline === "string" ? new Date(deadline) : deadline
+
+  // Use Intl.DateTimeFormat for localized date formatting
+  const dateFormatter = new Intl.DateTimeFormat("fr-CA", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+
+  const timeFormatter = new Intl.DateTimeFormat("fr-CA", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+
+  return `${dateFormatter.format(date)}, ${timeFormatter.format(date)}`
+}
+
+/**
+ * Format a Date object to YYYY-MM-DD string using local timezone
+ * Use this instead of toISOString() to avoid timezone conversion issues
+ *
+ * @param date - Date object to format
+ * @returns Date string in YYYY-MM-DD format
+ */
+export function formatDateForDB(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * Calculate the automatic deadline for a replacement
+ * The deadline is the Monday of the previous week at 5pm (17:00) local time
+ *
+ * @param shiftDate - The date of the shift (YYYY-MM-DD or Date object)
+ * @returns Date object representing the deadline
+ *
+ * @example
+ * // For a shift on Wednesday, November 5, 2025
+ * calculateAutoDeadline("2025-11-05")
+ * // Returns: Monday, October 27, 2025 at 17:00
+ */
+export function calculateAutoDeadline(shiftDate: string | Date): Date {
+  const shift = typeof shiftDate === "string" ? parseLocalDate(shiftDate) : shiftDate
+
+  // Get the day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+  const dayOfWeek = shift.getDay()
+
+  // Calculate days to subtract to get to Monday of the shift's week
+  // If Sunday (0), go back 6 days; if Monday (1), go back 0 days; etc.
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+
+  // Get Monday of the shift's week
+  const mondayOfShiftWeek = new Date(shift)
+  mondayOfShiftWeek.setDate(shift.getDate() - daysToMonday)
+
+  // Subtract 7 days to get Monday of the previous week
+  const mondayOfPreviousWeek = new Date(mondayOfShiftWeek)
+  mondayOfPreviousWeek.setDate(mondayOfShiftWeek.getDate() - 7)
+
+  // Set time to 17:00 (5pm) local time
+  mondayOfPreviousWeek.setHours(17, 0, 0, 0)
+
+  return mondayOfPreviousWeek
 }
