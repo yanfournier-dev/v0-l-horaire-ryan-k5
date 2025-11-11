@@ -141,22 +141,34 @@ export function ShiftAssignmentDrawer({
   const refreshAndClose = () => {
     const scrollPosition = scrollPositionRef.current
 
-    router.refresh()
-    onOpenChange(false)
+    if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+      // In production, we need a hard refresh to bypass Next.js aggressive caching
+      router.refresh()
+      onOpenChange(false)
 
-    const restoreScroll = () => {
-      window.scrollTo(0, scrollPosition)
+      // Force a full page reload after a short delay to ensure changes are visible
+      setTimeout(() => {
+        window.location.reload()
+      }, 100)
+    } else {
+      // In development (v0 preview), use the gentle refresh
+      router.refresh()
+      onOpenChange(false)
+
+      const restoreScroll = () => {
+        window.scrollTo(0, scrollPosition)
+      }
+
+      // Using 6 attempts with delays up to 1500ms for reliability
+      requestAnimationFrame(() => {
+        restoreScroll()
+        setTimeout(restoreScroll, 100)
+        setTimeout(restoreScroll, 300)
+        setTimeout(restoreScroll, 600)
+        setTimeout(restoreScroll, 1000)
+        setTimeout(restoreScroll, 1500)
+      })
     }
-
-    // Using 6 attempts with delays up to 1500ms for reliability
-    requestAnimationFrame(() => {
-      restoreScroll()
-      setTimeout(restoreScroll, 100)
-      setTimeout(restoreScroll, 300)
-      setTimeout(restoreScroll, 600)
-      setTimeout(restoreScroll, 1000)
-      setTimeout(restoreScroll, 1500)
-    })
   }
 
   useEffect(() => {
@@ -235,7 +247,7 @@ export function ShiftAssignmentDrawer({
         const assignmentResult = await fetch("/api/get-shift-assignment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.JSONstringify({
+          body: JSON.stringify({
             shiftId: shift.id,
             userId: approvedApp.applicant_id,
           }),
