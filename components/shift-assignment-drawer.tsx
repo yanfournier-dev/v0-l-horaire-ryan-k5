@@ -138,11 +138,14 @@ export function ShiftAssignmentDrawer({
     }
   }, [open])
 
-  const refreshAndClose = () => {
+  const refreshAndClose = async () => {
     const scrollPosition = scrollPositionRef.current
 
-    onOpenChange(false)
     router.refresh()
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    onOpenChange(false)
 
     // Restore scroll position after a short delay
     setTimeout(() => {
