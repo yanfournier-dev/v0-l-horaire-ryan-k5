@@ -15,7 +15,7 @@ interface CacheEntry {
 }
 
 const queryCache = new Map<string, CacheEntry>()
-const CACHE_TTL = process.env.VERCEL_ENV === "production" ? 2000 : 10000
+const CACHE_TTL = process.env.VERCEL_ENV === "production" ? 3000 : 10000
 
 function getCacheKey(query: string, params: any[]): string {
   return JSON.stringify({ query, params })
