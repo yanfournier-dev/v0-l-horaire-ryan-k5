@@ -145,7 +145,6 @@ export function ShiftAssignmentDrawer({
   }, [open])
 
   const refreshAndClose = useCallback(() => {
-    // Only save scroll position, server actions handle revalidation
     const position = window.scrollY
     if (position > 0) {
       sessionStorage.setItem("calendar-scroll-position", position.toString())
@@ -154,7 +153,13 @@ export function ShiftAssignmentDrawer({
 
     // This won't affect V0 preview, only the published Vercel app
     if (process.env.NEXT_PUBLIC_VERCEL_ENV === "production") {
-      router.refresh()
+      router.refresh() // First refresh immediately
+
+      // Second refresh after 100ms
+      setTimeout(() => router.refresh(), 100)
+
+      // Third refresh after 500ms
+      setTimeout(() => router.refresh(), 500)
     }
   }, [onOpenChange, router])
 
