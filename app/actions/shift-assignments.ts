@@ -209,6 +209,8 @@ export async function getAllFirefighters() {
 
 export async function getUserAssignedShifts(userId: number, targetDate: string) {
   try {
+    console.log("[v0] getUserAssignedShifts called with:", { userId, targetDate })
+
     const allShiftsWithMembers = await sql`
       SELECT 
         s.id,
@@ -226,19 +228,24 @@ export async function getUserAssignedShifts(userId: number, targetDate: string) 
       ORDER BY s.cycle_day, s.shift_type
     `
 
+    console.log("[v0] Total shift-member combinations:", allShiftsWithMembers.length)
+
     const cycleConfig = await sql`
       SELECT * FROM cycle_config WHERE is_active = true LIMIT 1
     `
 
     if (cycleConfig.length === 0) {
+      console.log("[v0] No active cycle config found")
       return []
     }
 
     const { start_date, cycle_length_days } = cycleConfig[0]
 
+    // Parse dates as YYYY-MM-DD strings to avoid timezone conversion
     const startDateStr = new Date(start_date).toISOString().split("T")[0]
     const targetDateStr = new Date(targetDate).toISOString().split("T")[0]
 
+    // Calculate days difference using date strings
     const startParts = startDateStr.split("-").map(Number)
     const targetParts = targetDateStr.split("-").map(Number)
 
@@ -247,6 +254,14 @@ export async function getUserAssignedShifts(userId: number, targetDate: string) 
 
     const daysDiff = Math.floor((targetDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24))
     const cycleDay = (daysDiff % cycle_length_days) + 1
+
+    console.log("[v0] Calculated cycle day:", {
+      startDateStr,
+      targetDateStr,
+      daysDiff,
+      cycleDay,
+      cycle_length_days,
+    })
 
     const allShiftsForCycleDay = allShiftsWithMembers.filter((shift) => shift.cycle_day === cycleDay)
     const uniqueShiftsForCycleDay = allShiftsForCycleDay.reduce((acc, shift) => {
@@ -260,6 +275,12 @@ export async function getUserAssignedShifts(userId: number, targetDate: string) 
       }
       return acc
     }, [] as any[])
+    console.log(
+      "[v0] ALL shifts available for cycle day",
+      cycleDay,
+      ":",
+      JSON.stringify(uniqueShiftsForCycleDay, null, 2),
+    )
 
     const userTeams = await sql`
       SELECT t.id, t.name
@@ -267,10 +288,12 @@ export async function getUserAssignedShifts(userId: number, targetDate: string) 
       JOIN teams t ON tm.team_id = t.id
       WHERE tm.user_id = ${userId}
     `
+    console.log("[v0] User is member of teams:", JSON.stringify(userTeams, null, 2))
 
     const userShifts = allShiftsWithMembers
       .filter((shift) => shift.cycle_day === cycleDay && shift.user_id === userId)
       .reduce((acc, shift) => {
+        // Deduplicate by shift id
         if (!acc.find((s) => s.id === shift.id)) {
           acc.push({
             id: shift.id,
@@ -286,6 +309,9 @@ export async function getUserAssignedShifts(userId: number, targetDate: string) 
         }
         return acc
       }, [] as any[])
+
+    console.log("[v0] User shifts via team membership:", userShifts.length)
+    console.log("[v0] User shifts details:", JSON.stringify(userShifts, null, 2))
 
     const replacementShifts = await sql`
       SELECT DISTINCT
@@ -313,17 +339,23 @@ export async function getUserAssignedShifts(userId: number, targetDate: string) 
       assignment_type: "replacement",
     }))
 
+    console.log("[v0] Replacement shifts:", formattedReplacementShifts.length)
+
+    // Combine both types of shifts
     const allShifts = [...userShifts, ...formattedReplacementShifts]
+
+    console.log("[v0] getUserAssignedShifts returned:", allShifts.length, "shifts")
 
     return allShifts
   } catch (error) {
-    console.error("Error fetching user assigned shifts:", error)
+    console.error("[v0] Error fetching user assigned shifts:", error)
     return []
   }
 }
 
 export async function isUserAssignedToShift(userId: number, shiftId: number, targetDate: string) {
   try {
+    // Get cycle config
     const cycleConfig = await sql`
       SELECT * FROM cycle_config WHERE is_active = true LIMIT 1
     `
@@ -346,6 +378,7 @@ export async function isUserAssignedToShift(userId: number, shiftId: number, tar
     const daysDiff = Math.floor((targetDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24))
     const cycleDay = (daysDiff % cycle_length_days) + 1
 
+    // Check if user is assigned to this shift and it matches the cycle day
     const result = await sql`
       SELECT COUNT(*) as count
       FROM shift_assignments sa
@@ -369,6 +402,9 @@ export async function setActingLieutenant(shiftId: number, userId: number) {
   }
 
   try {
+    console.log("[v0] setActingLieutenant called with:", { shiftId, userId })
+
+    // Get the shift details to find the team
     const shiftDetails = await sql`
       SELECT team_id FROM shifts WHERE id = ${shiftId}
     `
@@ -378,28 +414,39 @@ export async function setActingLieutenant(shiftId: number, userId: number) {
     }
 
     const teamId = shiftDetails[0].team_id
+    console.log("[v0] setActingLieutenant - teamId:", teamId)
 
+    // Get all team members who are lieutenants
     const teamLieutenants = await sql`
       SELECT u.id
       FROM team_members tm
       JOIN users u ON tm.user_id = u.id
       WHERE tm.team_id = ${teamId} AND u.role = 'lieutenant'
     `
+    console.log(
+      "[v0] setActingLieutenant - team lieutenants:",
+      teamLieutenants.map((l) => l.id),
+    )
 
+    console.log("[v0] setActingLieutenant - Setting is_acting_lieutenant = false for all assignments")
     await sql`
       UPDATE shift_assignments
       SET is_acting_lieutenant = false
       WHERE shift_id = ${shiftId}
     `
 
+    // For each permanent lieutenant, ensure they have a shift_assignments record with is_acting_lieutenant = false
     for (const lieutenant of teamLieutenants) {
       if (lieutenant.id !== userId) {
+        // Check if they already have a shift_assignments record
         const existing = await sql`
           SELECT id FROM shift_assignments
           WHERE shift_id = ${shiftId} AND user_id = ${lieutenant.id}
         `
 
         if (existing.length === 0) {
+          console.log("[v0] setActingLieutenant - Creating shift_assignments for permanent lieutenant:", lieutenant.id)
+          // Create a record with is_acting_lieutenant = false to override their permanent lieutenant role
           await sql`
             INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant)
             VALUES (${shiftId}, ${lieutenant.id}, false, false)
@@ -408,36 +455,40 @@ export async function setActingLieutenant(shiftId: number, userId: number) {
       }
     }
 
+    // Now set the new acting lieutenant
     const existing = await sql`
       SELECT id FROM shift_assignments
       WHERE shift_id = ${shiftId} AND user_id = ${userId}
     `
 
     if (existing.length > 0) {
+      console.log("[v0] setActingLieutenant - Updating existing shift_assignments record for userId:", userId)
       await sql`
         UPDATE shift_assignments
         SET is_acting_lieutenant = true
         WHERE shift_id = ${shiftId} AND user_id = ${userId}
       `
     } else {
+      console.log("[v0] setActingLieutenant - Creating new shift_assignments record for userId:", userId)
       await sql`
         INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant)
         VALUES (${shiftId}, ${userId}, false, true)
       `
     }
 
-    revalidatePath("/dashboard/calendar", "max")
-    revalidatePath("/dashboard", "max")
+    console.log("[v0] setActingLieutenant - Success")
+
+    revalidatePath("/dashboard/calendar")
 
     try {
       invalidateCache()
     } catch (cacheError) {
-      console.error("Error invalidating cache:", cacheError)
+      console.error("[v0] Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("Error setting acting lieutenant:", error)
+    console.error("[v0] Error setting acting lieutenant:", error)
     return { error: "Erreur lors de la désignation du lieutenant" }
   }
 }
@@ -449,6 +500,9 @@ export async function setActingCaptain(shiftId: number, userId: number) {
   }
 
   try {
+    console.log("[v0] setActingCaptain called with:", { shiftId, userId })
+
+    // Get the shift details to find the team
     const shiftDetails = await sql`
       SELECT team_id FROM shifts WHERE id = ${shiftId}
     `
@@ -458,28 +512,39 @@ export async function setActingCaptain(shiftId: number, userId: number) {
     }
 
     const teamId = shiftDetails[0].team_id
+    console.log("[v0] setActingCaptain - teamId:", teamId)
 
+    // Get all team members who are captains
     const teamCaptains = await sql`
       SELECT u.id
       FROM team_members tm
       JOIN users u ON tm.user_id = u.id
       WHERE tm.team_id = ${teamId} AND u.role = 'captain'
     `
+    console.log(
+      "[v0] setActingCaptain - team captains:",
+      teamCaptains.map((c) => c.id),
+    )
 
+    console.log("[v0] setActingCaptain - Setting is_acting_captain = false for all assignments")
     await sql`
       UPDATE shift_assignments
       SET is_acting_captain = false
       WHERE shift_id = ${shiftId}
     `
 
+    // For each permanent captain, ensure they have a shift_assignments record with is_acting_captain = false
     for (const captain of teamCaptains) {
       if (captain.id !== userId) {
+        // Check if they already have a shift_assignments record
         const existing = await sql`
           SELECT id FROM shift_assignments
           WHERE shift_id = ${shiftId} AND user_id = ${captain.id}
         `
 
         if (existing.length === 0) {
+          console.log("[v0] setActingCaptain - Creating shift_assignments for permanent captain:", captain.id)
+          // Create a record with is_acting_captain = false to override their permanent captain role
           await sql`
             INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_captain)
             VALUES (${shiftId}, ${captain.id}, false, false)
@@ -488,36 +553,40 @@ export async function setActingCaptain(shiftId: number, userId: number) {
       }
     }
 
+    // Now set the new acting captain
     const existing = await sql`
       SELECT id FROM shift_assignments
       WHERE shift_id = ${shiftId} AND user_id = ${userId}
     `
 
     if (existing.length > 0) {
+      console.log("[v0] setActingCaptain - Updating existing shift_assignments record for userId:", userId)
       await sql`
         UPDATE shift_assignments
         SET is_acting_captain = true
         WHERE shift_id = ${shiftId} AND user_id = ${userId}
       `
     } else {
+      console.log("[v0] setActingCaptain - Creating new shift_assignments record for userId:", userId)
       await sql`
         INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_captain)
         VALUES (${shiftId}, ${userId}, false, true)
       `
     }
 
-    revalidatePath("/dashboard/calendar", "max")
-    revalidatePath("/dashboard", "max")
+    console.log("[v0] setActingCaptain - Success")
+
+    revalidatePath("/dashboard/calendar")
 
     try {
       invalidateCache()
     } catch (cacheError) {
-      console.error("Error invalidating cache:", cacheError)
+      console.error("[v0] Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("Error setting acting captain:", error)
+    console.error("[v0] Error setting acting captain:", error)
     return { error: "Erreur lors de la désignation du capitaine" }
   }
 }
@@ -529,6 +598,8 @@ export async function removeActingLieutenant(shiftId: number, userId: number) {
   }
 
   try {
+    console.log("[v0] removeActingLieutenant called with:", { shiftId, userId })
+
     const assignment = await sql`
       SELECT is_acting_lieutenant, is_extra
       FROM shift_assignments
@@ -600,18 +671,19 @@ export async function removeActingLieutenant(shiftId: number, userId: number) {
       }
     }
 
-    revalidatePath("/dashboard/calendar", "max")
-    revalidatePath("/dashboard", "max")
+    console.log("[v0] removeActingLieutenant: Success")
+
+    revalidatePath("/dashboard/calendar")
 
     try {
       invalidateCache()
     } catch (cacheError) {
-      console.error("Error invalidating cache:", cacheError)
+      console.error("[v0] Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("Error removing acting lieutenant:", error)
+    console.error("[v0] Error removing acting lieutenant:", error)
     return { error: "Erreur lors du retrait du lieutenant" }
   }
 }
@@ -623,6 +695,8 @@ export async function removeActingCaptain(shiftId: number, userId: number) {
   }
 
   try {
+    console.log("[v0] removeActingCaptain called with:", { shiftId, userId })
+
     const assignment = await sql`
       SELECT is_acting_captain, is_extra
       FROM shift_assignments
@@ -694,18 +768,19 @@ export async function removeActingCaptain(shiftId: number, userId: number) {
       }
     }
 
-    revalidatePath("/dashboard/calendar", "max")
-    revalidatePath("/dashboard", "max")
+    console.log("[v0] removeActingCaptain: Success")
+
+    revalidatePath("/dashboard/calendar")
 
     try {
       invalidateCache()
     } catch (cacheError) {
-      console.error("Error invalidating cache:", cacheError)
+      console.error("[v0] Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("Error removing acting captain:", error)
+    console.error("[v0] Error removing acting captain:", error)
     return { error: "Erreur lors du retrait du capitaine" }
   }
 }
