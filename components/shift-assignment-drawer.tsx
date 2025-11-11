@@ -145,12 +145,17 @@ export function ShiftAssignmentDrawer({
   }, [open])
 
   const refreshAndClose = useCallback(() => {
+    // Only save scroll position, server actions handle revalidation
     const position = window.scrollY
     if (position > 0) {
       sessionStorage.setItem("calendar-scroll-position", position.toString())
     }
-    router.refresh()
     onOpenChange(false)
+
+    // This won't affect V0 preview, only the published Vercel app
+    if (process.env.NEXT_PUBLIC_VERCEL_ENV === "production") {
+      router.refresh()
+    }
   }, [onOpenChange, router])
 
   useEffect(() => {

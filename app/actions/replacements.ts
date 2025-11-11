@@ -2,9 +2,9 @@
 
 import { sql, invalidateCache } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
-import { revalidatePath } from "next/cache"
 import { createNotification } from "./notifications"
 import { calculateAutoDeadline, formatLocalDate } from "@/lib/date-utils"
+import { revalidatePath } from "next/cache"
 
 export async function getUserApplications(userId: number) {
   try {
@@ -226,11 +226,9 @@ export async function createReplacementFromShift(
       RETURNING id
     `
 
-    revalidatePath("/dashboard/calendar")
-    revalidatePath("/dashboard/replacements")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -290,10 +288,9 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
       RETURNING applied_at
     `
 
-    revalidatePath("/dashboard/replacements")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -317,10 +314,9 @@ export async function withdrawApplication(applicationId: number) {
       WHERE id = ${applicationId} AND applicant_id = ${user.id}
     `
 
-    revalidatePath("/dashboard/replacements")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -427,11 +423,9 @@ export async function approveApplication(applicationId: number, replacementId: n
       "replacement",
     )
 
-    revalidatePath("/dashboard/replacements")
-    revalidatePath("/dashboard/calendar")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -475,10 +469,9 @@ export async function rejectApplication(applicationId: number) {
       null,
     )
 
-    revalidatePath("/dashboard/replacements")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -544,12 +537,9 @@ export async function deleteReplacement(replacementId: number) {
       DELETE FROM replacements WHERE id = ${replacementId}
     `
 
-    revalidatePath("/dashboard/replacements")
-    revalidatePath("/dashboard/calendar")
-    revalidatePath("/dashboard")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] deleteReplacement - Error invalidating cache:", cacheError)
     }
@@ -645,11 +635,9 @@ export async function createExtraFirefighterReplacement(
       RETURNING id
     `
 
-    revalidatePath("/dashboard/calendar")
-    revalidatePath("/dashboard/replacements")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -707,11 +695,9 @@ export async function updateReplacementAssignment(replacementId: number, assigne
       `
     }
 
-    revalidatePath("/dashboard/replacements")
-    revalidatePath("/dashboard/calendar")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -799,10 +785,9 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
       WHERE id = ${replacementId}
     `
 
-    revalidatePath("/dashboard/replacements")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -827,10 +812,9 @@ export async function rejectReplacementRequest(replacementId: number) {
       WHERE id = ${replacementId}
     `
 
-    revalidatePath("/dashboard/replacements")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -870,10 +854,9 @@ export async function requestReplacement(
       )
     `
 
-    revalidatePath("/dashboard/replacements")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -964,11 +947,9 @@ export async function removeReplacementAssignment(replacementId: number) {
       WHERE id = ${replacementId}
     `
 
-    revalidatePath("/dashboard/replacements")
-    revalidatePath("/dashboard/calendar")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -1059,10 +1040,9 @@ export async function reactivateApplication(applicationId: number) {
       WHERE id = ${applicationId}
     `
 
-    revalidatePath("/dashboard/replacements")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }

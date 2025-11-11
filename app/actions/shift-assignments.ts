@@ -60,10 +60,9 @@ export async function assignFirefighterToShift(shiftId: number, userId: number) 
       ON CONFLICT (shift_id, user_id) DO NOTHING
     `
 
-    revalidatePath("/dashboard/calendar")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -109,10 +108,9 @@ export async function addExtraFirefighterToShift(
       )
     `
 
-    revalidatePath("/dashboard/calendar")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -136,10 +134,9 @@ export async function removeFirefighterFromShift(shiftId: number, userId: number
       WHERE shift_id = ${shiftId} AND user_id = ${userId}
     `
 
-    revalidatePath("/dashboard/calendar")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       console.error("[v0] Error invalidating cache:", cacheError)
     }
@@ -478,11 +475,9 @@ export async function setActingLieutenant(shiftId: number, userId: number) {
 
     console.log("[v0] setActingLieutenant - Success")
 
-    revalidatePath("/dashboard/calendar", "max")
-    revalidatePath("/dashboard", "max")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       // Silently handle cache errors
     }
@@ -576,11 +571,9 @@ export async function setActingCaptain(shiftId: number, userId: number) {
 
     console.log("[v0] setActingCaptain - Success")
 
-    revalidatePath("/dashboard/calendar", "max")
-    revalidatePath("/dashboard", "max")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       // Silently handle cache errors
     }
@@ -673,11 +666,9 @@ export async function removeActingLieutenant(shiftId: number, userId: number) {
 
     console.log("[v0] removeActingLieutenant: Success")
 
-    revalidatePath("/dashboard/calendar", "max")
-    revalidatePath("/dashboard", "max")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       // Silently handle cache errors
     }
@@ -771,11 +762,9 @@ export async function removeActingCaptain(shiftId: number, userId: number) {
 
     console.log("[v0] removeActingCaptain: Success")
 
-    revalidatePath("/dashboard/calendar", "max")
-    revalidatePath("/dashboard", "max")
-
     try {
       invalidateCache()
+      revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
       // Silently handle cache errors
     }
