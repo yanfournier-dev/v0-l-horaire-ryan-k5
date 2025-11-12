@@ -200,7 +200,7 @@ export async function createNotification(
 async function notifyAdminsOfEmailFailure(recipientEmail: string, notificationType: string, error: any) {
   try {
     const admins = await sql`
-      SELECT id FROM users WHERE role = 'admin'
+      SELECT id FROM users WHERE is_admin = true
     `
 
     const errorMessage = error instanceof Error ? error.message : String(error)
@@ -227,7 +227,7 @@ async function notifyAdminsOfEmailFailure(recipientEmail: string, notificationTy
       `
     }
   } catch (notifyError) {
-    console.error("[v0] Failed to notify admins of email failure:", notifyError)
+    console.error("[v0] PRODUCTION: Failed to notify admins of email failure:", notifyError)
   }
 }
 
@@ -706,7 +706,7 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
       console.error("[v0] PRODUCTION ERROR: Batch emails failed, notifying admins...")
 
       const admins = await sql`
-        SELECT id FROM users WHERE role = 'admin'
+        SELECT id FROM users WHERE is_admin = true
       `
 
       const errorMessage = result.error instanceof Error ? result.error.message : JSON.stringify(result.error)
@@ -736,7 +736,7 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
 
     try {
       const admins = await sql`
-        SELECT id FROM users WHERE role = 'admin'
+        SELECT id FROM users WHERE is_admin = true
       `
 
       const errorMessage = error instanceof Error ? error.message : String(error)

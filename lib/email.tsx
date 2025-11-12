@@ -65,7 +65,7 @@ export async function sendEmail({
   try {
     console.log("[v0] Calling Resend API...")
     const { data, error } = await resend.emails.send({
-      from: "L'horaire Ryan <notifications@resend.dev>",
+      from: "L'horaire Ryan <onboarding@resend.dev>",
       to,
       subject,
       html,
@@ -164,7 +164,7 @@ export async function sendBatchEmails(
     // Use Resend batch.send() API
     const { data, error } = await resend.batch.send(
       emailsToSend.map((email) => ({
-        from: "L'horaire Ryan <notifications@resend.dev>",
+        from: "L'horaire Ryan <onboarding@resend.dev>",
         to: email.to,
         subject: email.subject,
         html: email.html,
