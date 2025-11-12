@@ -541,12 +541,18 @@ export function CalendarCell({
                                 Lt
                               </span>
                             )}
-                            {isExchange && <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1">↔</span>}
+                            {isExchange && (
+                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-xs md:text-sm font-extrabold inline-block">
+                                ↔
+                              </span>
+                            )}
                             {isApprovedNotAssigned && !isExchange && (
                               <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1">⏳</span>
                             )}
                             {isAssignedReplacement && !isExchange && (
-                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1">✓</span>
+                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-xs md:text-sm font-bold inline-block">
+                                ✓
+                              </span>
                             )}
                             {isExtraFirefighter && !isExchange && (
                               <span className="inline-block scale-125 text-green-700 dark:text-green-500 mr-0.5 md:mr-1">
