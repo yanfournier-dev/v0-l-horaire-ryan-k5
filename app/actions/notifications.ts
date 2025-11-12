@@ -653,6 +653,8 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
 
     console.log("[v0] PRODUCTION: Found", eligibleUsers.length, "eligible users for batch emails")
 
+    console.log("[v0] PRODUCTION: Recipient emails:", eligibleUsers.map((u) => u.email).join(", "))
+
     if (eligibleUsers.length === 0) {
       console.log("[v0] PRODUCTION: No eligible users, skipping emails")
       return { success: true, sent: 0 }
@@ -711,13 +713,20 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
 
       const errorMessage = result.error instanceof Error ? result.error.message : JSON.stringify(result.error)
 
+      const shiftDate = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+      const shiftTypeText = r.shift_type === "day" ? "Jour" : "Nuit"
+
       for (const admin of admins) {
         await sql`
           INSERT INTO notifications (user_id, title, message, type)
           VALUES (
             ${admin.id}, 
             ${"⚠️ Échec d'envoi d'emails"}, 
-            ${"L'envoi de " + emails.length + " emails pour un nouveau remplacement a échoué. Erreur: " + errorMessage + ". Les notifications in-app ont été créées avec succès."},
+            ${"L'envoi de " + emails.length + " emails pour un nouveau remplacement a échoué. Erreur: " + errorMessage + ". Les notifications in-app ont été créées avec succès." + "\n\nRemplacement: " + firefighterToReplaceName + " - " + shiftDate + " (" + shiftTypeText + ")" + (r.is_partial ? " [Partiel: " + partialHours + "]" : "")},
             ${"system_error"}
           )
         `
@@ -741,13 +750,34 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
 
       const errorMessage = error instanceof Error ? error.message : String(error)
 
+      const replacement = await sql`
+        SELECT shift_date, shift_type, is_partial, start_time, end_time FROM replacements WHERE id = ${replacementId}
+      `
+
+      let replacementDetails = ""
+      if (replacement.length > 0) {
+        const r = replacement[0]
+        const shiftDate = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+        const shiftTypeText = r.shift_type === "day" ? "Jour" : "Nuit"
+        const partialText =
+          r.is_partial && r.start_time && r.end_time
+            ? ` [Partiel: ${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}]`
+            : ""
+        replacementDetails =
+          "\n\nRemplacement: " + firefighterToReplaceName + " - " + shiftDate + " (" + shiftTypeText + ")" + partialText
+      }
+
       for (const admin of admins) {
         await sql`
           INSERT INTO notifications (user_id, title, message, type)
           VALUES (
             ${admin.id}, 
             ${"🚨 Erreur critique d'emails"}, 
-            ${"Une erreur s'est produite lors de l'envoi des emails pour un nouveau remplacement: " + errorMessage},
+            ${"Une erreur s'est produite lors de l'envoi des emails pour un nouveau remplacement: " + errorMessage + replacementDetails},
             ${"system_error"}
           )
         `

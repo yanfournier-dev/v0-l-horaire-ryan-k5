@@ -65,7 +65,7 @@ export async function sendEmail({
   try {
     console.log("[v0] Calling Resend API...")
     const { data, error } = await resend.emails.send({
-      from: "L'horaire Ryan <onboarding@resend.dev>",
+      from: "onboarding@resend.dev",
       to,
       subject,
       html,
@@ -161,15 +161,34 @@ export async function sendBatchEmails(
   try {
     console.log("[v0] Calling Resend batch API with", emailsToSend.length, "emails...")
 
+    const payload = emailsToSend.map((email) => ({
+      from: "onboarding@resend.dev",
+      to: email.to,
+      subject: email.subject,
+      html: email.html,
+    }))
+
+    console.log("[v0] PRODUCTION: Batch payload details:")
+    console.log("[v0]   - From address:", payload[0]?.from)
+    console.log("[v0]   - First recipient:", payload[0]?.to)
+    console.log("[v0]   - Subject:", payload[0]?.subject)
+    console.log("[v0]   - Number of emails in batch:", payload.length)
+
+    // Validate email addresses
+    const invalidEmails = payload.filter((p) => !p.to || !p.to.includes("@") || !p.to.includes("."))
+    if (invalidEmails.length > 0) {
+      console.error(
+        "[v0] PRODUCTION ERROR: Found invalid email addresses:",
+        invalidEmails.map((e) => e.to),
+      )
+      return {
+        success: false,
+        error: new Error(`Invalid email addresses detected: ${invalidEmails.map((e) => e.to).join(", ")}`),
+      }
+    }
+
     // Use Resend batch.send() API
-    const { data, error } = await resend.batch.send(
-      emailsToSend.map((email) => ({
-        from: "L'horaire Ryan <onboarding@resend.dev>",
-        to: email.to,
-        subject: email.subject,
-        html: email.html,
-      })),
-    )
+    const { data, error } = await resend.batch.send(payload)
 
     if (error) {
       console.error("[v0] PRODUCTION ERROR: Resend batch API returned error:", error)
