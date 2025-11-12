@@ -23,47 +23,16 @@ export async function sendEmail({
   html: string
 }) {
   if (process.env.VERCEL_ENV !== "production") {
-    console.log("[v0] Skipping email in preview environment - notification will still be created in-app")
-    console.log("[v0] Email would have been sent to:", to, "with subject:", subject)
+    console.log("[v0] V0 PREVIEW - Skipping email send")
     return { success: true, skipped: true }
   }
 
-  console.log("[v0] ========== EMAIL SEND ATTEMPT ==========")
-  console.log("[v0] To:", to)
-  console.log("[v0] Subject:", subject)
-
   const resend = getResendClient()
   if (!resend) {
-    console.log("[v0] Email not sent - Resend not configured")
     return { success: false, error: "Email service not configured" }
   }
 
-  let verifiedEmail = process.env.RESEND_VERIFIED_EMAIL
-  if (verifiedEmail) {
-    // Remove "RESEND_VERIFIED_EMAIL=" prefix if present
-    verifiedEmail = verifiedEmail.replace(/^RESEND_VERIFIED_EMAIL=/i, "").trim()
-  }
-
-  console.log("[v0] RESEND_VERIFIED_EMAIL is set:", !!verifiedEmail)
-  if (verifiedEmail) {
-    console.log("[v0] Verified email value:", verifiedEmail)
-    console.log("[v0] Recipient matches verified email:", to === verifiedEmail)
-  }
-
-  if (verifiedEmail && to !== verifiedEmail) {
-    console.log("[v0] Resend is in test mode - skipping email send")
-    console.log("[v0] Verified email:", verifiedEmail)
-    console.log("[v0] Email would have been sent to:", to)
-    console.log("[v0] To send emails to all users, verify a domain at resend.com/domains")
-    return {
-      success: false,
-      error: "Test mode restriction - email not sent",
-      isTestModeRestriction: true,
-    }
-  }
-
   try {
-    console.log("[v0] Calling Resend API...")
     const { data, error } = await resend.emails.send({
       from: "onboarding@resend.dev",
       to,
@@ -72,24 +41,14 @@ export async function sendEmail({
     })
 
     if (error) {
-      console.error("[v0] Resend API returned error:", error)
-      // Check if this is a test mode restriction (403 error)
-      if (error.statusCode === 403 && error.message?.includes("testing emails")) {
-        console.log("[v0] Resend is in test mode - emails can only be sent to:", verifiedEmail || "your verified email")
-        console.log("[v0] Email would have been sent to:", to)
-        console.log("[v0] To send emails to all users, verify a domain at resend.com/domains")
-        return { success: false, error: "Test mode restriction", isTestModeRestriction: true }
-      }
-      console.error("[v0] Email error:", error)
+      console.error("[v0] PRODUCTION ERROR: Email send failed:", error)
       return { success: false, error }
     }
 
-    console.log("[v0] Email sent successfully! Data:", data)
-    console.log("[v0] ========================================")
+    console.log("[v0] PRODUCTION: Email sent successfully to:", to)
     return { success: true, data }
   } catch (error) {
-    console.error("[v0] Email send exception:", error)
-    console.log("[v0] ========================================")
+    console.error("[v0] PRODUCTION ERROR: Email send exception:", error)
     return { success: false, error }
   }
 }
@@ -101,128 +60,57 @@ export async function sendBatchEmails(
     html: string
   }>,
 ) {
-  // Skip in non-production environments
   if (process.env.VERCEL_ENV !== "production") {
-    console.log("[v0] Skipping batch emails in preview environment -", emails.length, "emails would have been sent")
+    console.log("[v0] V0 PREVIEW - Skipping batch emails")
     return { success: true, skipped: true, count: emails.length }
   }
 
-  console.log("[v0] ========== BATCH EMAIL SEND ATTEMPT (PRODUCTION) ==========")
-  console.log("[v0] Environment:", process.env.VERCEL_ENV)
-  console.log("[v0] Number of emails:", emails.length)
-  console.log(
-    "[v0] First 3 recipients:",
-    emails
-      .slice(0, 3)
-      .map((e) => e.to)
-      .join(", "),
-  )
+  console.log("[v0] PRODUCTION: Starting batch email send for", emails.length, "recipients")
 
   const resend = getResendClient()
   if (!resend) {
-    console.error("[v0] PRODUCTION ERROR: Resend not configured")
-    return { success: false, error: "Email service not configured" }
-  }
-
-  let verifiedEmail = process.env.RESEND_VERIFIED_EMAIL
-  if (verifiedEmail) {
-    verifiedEmail = verifiedEmail.replace(/^RESEND_VERIFIED_EMAIL=/i, "").trim()
-  }
-
-  console.log("[v0] RESEND_VERIFIED_EMAIL configured:", !!verifiedEmail)
-  if (verifiedEmail) {
-    console.log("[v0] PRODUCTION: Verified email is:", verifiedEmail)
-    console.log("[v0] PRODUCTION: This means Resend is in TEST MODE - only this email will receive messages")
-    console.log("[v0] PRODUCTION: To send to all users, verify a domain at resend.com/domains")
-  }
-
-  // Filter out emails that don't match verified email in test mode
-  const emailsToSend = verifiedEmail ? emails.filter((email) => email.to === verifiedEmail) : emails
-
-  console.log("[v0] Emails to send after filtering:", emailsToSend.length)
-  if (verifiedEmail && emailsToSend.length < emails.length) {
-    console.log(`[v0] PRODUCTION WARNING: ${emails.length - emailsToSend.length} emails filtered out due to test mode`)
-    console.log(
-      "[v0] PRODUCTION: Filtered emails would have been sent to:",
-      emails
-        .filter((e) => e.to !== verifiedEmail)
-        .map((e) => e.to)
-        .slice(0, 5)
-        .join(", "),
-      "...",
-    )
-  }
-
-  if (emailsToSend.length === 0) {
-    console.log("[v0] All emails filtered out due to test mode restrictions")
-    return { success: true, sent: 0, filtered: emails.length, testMode: true }
+    console.error("[v0] PRODUCTION ERROR: Resend client not initialized")
+    return {
+      success: false,
+      error: { message: "Resend API key not configured" },
+    }
   }
 
   try {
-    console.log("[v0] Calling Resend batch API with", emailsToSend.length, "emails...")
-
-    const payload = emailsToSend.map((email) => ({
-      from: "onboarding@resend.dev",
-      to: email.to,
-      subject: email.subject,
-      html: email.html,
-    }))
-
-    console.log("[v0] PRODUCTION: Batch payload details:")
-    console.log("[v0]   - From address:", payload[0]?.from)
-    console.log("[v0]   - First recipient:", payload[0]?.to)
-    console.log("[v0]   - Subject:", payload[0]?.subject)
-    console.log("[v0]   - Number of emails in batch:", payload.length)
-
-    console.log("[v0] PRODUCTION: Full first email payload (truncated HTML):")
-    console.log("[v0]   - HTML length:", payload[0]?.html.length, "characters")
-    console.log("[v0]   - HTML first 500 chars:", payload[0]?.html.substring(0, 500))
-    console.log("[v0] PRODUCTION: Complete payload structure:")
-    console.log(
-      JSON.stringify(
-        {
-          from: payload[0]?.from,
-          to: payload[0]?.to,
-          subject: payload[0]?.subject,
-          htmlPreview: payload[0]?.html.substring(0, 200),
-        },
-        null,
-        2,
-      ),
+    const { data, error } = await resend.batch.send(
+      emails.map((email) => ({
+        from: "onboarding@resend.dev",
+        to: email.to,
+        subject: email.subject,
+        html: email.html,
+      })),
     )
-
-    // Validate email addresses
-    const invalidEmails = payload.filter((p) => !p.to || !p.to.includes("@") || !p.to.includes("."))
-    if (invalidEmails.length > 0) {
-      console.error(
-        "[v0] PRODUCTION ERROR: Found invalid email addresses:",
-        invalidEmails.map((e) => e.to),
-      )
-      return {
-        success: false,
-        error: new Error(`Invalid email addresses detected: ${invalidEmails.map((e) => e.to).join(", ")}`),
-      }
-    }
-
-    // Use Resend batch.send() API
-    const { data, error } = await resend.batch.send(payload)
 
     if (error) {
       console.error("[v0] PRODUCTION ERROR: Resend batch API returned error:", error)
       console.error("[v0] Error details:", JSON.stringify(error, null, 2))
-      return { success: false, error }
+      return {
+        success: false,
+        error,
+      }
     }
 
-    console.log("[v0] PRODUCTION SUCCESS: Batch emails sent successfully!")
-    console.log("[v0] Response data:", data)
-    console.log("[v0] ========================================")
-    return { success: true, data, sent: emailsToSend.length }
-  } catch (error) {
-    console.error("[v0] PRODUCTION EXCEPTION: Batch email send exception:", error)
-    console.error("[v0] Exception type:", error instanceof Error ? error.constructor.name : typeof error)
-    console.error("[v0] Exception message:", error instanceof Error ? error.message : String(error))
-    console.log("[v0] ========================================")
-    return { success: false, error }
+    console.log("[v0] PRODUCTION: Batch emails sent successfully!", data)
+    return {
+      success: true,
+      sent: emails.length,
+      data,
+    }
+  } catch (error: any) {
+    console.error("[v0] PRODUCTION ERROR: Batch email exception:", error)
+    return {
+      success: false,
+      error: {
+        message: error.message || "Unknown error",
+        statusCode: error.statusCode,
+        name: error.name,
+      },
+    }
   }
 }
 
