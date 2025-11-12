@@ -37,12 +37,16 @@ export function generate28DayCycle(startDate: Date, cycleStartDate: Date) {
   return days
 }
 
+import { getTodayInLocalTimezone } from "@/lib/date-utils"
+
 function isToday(date: Date): boolean {
-  const today = new Date()
+  const today = getTodayInLocalTimezone()
+
+  // Use UTC methods for comparison to avoid double timezone conversion
   return (
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
+    date.getUTCDate() === today.getUTCDate() &&
+    date.getUTCMonth() === today.getUTCMonth() &&
+    date.getUTCFullYear() === today.getUTCFullYear()
   )
 }
 
