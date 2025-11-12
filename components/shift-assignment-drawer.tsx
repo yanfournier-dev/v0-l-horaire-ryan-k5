@@ -794,7 +794,7 @@ export function ShiftAssignmentDrawer({
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-medium">{displayName}</p>
                             {assignment.is_extra && !isExtraRequest && (
                               <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-xs">
@@ -829,11 +829,12 @@ export function ShiftAssignmentDrawer({
                               assignment.is_partial &&
                               assignment.start_time &&
                               assignment.end_time && (
-                                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs ml-1">
+                                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
                                   Partiel: {assignment.start_time.slice(0, 5)} - {assignment.end_time.slice(0, 5)}
                                 </Badge>
                               )}
                           </div>
+                          {/* </CHANGE> */}
                           {!isExtraRequest && assignment.email && (
                             <p className="text-xs text-muted-foreground">{assignment.email}</p>
                           )}
@@ -934,6 +935,65 @@ export function ShiftAssignmentDrawer({
                               )}
                             </div>
                           )}
+                          {isDirectAssignment && isAdmin && (
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRemoveDirectAssignment(assignment.user_id, displayName)}
+                                disabled={isLoading || loadingReplacements}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Retirer
+                              </Button>
+                              {assignment.is_acting_captain ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRemoveCaptain(assignment.user_id || assignment.id, displayName)}
+                                  disabled={isLoading || loadingReplacements}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  Retirer Cpt
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSetCaptain(assignment.user_id || assignment.id, displayName)}
+                                  disabled={isLoading || loadingReplacements}
+                                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                >
+                                  Désigner Cpt
+                                </Button>
+                              )}
+                              {assignment.is_acting_lieutenant ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleRemoveLieutenant(assignment.user_id || assignment.id, displayName)
+                                  }
+                                  disabled={isLoading || loadingReplacements}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  Retirer Lt
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSetLieutenant(assignment.user_id || assignment.id, displayName)}
+                                  disabled={isLoading || loadingReplacements}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                  Désigner Lt
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          {/* </CHANGE> */}
                           {!hasReplacement &&
                             !assignment.is_extra &&
                             !isExtraRequest &&
@@ -1101,20 +1161,6 @@ export function ShiftAssignmentDrawer({
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                          )}
-                          {isDirectAssignment && isAdmin && (
-                            <div className="mt-2 flex items-center gap-2 flex-wrap">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRemoveDirectAssignment(assignment.user_id, displayName)}
-                                disabled={isLoading || loadingReplacements}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                Retirer l'assignation directe
-                              </Button>
-                            </div>
                           )}
                         </div>
                       </div>
