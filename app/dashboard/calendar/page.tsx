@@ -9,7 +9,7 @@ import {
 import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
 import { redirect } from "next/navigation"
 import { generateMonthView, getCycleDay, parseLocalDate } from "@/lib/calendar"
-import { formatDateForDB } from "@/lib/date-utils"
+import { formatDateForDB, getTodayInLocalTimezone } from "@/lib/date-utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -46,7 +46,7 @@ export default async function CalendarPage({
 
     const cycleStartDate = parseLocalDate(cycleConfig.start_date)
 
-    const today = new Date()
+    const today = getTodayInLocalTimezone()
 
     const selectedYear = searchParams.year ? Number.parseInt(searchParams.year) : today.getFullYear()
     const selectedMonth = searchParams.month ? Number.parseInt(searchParams.month) : today.getMonth()

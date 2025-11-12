@@ -7,7 +7,7 @@
  */
 export function parseLocalDate(dateInput: string | Date | null | undefined): Date {
   if (!dateInput) {
-    return new Date()
+    return getTodayInLocalTimezone()
   }
 
   if (dateInput instanceof Date) {
@@ -21,7 +21,7 @@ export function parseLocalDate(dateInput: string | Date | null | undefined): Dat
   }
 
   if (typeof dateInput !== "string") {
-    return new Date()
+    return getTodayInLocalTimezone()
   }
 
   // If it's a string, parse it as local time using date components
@@ -182,7 +182,7 @@ export function compareDates(date1: string | Date | null | undefined, date2: str
  * @returns Current date string
  */
 export function getCurrentLocalDate(): string {
-  const now = new Date()
+  const now = getTodayInLocalTimezone()
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, "0")
   const day = String(now.getDate()).padStart(2, "0")
@@ -211,7 +211,7 @@ export function formatCreatedAt(dateInput: string | Date): string {
   const hours = String(localTime.getUTCHours()).padStart(2, "0")
   const minutes = String(localTime.getUTCMinutes()).padStart(2, "0")
 
-  const now = new Date()
+  const now = getTodayInLocalTimezone()
   const currentYear = now.getFullYear()
 
   if (yearValue === currentYear) {
@@ -295,4 +295,24 @@ export function calculateAutoDeadline(shiftDate: string | Date): Date {
   mondayOfPreviousWeek.setHours(17, 0, 0, 0)
 
   return mondayOfPreviousWeek
+}
+
+/**
+ * Get today's date in the correct timezone
+ * In production (Vercel), server runs in UTC, so we adjust for America/Montreal (UTC-5)
+ * In V0 preview, we use the default timezone
+ *
+ * @returns Date object representing today in local timezone
+ */
+export function getTodayInLocalTimezone(): Date {
+  if (process.env.VERCEL_ENV === "production") {
+    const now = new Date()
+    // Adjust UTC time to Montreal time (UTC-5)
+    const montrealTime = new Date(now.getTime() - 5 * 60 * 60 * 1000)
+    // Create a date at midnight in Montreal timezone
+    return new Date(montrealTime.getUTCFullYear(), montrealTime.getUTCMonth(), montrealTime.getUTCDate(), 0, 0, 0, 0)
+  }
+
+  // In V0 or other environments, use default behavior
+  return new Date()
 }

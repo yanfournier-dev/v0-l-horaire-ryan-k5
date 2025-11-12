@@ -3,6 +3,7 @@ import { getAllShifts, getCycleConfig } from "@/app/actions/calendar"
 import { getShiftAssignments } from "@/app/actions/shift-assignments"
 import { redirect } from "next/navigation"
 import { getCycleDay, parseLocalDate } from "@/lib/calendar"
+import { getTodayInLocalTimezone } from "@/lib/date-utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,7 +28,7 @@ export default async function DailyViewPage({
   }
 
   const cycleStartDate = parseLocalDate(cycleConfig.start_date)
-  const selectedDate = searchParams.date ? parseLocalDate(searchParams.date) : new Date()
+  const selectedDate = searchParams.date ? parseLocalDate(searchParams.date) : getTodayInLocalTimezone()
   const currentCycleDay = getCycleDay(selectedDate, cycleStartDate)
 
   // Get all shifts for this cycle day
