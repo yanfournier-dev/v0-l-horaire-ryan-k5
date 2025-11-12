@@ -174,6 +174,23 @@ export async function sendBatchEmails(
     console.log("[v0]   - Subject:", payload[0]?.subject)
     console.log("[v0]   - Number of emails in batch:", payload.length)
 
+    console.log("[v0] PRODUCTION: Full first email payload (truncated HTML):")
+    console.log("[v0]   - HTML length:", payload[0]?.html.length, "characters")
+    console.log("[v0]   - HTML first 500 chars:", payload[0]?.html.substring(0, 500))
+    console.log("[v0] PRODUCTION: Complete payload structure:")
+    console.log(
+      JSON.stringify(
+        {
+          from: payload[0]?.from,
+          to: payload[0]?.to,
+          subject: payload[0]?.subject,
+          htmlPreview: payload[0]?.html.substring(0, 200),
+        },
+        null,
+        2,
+      ),
+    )
+
     // Validate email addresses
     const invalidEmails = payload.filter((p) => !p.to || !p.to.includes("@") || !p.to.includes("."))
     if (invalidEmails.length > 0) {
