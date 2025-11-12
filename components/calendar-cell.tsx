@@ -10,7 +10,6 @@ import { getShiftTypeLabel } from "@/lib/colors"
 import { ShiftAssignmentDrawer } from "@/components/shift-assignment-drawer"
 import { ShiftNoteDialog } from "@/components/shift-note-dialog"
 import { getShiftWithAssignments } from "@/app/actions/calendar"
-import { getTeamFirefighters } from "@/app/actions/shift-assignments"
 import { getShiftNote } from "@/app/actions/shift-notes"
 import { FileText } from "lucide-react"
 
@@ -88,102 +87,17 @@ export function CalendarCell({
 
     try {
       const shiftDetails = await getShiftWithAssignments(shift.id)
-      const firefighters = await getTeamFirefighters(shift.team_id)
 
       const shiftIndex = shifts.findIndex((s) => s.id === shift.id)
       const shiftExchanges = exchanges[shiftIndex] || []
-
-      const calendarFirefighters = shift.assigned_firefighters
-        ? shift.assigned_firefighters.split(";").map((entry: string) => {
-            const [
-              firstName,
-              lastName,
-              role,
-              isExtra,
-              isPartial,
-              startTime,
-              endTime,
-              isActingLieutenant,
-              isActingCaptain,
-            ] = entry.trim().split("|")
-
-            return {
-              firstName,
-              lastName,
-              role,
-              isExtra: isExtra === "true",
-              isPartial: isPartial === "true",
-              startTime: startTime || null,
-              endTime: endTime || null,
-              isActingLieutenant: isActingLieutenant === "true" ? true : isActingLieutenant === "false" ? false : null,
-              isActingCaptain: isActingCaptain === "true" ? true : isActingCaptain === "false" ? false : null,
-            }
-          })
-        : []
-
-      const roleOrder: Record<string, number> = {
-        captain: 1,
-        lieutenant: 2,
-        pp1: 3,
-        pp2: 4,
-        pp3: 5,
-        pp4: 6,
-        pp5: 7,
-        pp6: 8,
-      }
-      calendarFirefighters.sort((a, b) => {
-        if (a.isExtra !== b.isExtra) {
-          return a.isExtra ? 1 : -1
-        }
-        const orderA = roleOrder[a.role] || 9
-        const orderB = roleOrder[b.role] || 9
-        return orderA - orderB
-      })
-
-      const hasActingLieutenant = calendarFirefighters.some((f) => f.isActingLieutenant === true)
-      const hasActingCaptain = calendarFirefighters.some((f) => f.isActingCaptain === true)
-
-      const assignmentsWithLtBadge = firefighters.map((assignment: any) => {
-        const calendarIndex = calendarFirefighters.findIndex(
-          (f) => f.firstName === assignment.first_name && f.lastName === assignment.last_name,
-        )
-
-        if (calendarIndex === -1) {
-          return {
-            ...assignment,
-            showsLtBadge: false,
-            showsCptBadge: false,
-            is_acting_lieutenant: false,
-            is_acting_captain: false,
-          }
-        }
-
-        const firefighter = calendarFirefighters[calendarIndex]
-        const showsLtBadge =
-          firefighter.isActingLieutenant === true ||
-          (!hasActingLieutenant && firefighter.role === "lieutenant" && firefighter.isActingLieutenant !== true)
-
-        const showsCptBadge =
-          firefighter.isActingCaptain === true ||
-          (!hasActingCaptain && firefighter.role === "captain" && firefighter.isActingCaptain !== true)
-
-        return {
-          ...assignment,
-          showsLtBadge,
-          showsCptBadge,
-          is_acting_lieutenant: firefighter.isActingLieutenant === true,
-          is_acting_captain: firefighter.isActingCaptain === true,
-        }
-      })
 
       setSelectedShift({
         ...shift,
         date: day.date,
         exchanges: shiftExchanges,
-        assignments: assignmentsWithLtBadge, // Declare shiftDetails variable before using it
       })
-      setTeamFirefighters(firefighters)
-      setCurrentAssignments(assignmentsWithLtBadge)
+      setTeamFirefighters(shiftDetails.teamFirefighters)
+      setCurrentAssignments(shiftDetails.assignments)
       setDrawerOpen(true)
     } catch (error) {
       console.error("[v0] Error in handleShiftClick:", error)
@@ -261,6 +175,7 @@ export function CalendarCell({
                       endTime,
                       isActingLieutenant,
                       isActingCaptain,
+                      isDirectAssignment,
                     ] = entry.trim().split("|")
 
                     return {
@@ -274,21 +189,10 @@ export function CalendarCell({
                       isActingLieutenant:
                         isActingLieutenant === "true" ? true : isActingLieutenant === "false" ? false : null,
                       isActingCaptain: isActingCaptain === "true" ? true : isActingCaptain === "false" ? false : null,
+                      isDirectAssignment: isDirectAssignment === "true",
                     }
                   })
                 : []
-
-              if (day.date.getDate() === 28 && day.date.getMonth() === 10) {
-                // November (month 10)
-                console.log(`[v0] Nov 28 - Shift ${shift.shift_type}:`, {
-                  firefighters: firefighters.map((f) => ({
-                    name: `${f.firstName} ${f.lastName}`,
-                    role: f.role,
-                    isActingLt: f.isActingLieutenant,
-                    isActingCpt: f.isActingCaptain,
-                  })),
-                })
-              }
 
               const roleOrder: Record<string, number> = {
                 captain: 1,
@@ -311,13 +215,6 @@ export function CalendarCell({
 
               const hasActingLieutenant = firefighters.some((f) => f.isActingLieutenant === true)
               const hasActingCaptain = firefighters.some((f) => f.isActingCaptain === true)
-
-              if (day.date.getDate() === 28 && day.date.getMonth() === 10) {
-                console.log(`[v0] Nov 28 - Badge logic:`, {
-                  hasActingLt: hasActingLieutenant,
-                  hasActingCpt: hasActingCaptain,
-                })
-              }
 
               const assignmentsWithLtBadge = firefighters.map((assignment: any) => {
                 const calendarIndex = firefighters.findIndex(
@@ -502,6 +399,8 @@ export function CalendarCell({
                           (isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain) ||
                           (isAssignedReplacement && replacementIsActingCaptain)
 
+                        const isDirectAssignment = firefighter.isDirectAssignment === true
+
                         return (
                           <div
                             key={index}
@@ -514,9 +413,11 @@ export function CalendarCell({
                                     ? "italic"
                                     : isApprovedNotAssigned
                                       ? "italic"
-                                      : isAssignedReplacement
+                                      : isAssignedReplacement && !isDirectAssignment
                                         ? "font-semibold"
-                                        : ""
+                                        : isDirectAssignment
+                                          ? "font-bold"
+                                          : ""
                             } ${hasPartialLeave && !replacement && !isExchange ? "bg-blue-50 dark:bg-blue-950/20 px-1 md:px-1.5 rounded text-blue-700 dark:text-blue-300" : ""}`}
                           >
                             {showCptBadge && (
@@ -549,7 +450,7 @@ export function CalendarCell({
                             {isApprovedNotAssigned && !isExchange && (
                               <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1">⏳</span>
                             )}
-                            {isAssignedReplacement && !isExchange && (
+                            {isAssignedReplacement && !isExchange && !isDirectAssignment && (
                               <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-xs md:text-sm font-bold inline-block">
                                 ✓
                               </span>

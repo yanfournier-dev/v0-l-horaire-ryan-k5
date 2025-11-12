@@ -42,6 +42,8 @@ import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { DeadlineSelect } from "@/components/deadline-select"
 import { formatDateForDB } from "@/lib/date-utils"
 import { calculateAutoDeadline } from "@/lib/date-utils"
+import { DirectAssignmentDialog } from "@/components/direct-assignment-dialog"
+import { removeDirectAssignment } from "@/app/actions/direct-assignments"
 
 interface ShiftAssignmentDrawerProps {
   open: boolean
@@ -78,6 +80,9 @@ interface ShiftAssignmentDrawerProps {
     is_acting_lieutenant?: boolean
     showsLtBadge?: boolean // Add showsLtBadge field
     is_acting_captain?: boolean // Add is_acting_captain field
+    is_direct_assignment?: boolean // Add is_direct_assignment field
+    replaced_user_id?: number // Added for direct assignments
+    replaced_name?: string // Added for direct assignments
   }>
   leaves: Array<any>
   dateStr: string
@@ -131,12 +136,12 @@ export function ShiftAssignmentDrawer({
   const [showDeadlineWarning, setShowDeadlineWarning] = useState(false)
   const [showExtraDeadlineWarning, setShowExtraDeadlineWarning] = useState(false)
   const [assignedReplacements, setAssignedReplacements] = useState<any[]>([])
+  const [showDirectAssignmentDialog, setShowDirectAssignmentDialog] = useState(false)
 
   useEffect(() => {
     if (open) {
       const savedScrollPosition = sessionStorage.getItem("scroll-position")
       if (savedScrollPosition) {
-        console.log("[v0] useEffect - scrolling to:", savedScrollPosition)
         window.scrollTo(0, Number.parseInt(savedScrollPosition, 10))
         sessionStorage.removeItem("scroll-position")
       }
@@ -525,6 +530,23 @@ export function ShiftAssignmentDrawer({
     refreshAndClose()
   }
 
+  const handleRemoveDirectAssignment = async (userId: number, firefighterName: string) => {
+    setIsLoading(true)
+
+    const result = await removeDirectAssignment(shift.id, userId)
+
+    if (result.error) {
+      toast.error(result.error)
+      setIsLoading(false)
+      return
+    }
+
+    toast.success(`${firefighterName} a été retiré de l'assignation directe`)
+
+    setIsLoading(false)
+    refreshAndClose()
+  }
+
   const handleSetLieutenant = async (userId: number, firefighterName: string) => {
     if (!shift) return
 
@@ -607,31 +629,38 @@ export function ShiftAssignmentDrawer({
     return a.first_name.localeCompare(b.first_name, "fr")
   })
 
-  const displayedAssignments = [
-    ...currentAssignments.filter((a) => !removedExtraFirefighters.includes(a.user_id)),
-    ...assignedReplacements.map((r: any) => {
-      const approvedApp = r.applications.find((app: any) => app.status === "approved")
+  const displayedAssignments = (currentAssignments || [])
+    .filter((assignment) => !removedExtraFirefighters.includes(assignment.user_id))
+    .map((assignment) => {
       return {
-        id: `replacement-${r.id}`,
-        user_id: approvedApp.applicant_id,
-        first_name: approvedApp.first_name,
-        last_name: approvedApp.last_name,
-        role: approvedApp.role,
-        email: approvedApp.email,
-        is_extra: false,
-        is_replacement: true,
-        replacement_id: r.id,
-        replaced_user_id: r.user_id,
-        replaced_first_name: r.first_name,
-        replaced_last_name: r.last_name,
-        is_partial: r.is_partial,
-        start_time: r.start_time,
-        end_time: r.end_time,
-        is_acting_lieutenant: r.is_acting_lieutenant || false,
-        is_acting_captain: r.is_acting_captain || false,
+        ...assignment,
+        name: `${assignment.first_name} ${assignment.last_name}`,
       }
-    }),
-  ]
+    })
+    .concat(
+      assignedReplacements.map((r: any) => {
+        const approvedApp = r.applications.find((app: any) => app.status === "approved")
+        return {
+          id: `replacement-${r.id}`,
+          user_id: approvedApp.applicant_id,
+          first_name: approvedApp.first_name,
+          last_name: approvedApp.last_name,
+          role: approvedApp.role,
+          email: approvedApp.email,
+          is_extra: false,
+          is_replacement: true,
+          replacement_id: r.id,
+          replaced_user_id: r.user_id,
+          replaced_first_name: r.first_name,
+          replaced_last_name: r.last_name,
+          is_partial: r.is_partial,
+          start_time: r.start_time,
+          end_time: r.end_time,
+          is_acting_lieutenant: r.is_acting_lieutenant || false,
+          is_acting_captain: r.is_acting_captain || false,
+        }
+      }),
+    )
 
   const getExchangeForFirefighter = (firefighterId: number, firstName: string, lastName: string, role: string) => {
     if (!shift?.exchanges) return null
@@ -668,12 +697,12 @@ export function ShiftAssignmentDrawer({
                   <div className="text-sm">
                     {shift.start_time.slice(0, 5)} - {shift.end_time.slice(0, 5)}
                   </div>
-                  <div className="text-sm font-medium">{teamFirefighters.length} pompiers</div>
+                  <div className="text-sm font-medium">{(teamFirefighters || []).length} pompiers</div>
                 </div>
               </SheetDescription>
             </SheetHeader>
 
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <Button
                 onClick={() => setShowExtraDialog(true)}
                 disabled={isLoading || loadingReplacements}
@@ -712,7 +741,7 @@ export function ShiftAssignmentDrawer({
 
                 const displayName = isExtraRequest
                   ? "Pompier supplémentaire"
-                  : `${assignment.first_name} ${assignment.last_name}`
+                  : assignment.name || `${assignment.first_name} ${assignment.last_name}`
 
                 let exchangePartner = null
                 let exchangePartialTimes = null
@@ -739,6 +768,8 @@ export function ShiftAssignmentDrawer({
                   ? `${assignedApplication.first_name} ${assignedApplication.last_name}`
                   : null
 
+                const isDirectAssignment = assignment.is_direct_assignment === true
+
                 return (
                   <Card
                     key={assignment.id}
@@ -747,10 +778,12 @@ export function ShiftAssignmentDrawer({
                         ? "border-amber-300 bg-amber-50/30"
                         : hasExchange
                           ? "border-purple-300 bg-purple-50/30"
-                          : // Add badge for replacement firefighters
-                            isReplacementFirefighter
+                          : isReplacementFirefighter
                             ? "border-green-300 bg-green-50/30"
-                            : ""
+                            : // Add badge for replacement firefighters
+                              isDirectAssignment
+                              ? "border-blue-300 bg-blue-50/30"
+                              : ""
                     }
                   >
                     <CardContent className="p-4">
@@ -780,6 +813,11 @@ export function ShiftAssignmentDrawer({
                               <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
                                 <span className="text-green-700 mr-1">✓</span>
                                 Remplaçant
+                              </Badge>
+                            )}
+                            {isDirectAssignment && (
+                              <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
+                                Assignation directe
                               </Badge>
                             )}
                           </div>
@@ -883,8 +921,26 @@ export function ShiftAssignmentDrawer({
                             !assignment.is_extra &&
                             !isExtraRequest &&
                             !isReplacementFirefighter &&
+                            !isDirectAssignment &&
                             isAdmin && (
-                              <div className="mt-2 flex items-center gap-2">
+                              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setShowDirectAssignmentDialog(true)
+                                    // Pre-select this firefighter as the one to replace
+                                    setSelectedFirefighter({
+                                      id: assignment.user_id || assignment.id,
+                                      first_name: assignment.first_name,
+                                      last_name: assignment.last_name,
+                                    })
+                                  }}
+                                  disabled={isLoading || loadingReplacements}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                  Assigner directement
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -902,6 +958,7 @@ export function ShiftAssignmentDrawer({
                                   <UserX className="h-4 w-4 mr-1" />
                                   Remplacement
                                 </Button>
+                                {/* </CHANGE> */}
                                 {assignment.is_acting_captain ? (
                                   <Button
                                     size="sm"
@@ -1027,6 +1084,20 @@ export function ShiftAssignmentDrawer({
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                          )}
+                          {isDirectAssignment && isAdmin && (
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRemoveDirectAssignment(assignment.user_id, displayName)}
+                                disabled={isLoading || loadingReplacements}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Retirer l'assignation directe
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1371,6 +1442,23 @@ export function ShiftAssignmentDrawer({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {shift && (
+        <DirectAssignmentDialog
+          open={showDirectAssignmentDialog}
+          onOpenChange={(open) => {
+            setShowDirectAssignmentDialog(open)
+            if (!open) {
+              setSelectedFirefighter(null) // Clear selection when dialog closes
+            }
+          }}
+          shift={shift}
+          teamFirefighters={teamFirefighters}
+          allFirefighters={allFirefighters}
+          onSuccess={refreshAndClose}
+          preSelectedFirefighter={selectedFirefighter} // Pass the pre-selected firefighter
+        />
+      )}
     </>
   )
 }

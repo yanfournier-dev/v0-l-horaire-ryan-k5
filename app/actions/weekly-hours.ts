@@ -90,6 +90,17 @@ export async function getFirefighterWeeklyHours(userId: number, weekDate: string
     const weekStartStr = formatDateStr(weekStart)
     const weekEndStr = formatDateStr(weekEnd)
 
+    const userTeam = await sql`
+      SELECT t.type
+      FROM team_members tm
+      JOIN teams t ON tm.team_id = t.id
+      WHERE tm.user_id = ${userId}
+        AND t.type = 'permanent'
+      LIMIT 1
+    `
+
+    const isPermanentFirefighter = userTeam.length > 0
+
     const [cycleConfig, teams] = await Promise.all([
       sql`
         SELECT start_date, cycle_length_days
@@ -105,7 +116,7 @@ export async function getFirefighterWeeklyHours(userId: number, weekDate: string
     ])
 
     if (cycleConfig.length === 0 || teams.length === 0) {
-      return 0
+      return isPermanentFirefighter ? 42 : 0
     }
 
     const { start_date, cycle_length_days } = cycleConfig[0]
@@ -149,8 +160,13 @@ export async function getFirefighterWeeklyHours(userId: number, weekDate: string
 
     let totalHours = 0
 
-    for (const shift of regularShifts) {
-      totalHours += calculateShiftHours(shift.shift_type, false, null, null)
+    // For non-permanent, calculate regular shifts + replacements/extras
+    if (isPermanentFirefighter) {
+      totalHours = 42
+    } else {
+      for (const shift of regularShifts) {
+        totalHours += calculateShiftHours(shift.shift_type, false, null, null)
+      }
     }
 
     for (const shift of replacementShifts) {
@@ -200,6 +216,16 @@ export async function getBatchFirefighterWeeklyHours(
     const weekStartStr = formatDateStr(weekStart)
     const weekEndStr = formatDateStr(weekEnd)
 
+    const permanentFirefighters = await sql`
+      SELECT tm.user_id
+      FROM team_members tm
+      JOIN teams t ON tm.team_id = t.id
+      WHERE tm.user_id = ANY(${userIds})
+        AND t.type = 'permanent'
+    `
+
+    const permanentUserIds = new Set(permanentFirefighters.map((row: any) => row.user_id))
+
     const cycleConfig = await sql`
       SELECT start_date, cycle_length_days
       FROM cycle_config
@@ -208,8 +234,7 @@ export async function getBatchFirefighterWeeklyHours(
     `
 
     if (cycleConfig.length === 0) {
-      // Return 0 hours for all users if no cycle config
-      userIds.forEach((id) => hoursMap.set(id, 0))
+      userIds.forEach((id) => hoursMap.set(id, permanentUserIds.has(id) ? 42 : 0))
       return hoursMap
     }
 
@@ -257,11 +282,13 @@ export async function getBatchFirefighterWeeklyHours(
       `,
     ])
 
-    userIds.forEach((id) => hoursMap.set(id, 0))
+    userIds.forEach((id) => hoursMap.set(id, permanentUserIds.has(id) ? 42 : 0))
 
     for (const shift of regularShifts) {
-      const currentHours = hoursMap.get(shift.user_id) || 0
-      hoursMap.set(shift.user_id, currentHours + calculateShiftHours(shift.shift_type, false, null, null))
+      if (!permanentUserIds.has(shift.user_id)) {
+        const currentHours = hoursMap.get(shift.user_id) || 0
+        hoursMap.set(shift.user_id, currentHours + calculateShiftHours(shift.shift_type, false, null, null))
+      }
     }
 
     for (const shift of replacementShifts) {
@@ -284,8 +311,15 @@ export async function getBatchFirefighterWeeklyHours(
     return hoursMap
   } catch (error) {
     console.error("[v0] getBatchFirefighterWeeklyHours: Error:", error)
-    // Return 0 hours for all users on error
-    userIds.forEach((id) => hoursMap.set(id, 0))
+    const permanentFirefighters = await sql`
+      SELECT tm.user_id
+      FROM team_members tm
+      JOIN teams t ON tm.team_id = t.id
+      WHERE tm.user_id = ANY(${userIds})
+        AND t.type = 'permanent'
+    `
+    const permanentUserIds = new Set(permanentFirefighters.map((row: any) => row.user_id))
+    userIds.forEach((id) => hoursMap.set(id, permanentUserIds.has(id) ? 42 : 0))
     return hoursMap
   }
 }

@@ -310,29 +310,9 @@ export function getTodayInLocalTimezone(): Date {
   const isV0Preview = typeof window !== "undefined" && window.location.hostname.includes("v0.app")
   const isProduction = !isV0Preview
 
-  console.log("[v0] getTodayInLocalTimezone called")
-  console.log("[v0] Hostname:", typeof window !== "undefined" ? window.location.hostname : "server-side")
-  console.log("[v0] Is V0 Preview:", isV0Preview)
-  console.log("[v0] Is Production:", isProduction)
-  console.log("[v0] UTC now:", now.toISOString())
-  console.log("[v0] UTC date components:", {
-    year: now.getUTCFullYear(),
-    month: now.getUTCMonth() + 1,
-    date: now.getUTCDate(),
-    hours: now.getUTCHours(),
-  })
-
   if (isProduction) {
     // Adjust UTC time to Montreal time (UTC-5)
     const montrealTime = new Date(now.getTime() - 5 * 60 * 60 * 1000)
-
-    console.log("[v0] PRODUCTION MODE - Applying timezone adjustment")
-    console.log("[v0] Montreal time:", montrealTime.toISOString())
-    console.log("[v0] Montreal date components:", {
-      year: montrealTime.getUTCFullYear(),
-      month: montrealTime.getUTCMonth() + 1,
-      date: montrealTime.getUTCDate(),
-    })
 
     // Create a date at midnight in Montreal timezone
     const result = new Date(
@@ -344,20 +324,10 @@ export function getTodayInLocalTimezone(): Date {
       0,
       0,
     )
-    console.log("[v0] Final result:", result.toISOString())
-    console.log("[v0] Final date components:", {
-      year: result.getFullYear(),
-      month: result.getMonth() + 1,
-      date: result.getDate(),
-    })
 
     return result
   }
 
   // In V0 or other environments, use default behavior
-  console.log("[v0] V0 PREVIEW MODE - No timezone adjustment")
-  const result = new Date()
-  console.log("[v0] Final result:", result.toISOString())
-
-  return result
+  return new Date()
 }

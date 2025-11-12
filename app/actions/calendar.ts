@@ -10,7 +10,6 @@ export async function getCycleConfig() {
     `
     return result[0] || null
   } catch (error) {
-    console.error("[v0] getCycleConfig: Query failed", error)
     return null
   }
 }
@@ -24,7 +23,6 @@ export async function getShiftsForTeam(teamId: number) {
     `
     return shifts
   } catch (error) {
-    console.error("[v0] getShiftsForTeam: Query failed, returning empty array", error)
     return []
   }
 }
@@ -163,7 +161,6 @@ export async function getAllShiftsWithAssignments() {
       WHERE r.user_id IS NULL
         AND r.status = 'open'
     `.catch((err) => {
-      console.error("[v0] getAllShiftsWithAssignments: Extra replacements query failed", err.message || err)
       return []
     })
 
@@ -172,9 +169,16 @@ export async function getAllShiftsWithAssignments() {
         SELECT 
           s.id as shift_id,
           string_agg(
-            u.first_name || '|' || u.last_name || '|' || u.role || '|false|false|||' ||
-            COALESCE(sa.is_acting_lieutenant::text, 'null') || '|' ||
-            COALESCE(sa.is_acting_captain::text, 'null'),
+            CASE 
+              WHEN sa_direct.user_id IS NOT NULL THEN
+                u_repl.first_name || '|' || u_repl.last_name || '|' || u.role || '|false|false|||' ||
+                COALESCE(sa_direct.is_acting_lieutenant::text, 'null') || '|' ||
+                COALESCE(sa_direct.is_acting_captain::text, 'null') || '|true'
+              ELSE
+                u.first_name || '|' || u.last_name || '|' || u.role || '|false|false|||' ||
+                COALESCE(sa.is_acting_lieutenant::text, 'null') || '|' ||
+                COALESCE(sa.is_acting_captain::text, 'null') || '|false'
+            END,
             ';' 
             ORDER BY 
               CASE u.role 
@@ -195,7 +199,9 @@ export async function getAllShiftsWithAssignments() {
         FROM shifts s
         JOIN team_members tm ON s.team_id = tm.team_id
         JOIN users u ON tm.user_id = u.id
-        LEFT JOIN shift_assignments sa ON sa.shift_id = s.id AND sa.user_id = u.id AND sa.is_extra = false
+        LEFT JOIN shift_assignments sa ON sa.shift_id = s.id AND sa.user_id = u.id AND sa.is_extra = false AND (sa.is_direct_assignment = false OR sa.is_direct_assignment IS NULL)
+        LEFT JOIN shift_assignments sa_direct ON sa_direct.shift_id = s.id AND sa_direct.replaced_user_id = u.id AND sa_direct.is_direct_assignment = true
+        LEFT JOIN users u_repl ON sa_direct.user_id = u_repl.id
         WHERE NOT EXISTS (
           SELECT 1 FROM shift_assignments sa_extra 
           WHERE sa_extra.shift_id = s.id 
@@ -213,7 +219,8 @@ export async function getAllShiftsWithAssignments() {
             COALESCE(sa.start_time::text, '') || '|' ||
             COALESCE(sa.end_time::text, '') || '|' ||
             COALESCE(sa.is_acting_lieutenant::text, 'null') || '|' ||
-            COALESCE(sa.is_acting_captain::text, 'null'),
+            COALESCE(sa.is_acting_captain::text, 'null') || '|' ||
+            COALESCE(sa.is_direct_assignment::text, 'false'),
             ';'
             ORDER BY
               CASE u.role 
@@ -269,7 +276,6 @@ export async function getAllShiftsWithAssignments() {
       CROSS JOIN cycle_info ci
       ORDER BY s.cycle_day, t.name
     `.catch((err) => {
-      console.error("[v0] getAllShiftsWithAssignments: Main query failed", err.message || err)
       return []
     })
 
@@ -345,22 +351,41 @@ export async function getShiftWithAssignments(shiftId: number) {
       ),
       team_members_data AS (
         SELECT 
-          tm.id,
-          tm.user_id,
+          tm.id::integer,
+          tm.user_id as original_user_id,
+          sa_direct.user_id as direct_assignment_user_id,
+          COALESCE(sa_direct.user_id, tm.user_id) as user_id,
           false as is_extra,
           false as is_partial,
           NULL::text as start_time,
           NULL::text as end_time,
-          NULL as replacement_id,
-          NULL as replacement_status,
-          u.first_name,
-          u.last_name,
+          NULL::integer as replacement_id,
+          NULL::text as replacement_status,
+          u.first_name as original_first_name,
+          u.last_name as original_last_name,
+          u_direct.first_name as direct_first_name,
+          u_direct.last_name as direct_last_name,
+          COALESCE(u_direct.first_name, u.first_name) as first_name,
+          COALESCE(u_direct.last_name, u.last_name) as last_name,
           u.role,
-          u.email,
+          COALESCE(u_direct.email, u.email) as email,
+          COALESCE(sa.is_acting_lieutenant, sa_direct.is_acting_lieutenant, false) as showsLtBadge,
+          COALESCE(sa.is_acting_captain, sa_direct.is_acting_captain, false) as showsCptBadge,
+          COALESCE(sa.is_acting_lieutenant, sa_direct.is_acting_lieutenant, false) as is_acting_lieutenant,
+          COALESCE(sa.is_acting_captain, sa_direct.is_acting_captain, false) as is_acting_captain,
+          COALESCE(sa_direct.is_direct_assignment, false) as is_direct_assignment,
+          sa_direct.replaced_user_id::integer,
+          CASE 
+            WHEN sa_direct.user_id IS NOT NULL THEN u.first_name || ' ' || u.last_name
+            ELSE NULL
+          END::text as replaced_name,
           1 as source_order
         FROM team_members tm
         JOIN users u ON tm.user_id = u.id
         JOIN shift_info si ON tm.team_id = si.team_id
+        LEFT JOIN shift_assignments sa ON sa.shift_id = si.id AND sa.user_id = tm.user_id AND sa.is_extra = false AND (sa.is_direct_assignment = false OR sa.is_direct_assignment IS NULL)
+        LEFT JOIN shift_assignments sa_direct ON sa_direct.shift_id = si.id AND sa_direct.replaced_user_id = tm.user_id AND sa_direct.is_direct_assignment = true
+        LEFT JOIN users u_direct ON sa_direct.user_id = u_direct.id
         ORDER BY 
           CASE u.role 
             WHEN 'captain' THEN 1 
@@ -377,18 +402,31 @@ export async function getShiftWithAssignments(shiftId: number) {
       ),
       extra_firefighters_data AS (
         SELECT 
-          sa.id,
+          sa.id::integer,
+          NULL::integer as original_user_id,
+          NULL::integer as direct_assignment_user_id,
           sa.user_id,
           sa.is_extra,
           COALESCE(sa.is_partial, false) as is_partial,
           sa.start_time::text as start_time,
           sa.end_time::text as end_time,
-          NULL as replacement_id,
-          NULL as replacement_status,
+          NULL::integer as replacement_id,
+          NULL::text as replacement_status,
+          NULL::text as original_first_name,
+          NULL::text as original_last_name,
+          NULL::text as direct_first_name,
+          NULL::text as direct_last_name,
           u.first_name,
           u.last_name,
           u.role,
           u.email,
+          COALESCE(sa.is_acting_lieutenant, false) as showsLtBadge,
+          COALESCE(sa.is_acting_captain, false) as showsCptBadge,
+          COALESCE(sa.is_acting_lieutenant, false) as is_acting_lieutenant,
+          COALESCE(sa.is_acting_captain, false) as is_acting_captain,
+          false as is_direct_assignment,
+          NULL::integer as replaced_user_id,
+          NULL::text as replaced_name,
           2 as source_order
         FROM shift_assignments sa
         JOIN users u ON sa.user_id = u.id
@@ -431,6 +469,8 @@ export async function getShiftWithAssignments(shiftId: number) {
           json_agg(
             json_build_object(
               'id', tm.id,
+              'original_user_id', tm.original_user_id,
+              'direct_assignment_user_id', tm.direct_assignment_user_id,
               'user_id', tm.user_id,
               'is_extra', tm.is_extra,
               'is_partial', tm.is_partial,
@@ -438,10 +478,21 @@ export async function getShiftWithAssignments(shiftId: number) {
               'end_time', tm.end_time,
               'replacement_id', tm.replacement_id,
               'replacement_status', tm.replacement_status,
+              'original_first_name', tm.original_first_name,
+              'original_last_name', tm.original_last_name,
+              'direct_first_name', tm.direct_first_name,
+              'direct_last_name', tm.direct_last_name,
               'first_name', tm.first_name,
               'last_name', tm.last_name,
               'role', tm.role,
-              'email', tm.email
+              'email', tm.email,
+              'showsLtBadge', tm.showsLtBadge,
+              'showsCptBadge', tm.showsCptBadge,
+              'is_acting_lieutenant', tm.is_acting_lieutenant,
+              'is_acting_captain', tm.is_acting_captain,
+              'is_direct_assignment', tm.is_direct_assignment,
+              'replaced_user_id', tm.replaced_user_id,
+              'replaced_name', tm.replaced_name
             ) ORDER BY tm.source_order, 
               CASE tm.role 
                 WHEN 'captain' THEN 1 
@@ -477,7 +528,9 @@ export async function getShiftWithAssignments(shiftId: number) {
       throw err
     })
 
-    if (!Array.isArray(result) || result.length === 0) return null
+    if (!Array.isArray(result) || result.length === 0) {
+      return null
+    }
 
     const { shift_data, assignments_data } = result[0]
     const shift = shift_data
@@ -498,6 +551,7 @@ export async function getShiftWithAssignments(shiftId: number) {
       const allExtraRequests = await sql`
         SELECT 
           r.id,
+          r.user_id,
           r.shift_date,
           r.shift_type,
           r.team_id,
