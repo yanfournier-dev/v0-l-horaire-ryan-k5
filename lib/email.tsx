@@ -110,6 +110,13 @@ export async function sendBatchEmails(
   console.log("[v0] ========== BATCH EMAIL SEND ATTEMPT (PRODUCTION) ==========")
   console.log("[v0] Environment:", process.env.VERCEL_ENV)
   console.log("[v0] Number of emails:", emails.length)
+  console.log(
+    "[v0] First 3 recipients:",
+    emails
+      .slice(0, 3)
+      .map((e) => e.to)
+      .join(", "),
+  )
 
   const resend = getResendClient()
   if (!resend) {
@@ -123,15 +130,32 @@ export async function sendBatchEmails(
   }
 
   console.log("[v0] RESEND_VERIFIED_EMAIL configured:", !!verifiedEmail)
+  if (verifiedEmail) {
+    console.log("[v0] PRODUCTION: Verified email is:", verifiedEmail)
+    console.log("[v0] PRODUCTION: This means Resend is in TEST MODE - only this email will receive messages")
+    console.log("[v0] PRODUCTION: To send to all users, verify a domain at resend.com/domains")
+  }
 
   // Filter out emails that don't match verified email in test mode
   const emailsToSend = verifiedEmail ? emails.filter((email) => email.to === verifiedEmail) : emails
 
   console.log("[v0] Emails to send after filtering:", emailsToSend.length)
+  if (verifiedEmail && emailsToSend.length < emails.length) {
+    console.log(`[v0] PRODUCTION WARNING: ${emails.length - emailsToSend.length} emails filtered out due to test mode`)
+    console.log(
+      "[v0] PRODUCTION: Filtered emails would have been sent to:",
+      emails
+        .filter((e) => e.to !== verifiedEmail)
+        .map((e) => e.to)
+        .slice(0, 5)
+        .join(", "),
+      "...",
+    )
+  }
 
   if (emailsToSend.length === 0) {
     console.log("[v0] All emails filtered out due to test mode restrictions")
-    return { success: true, sent: 0, filtered: emails.length }
+    return { success: true, sent: 0, filtered: emails.length, testMode: true }
   }
 
   try {
