@@ -9,6 +9,7 @@ import {
   getReplacementAvailableEmail,
   getApplicationRejectedEmail,
   getApplicationApprovedEmail,
+  // Removed getExchangeRequestEmail, getExchangeApprovedEmail, getExchangeRejectedEmail, getExchangeRequestConfirmationEmail
 } from "@/lib/email"
 import { parseLocalDate } from "@/lib/date-utils"
 // crypto is available globally in Node.js
