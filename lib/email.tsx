@@ -34,7 +34,7 @@ export async function sendEmail({
 
   try {
     const { data, error } = await resend.emails.send({
-      from: "onboarding@resend.dev",
+      from: "notifications@resend.dev",
       to,
       subject,
       html,
@@ -79,7 +79,7 @@ export async function sendBatchEmails(
   try {
     const { data, error } = await resend.batch.send(
       emails.map((email) => ({
-        from: "onboarding@resend.dev",
+        from: "notifications@resend.dev",
         to: email.to,
         subject: email.subject,
         html: email.html,
