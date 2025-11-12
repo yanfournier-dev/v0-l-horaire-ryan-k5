@@ -305,14 +305,54 @@ export function calculateAutoDeadline(shiftDate: string | Date): Date {
  * @returns Date object representing today in local timezone
  */
 export function getTodayInLocalTimezone(): Date {
+  const now = new Date()
+
+  console.log("[v0] getTodayInLocalTimezone called")
+  console.log("[v0] VERCEL_ENV:", process.env.VERCEL_ENV)
+  console.log("[v0] UTC now:", now.toISOString())
+  console.log("[v0] UTC date components:", {
+    year: now.getUTCFullYear(),
+    month: now.getUTCMonth() + 1,
+    date: now.getUTCDate(),
+    hours: now.getUTCHours(),
+  })
+
   if (process.env.VERCEL_ENV === "production") {
-    const now = new Date()
     // Adjust UTC time to Montreal time (UTC-5)
     const montrealTime = new Date(now.getTime() - 5 * 60 * 60 * 1000)
+
+    console.log("[v0] PRODUCTION MODE - Applying timezone adjustment")
+    console.log("[v0] Montreal time:", montrealTime.toISOString())
+    console.log("[v0] Montreal date components:", {
+      year: montrealTime.getUTCFullYear(),
+      month: montrealTime.getUTCMonth() + 1,
+      date: montrealTime.getUTCDate(),
+    })
+
     // Create a date at midnight in Montreal timezone
-    return new Date(montrealTime.getUTCFullYear(), montrealTime.getUTCMonth(), montrealTime.getUTCDate(), 0, 0, 0, 0)
+    const result = new Date(
+      montrealTime.getUTCFullYear(),
+      montrealTime.getUTCMonth(),
+      montrealTime.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    )
+    console.log("[v0] Final result:", result.toISOString())
+    console.log("[v0] Final date components:", {
+      year: result.getFullYear(),
+      month: result.getMonth() + 1,
+      date: result.getDate(),
+    })
+
+    return result
   }
 
   // In V0 or other environments, use default behavior
-  return new Date()
+  console.log("[v0] V0 PREVIEW MODE - No timezone adjustment")
+  const result = new Date()
+  console.log("[v0] Final result:", result.toISOString())
+
+  return result
 }
