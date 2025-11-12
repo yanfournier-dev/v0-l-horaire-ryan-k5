@@ -131,7 +131,7 @@ export async function getFirefighterWeeklyHours(userId: number, weekDate: string
       cycleDays.push(getCycleDay(currentDate, cycleStartDate, cycle_length_days))
     }
 
-    const [regularShifts, replacementShifts, extraAssignments] = await Promise.all([
+    const [regularShifts, replacementShifts, extraAssignments, directAssignments] = await Promise.all([
       sql`
         SELECT shift_type, cycle_day
         FROM shifts
@@ -156,6 +156,14 @@ export async function getFirefighterWeeklyHours(userId: number, weekDate: string
           AND sa.is_extra = true
           AND s.cycle_day = ANY(${cycleDays})
       `,
+      sql`
+        SELECT sa.user_id, sa.is_partial, sa.start_time, sa.end_time, s.shift_type, s.cycle_day
+        FROM shift_assignments sa
+        JOIN shifts s ON sa.shift_id = s.id
+        WHERE sa.user_id = ${userId}
+          AND sa.is_direct_assignment = true
+          AND s.cycle_day = ANY(${cycleDays})
+      `,
     ])
 
     let totalHours = 0
@@ -174,6 +182,15 @@ export async function getFirefighterWeeklyHours(userId: number, weekDate: string
     }
 
     for (const assignment of extraAssignments) {
+      totalHours += calculateShiftHours(
+        assignment.shift_type,
+        assignment.is_partial,
+        assignment.start_time,
+        assignment.end_time,
+      )
+    }
+
+    for (const assignment of directAssignments) {
       totalHours += calculateShiftHours(
         assignment.shift_type,
         assignment.is_partial,
@@ -249,7 +266,7 @@ export async function getBatchFirefighterWeeklyHours(
       cycleDays.push(getCycleDay(currentDate, cycleStartDate, cycle_length_days))
     }
 
-    const [teams, regularShifts, replacementShifts, extraAssignments] = await Promise.all([
+    const [teams, regularShifts, replacementShifts, extraAssignments, directAssignments] = await Promise.all([
       sql`
         SELECT user_id, team_id
         FROM team_members
@@ -280,6 +297,14 @@ export async function getBatchFirefighterWeeklyHours(
           AND sa.is_extra = true
           AND s.cycle_day = ANY(${cycleDays})
       `,
+      sql`
+        SELECT sa.user_id, sa.is_partial, sa.start_time, sa.end_time, s.shift_type, s.cycle_day
+        FROM shift_assignments sa
+        JOIN shifts s ON sa.shift_id = s.id
+        WHERE sa.user_id = ANY(${userIds})
+          AND sa.is_direct_assignment = true
+          AND s.cycle_day = ANY(${cycleDays})
+      `,
     ])
 
     userIds.forEach((id) => hoursMap.set(id, permanentUserIds.has(id) ? 42 : 0))
@@ -300,6 +325,15 @@ export async function getBatchFirefighterWeeklyHours(
     }
 
     for (const assignment of extraAssignments) {
+      const currentHours = hoursMap.get(assignment.user_id) || 0
+      hoursMap.set(
+        assignment.user_id,
+        currentHours +
+          calculateShiftHours(assignment.shift_type, assignment.is_partial, assignment.start_time, assignment.end_time),
+      )
+    }
+
+    for (const assignment of directAssignments) {
       const currentHours = hoursMap.get(assignment.user_id) || 0
       hoursMap.set(
         assignment.user_id,

@@ -138,6 +138,8 @@ export function ShiftAssignmentDrawer({
   const [assignedReplacements, setAssignedReplacements] = useState<any[]>([])
   const [showDirectAssignmentDialog, setShowDirectAssignmentDialog] = useState(false)
 
+  // </CHANGE>
+
   useEffect(() => {
     if (open) {
       const savedScrollPosition = sessionStorage.getItem("scroll-position")
@@ -155,8 +157,11 @@ export function ShiftAssignmentDrawer({
       sessionStorage.setItem("calendar-scroll-position", position.toString())
     }
     onOpenChange(false)
-    // </CHANGE> Removed window.location.href reload - rollback to previous state
-  }, [onOpenChange])
+
+    // Use router.refresh() to reload server data without losing scroll position
+    router.refresh()
+    // </CHANGE>
+  }, [onOpenChange, router])
 
   useEffect(() => {
     if (open) {
@@ -820,6 +825,14 @@ export function ShiftAssignmentDrawer({
                                 Assignation directe
                               </Badge>
                             )}
+                            {isDirectAssignment &&
+                              assignment.is_partial &&
+                              assignment.start_time &&
+                              assignment.end_time && (
+                                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs ml-1">
+                                  Partiel: {assignment.start_time.slice(0, 5)} - {assignment.end_time.slice(0, 5)}
+                                </Badge>
+                              )}
                           </div>
                           {!isExtraRequest && assignment.email && (
                             <p className="text-xs text-muted-foreground">{assignment.email}</p>
@@ -828,6 +841,10 @@ export function ShiftAssignmentDrawer({
                             <p className="text-xs text-muted-foreground mt-1">
                               Remplace {assignment.replaced_first_name} {assignment.replaced_last_name}
                             </p>
+                          )}
+                          {/* */}
+                          {isDirectAssignment && assignment.replaced_name && (
+                            <p className="text-xs text-muted-foreground mt-1">Remplace {assignment.replaced_name}</p>
                           )}
                           {hasExchange && (
                             <div className="mt-2">

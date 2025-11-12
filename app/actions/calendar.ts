@@ -171,7 +171,10 @@ export async function getAllShiftsWithAssignments() {
           string_agg(
             CASE 
               WHEN sa_direct.user_id IS NOT NULL THEN
-                u_repl.first_name || '|' || u_repl.last_name || '|' || u.role || '|false|false|||' ||
+                u_repl.first_name || '|' || u_repl.last_name || '|' || u.role || '|false|' ||
+                COALESCE(sa_direct.is_partial::text, 'false') || '|' ||
+                COALESCE(sa_direct.start_time::text, '') || '|' ||
+                COALESCE(sa_direct.end_time::text, '') || '|' ||
                 COALESCE(sa_direct.is_acting_lieutenant::text, 'null') || '|' ||
                 COALESCE(sa_direct.is_acting_captain::text, 'null') || '|true'
               ELSE
@@ -356,9 +359,9 @@ export async function getShiftWithAssignments(shiftId: number) {
           sa_direct.user_id as direct_assignment_user_id,
           COALESCE(sa_direct.user_id, tm.user_id) as user_id,
           false as is_extra,
-          false as is_partial,
-          NULL::text as start_time,
-          NULL::text as end_time,
+          COALESCE(sa_direct.is_partial, false) as is_partial,
+          sa_direct.start_time::text as start_time,
+          sa_direct.end_time::text as end_time,
           NULL::integer as replacement_id,
           NULL::text as replacement_status,
           u.first_name as original_first_name,

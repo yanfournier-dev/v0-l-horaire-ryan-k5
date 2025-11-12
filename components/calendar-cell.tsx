@@ -178,7 +178,7 @@ export function CalendarCell({
                       isDirectAssignment,
                     ] = entry.trim().split("|")
 
-                    return {
+                    const firefighterData = {
                       firstName,
                       lastName,
                       role,
@@ -191,6 +191,8 @@ export function CalendarCell({
                       isActingCaptain: isActingCaptain === "true" ? true : isActingCaptain === "false" ? false : null,
                       isDirectAssignment: isDirectAssignment === "true",
                     }
+
+                    return firefighterData
                   })
                 : []
 
@@ -486,6 +488,14 @@ export function CalendarCell({
                                 ({firefighterLeave.start_time.slice(0, 5)}-{firefighterLeave.end_time.slice(0, 5)})
                               </span>
                             )}
+                            {isDirectAssignment &&
+                              firefighter.isPartial &&
+                              firefighter.startTime &&
+                              firefighter.endTime && (
+                                <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-blue-600 dark:text-blue-400">
+                                  ({firefighter.startTime.slice(0, 5)}-{firefighter.endTime.slice(0, 5)})
+                                </span>
+                              )}
                           </div>
                         )
                       })}
