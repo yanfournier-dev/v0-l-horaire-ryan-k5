@@ -65,7 +65,7 @@ export async function sendBatchEmails(
     return { success: true, skipped: true, count: emails.length }
   }
 
-  console.log("[v0] PRODUCTION: Starting batch email send for", emails.length, "recipients")
+  console.log("[v0] PRODUCTION: Starting individual email sends for", emails.length, "recipients")
 
   const resend = getResendClient()
   if (!resend) {
@@ -76,41 +76,54 @@ export async function sendBatchEmails(
     }
   }
 
-  try {
-    const { data, error } = await resend.batch.send(
-      emails.map((email) => ({
+  const results = []
+  const errors = []
+
+  for (const email of emails) {
+    try {
+      console.log(`[v0] PRODUCTION: Sending individual email to ${email.to}...`)
+      const { data, error } = await resend.emails.send({
         from: "notifications@resend.dev",
         to: email.to,
         subject: email.subject,
         html: email.html,
-      })),
-    )
+      })
 
-    if (error) {
-      console.error("[v0] PRODUCTION ERROR: Resend batch API returned error:", error)
-      console.error("[v0] Error details:", JSON.stringify(error, null, 2))
-      return {
-        success: false,
-        error,
+      if (error) {
+        console.error(`[v0] PRODUCTION ERROR: Email to ${email.to} failed:`, error)
+        errors.push({ to: email.to, error })
+      } else {
+        console.log(`[v0] PRODUCTION: Email to ${email.to} sent successfully`)
+        results.push({ to: email.to, data })
       }
-    }
 
-    console.log("[v0] PRODUCTION: Batch emails sent successfully!", data)
-    return {
-      success: true,
-      sent: emails.length,
-      data,
+      // Add 100ms delay between emails to avoid rate limiting
+      if (emails.indexOf(email) < emails.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+    } catch (error: any) {
+      console.error(`[v0] PRODUCTION ERROR: Exception sending email to ${email.to}:`, error)
+      errors.push({ to: email.to, error: error.message })
     }
-  } catch (error: any) {
-    console.error("[v0] PRODUCTION ERROR: Batch email exception:", error)
+  }
+
+  if (errors.length > 0) {
+    console.error(`[v0] PRODUCTION ERROR: ${errors.length} out of ${emails.length} emails failed`)
     return {
       success: false,
       error: {
-        message: error.message || "Unknown error",
-        statusCode: error.statusCode,
-        name: error.name,
+        message: `${errors.length} emails failed`,
+        failures: errors,
       },
+      sent: results.length,
     }
+  }
+
+  console.log(`[v0] PRODUCTION: All ${results.length} emails sent successfully!`)
+  return {
+    success: true,
+    sent: results.length,
+    data: results,
   }
 }
 
