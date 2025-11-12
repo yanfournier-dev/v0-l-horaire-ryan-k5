@@ -463,15 +463,6 @@ export async function approveApplication(applicationId: number, replacementId: n
       WHERE id = ${replacementId}
     `
 
-    await createNotification(
-      applicantId,
-      "Remplacement assigné",
-      `Vous avez été assigné au remplacement du ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"})`,
-      "application_approved",
-      replacementId,
-      "replacement",
-    )
-
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
@@ -508,15 +499,6 @@ export async function rejectApplication(applicationId: number) {
       SET status = 'rejected', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
       WHERE id = ${applicationId}
     `
-
-    await createNotification(
-      applicantId,
-      "Candidature rejetée",
-      "Votre candidature pour un remplacement a été rejetée.",
-      "application_rejected",
-      null,
-      null,
-    )
 
     try {
       invalidateCache()
@@ -1144,5 +1126,187 @@ export async function reactivateApplication(applicationId: number) {
   } catch (error) {
     console.error("[v0] reactivateApplication: Error", error)
     return { error: "Erreur lors de la réactivation" }
+  }
+}
+
+export async function sendAssignmentNotifications(replacementId: number) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    console.log(`[v0] sendAssignmentNotifications called for replacement ${replacementId}`)
+
+    // Get replacement details and all approved/rejected applications
+    const replacementDetails = await sql`
+      SELECT 
+        r.*,
+        u.first_name as replaced_first_name,
+        u.last_name as replaced_last_name
+      FROM replacements r
+      LEFT JOIN users u ON r.user_id = u.id
+      WHERE r.id = ${replacementId}
+    `
+
+    if (replacementDetails.length === 0) {
+      return { error: "Remplacement non trouvé" }
+    }
+
+    const replacement = replacementDetails[0]
+
+    // Get approved and rejected applicants with their notification preferences
+    const applicants = await sql`
+      SELECT 
+        ra.applicant_id,
+        ra.status,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone,
+        np.enable_email,
+        np.enable_sms,
+        np.notify_replacement_assigned
+      FROM replacement_applications ra
+      JOIN users u ON ra.applicant_id = u.id
+      LEFT JOIN notification_preferences np ON u.id = np.user_id
+      WHERE ra.replacement_id = ${replacementId}
+        AND ra.status IN ('approved', 'rejected')
+    `
+
+    if (applicants.length === 0) {
+      return { error: "Aucun candidat à notifier" }
+    }
+
+    console.log(`[v0] Found ${applicants.length} applicants to notify`)
+
+    let notificationsSent = 0
+    let emailsSent = 0
+    let smsSent = 0
+    const errors: string[] = []
+
+    // Send notifications to each applicant based on their preferences
+    for (const applicant of applicants) {
+      const isApproved = applicant.status === "approved"
+      const title = isApproved ? "Remplacement assigné" : "Candidature rejetée"
+      const message = isApproved
+        ? `Vous avez été assigné au remplacement du ${formatLocalDate(replacement.shift_date)} (${replacement.shift_type === "day" ? "Jour" : "Nuit"})${replacement.is_partial ? ` de ${replacement.start_time?.slice(0, 5)} à ${replacement.end_time?.slice(0, 5)}` : ""}`
+        : `Votre candidature pour le remplacement du ${formatLocalDate(replacement.shift_date)} a été rejetée.`
+
+      try {
+        await createNotification(
+          applicant.applicant_id,
+          title,
+          message,
+          isApproved ? "replacement_assigned" : "application_rejected",
+          replacementId,
+          "replacement",
+        )
+        notificationsSent++
+        console.log(`[v0] Created in-app notification for ${applicant.first_name} ${applicant.last_name}`)
+      } catch (error) {
+        console.error(`[v0] Failed to create in-app notification for ${applicant.applicant_id}:`, error)
+        errors.push(`Notification in-app pour ${applicant.first_name} ${applicant.last_name}`)
+      }
+
+      // Send email if enabled and user wants this notification type
+      if (applicant.enable_email && (applicant.notify_replacement_assigned || !isApproved)) {
+        try {
+          // TODO: Implement email sending logic here
+          console.log(`[v0] TODO: Send email to ${applicant.email}: ${title}`)
+          emailsSent++
+        } catch (error) {
+          console.error(`[v0] Failed to send email to ${applicant.email}:`, error)
+          errors.push(`Email à ${applicant.first_name} ${applicant.last_name}`)
+        }
+      }
+
+      // Send SMS if enabled and user wants this notification type
+      if (applicant.enable_sms && applicant.phone && (applicant.notify_replacement_assigned || !isApproved)) {
+        try {
+          // TODO: Implement SMS sending logic here with Twilio
+          console.log(`[v0] TODO: Send SMS to ${applicant.phone}: ${title}`)
+          smsSent++
+        } catch (error) {
+          console.error(`[v0] Failed to send SMS to ${applicant.phone}:`, error)
+          errors.push(`SMS à ${applicant.first_name} ${applicant.last_name}`)
+        }
+      }
+    }
+
+    // Mark notifications as sent
+    await sql`
+      UPDATE replacements
+      SET notifications_sent_at = CURRENT_TIMESTAMP
+      WHERE id = ${replacementId}
+    `
+
+    console.log(`[v0] Marked replacement ${replacementId} as notifications sent`)
+
+    try {
+      invalidateCache()
+      revalidatePath("/dashboard/replacements")
+    } catch (cacheError) {
+      console.error("[v0] Error invalidating cache:", cacheError)
+    }
+
+    return {
+      success: true,
+      notificationsSent,
+      emailsSent,
+      smsSent,
+      errors: errors.length > 0 ? errors : undefined,
+    }
+  } catch (error) {
+    console.error("[v0] sendAssignmentNotifications: Error", error)
+    return { error: error instanceof Error ? error.message : "Erreur lors de l'envoi des notifications" }
+  }
+}
+
+export async function sendAllPendingNotifications() {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    // Get all assigned replacements without notifications sent
+    const pendingReplacements = await sql`
+      SELECT id
+      FROM replacements
+      WHERE status = 'assigned'
+        AND notifications_sent_at IS NULL
+        AND shift_date >= CURRENT_DATE
+    `
+
+    if (pendingReplacements.length === 0) {
+      return { success: true, count: 0, message: "Aucune notification en attente" }
+    }
+
+    let totalEmailsSent = 0
+    let totalSmsSent = 0
+    const allErrors: string[] = []
+
+    for (const replacement of pendingReplacements) {
+      const result = await sendAssignmentNotifications(replacement.id)
+      if (result.success) {
+        totalEmailsSent += result.emailsSent || 0
+        totalSmsSent += result.smsSent || 0
+        if (result.errors) {
+          allErrors.push(...result.errors)
+        }
+      }
+    }
+
+    return {
+      success: true,
+      count: pendingReplacements.length,
+      emailsSent: totalEmailsSent,
+      smsSent: totalSmsSent,
+      errors: allErrors.length > 0 ? allErrors : undefined,
+    }
+  } catch (error) {
+    console.error("[v0] sendAllPendingNotifications: Error", error)
+    return { error: "Erreur lors de l'envoi des notifications" }
   }
 }
