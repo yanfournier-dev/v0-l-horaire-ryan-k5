@@ -183,9 +183,9 @@ export function compareDates(date1: string | Date | null | undefined, date2: str
  */
 export function getCurrentLocalDate(): string {
   const now = getTodayInLocalTimezone()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, "0")
-  const day = String(now.getDate()).padStart(2, "0")
+  const year = now.getUTCFullYear()
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(now.getUTCDate()).padStart(2, "0")
 
   return `${year}-${month}-${day}`
 }
