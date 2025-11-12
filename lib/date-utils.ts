@@ -307,8 +307,13 @@ export function calculateAutoDeadline(shiftDate: string | Date): Date {
 export function getTodayInLocalTimezone(): Date {
   const now = new Date()
 
+  const isV0Preview = typeof window !== "undefined" && window.location.hostname.includes("v0.app")
+  const isProduction = !isV0Preview
+
   console.log("[v0] getTodayInLocalTimezone called")
-  console.log("[v0] VERCEL_ENV:", process.env.VERCEL_ENV)
+  console.log("[v0] Hostname:", typeof window !== "undefined" ? window.location.hostname : "server-side")
+  console.log("[v0] Is V0 Preview:", isV0Preview)
+  console.log("[v0] Is Production:", isProduction)
   console.log("[v0] UTC now:", now.toISOString())
   console.log("[v0] UTC date components:", {
     year: now.getUTCFullYear(),
@@ -317,7 +322,7 @@ export function getTodayInLocalTimezone(): Date {
     hours: now.getUTCHours(),
   })
 
-  if (process.env.VERCEL_ENV === "production") {
+  if (isProduction) {
     // Adjust UTC time to Montreal time (UTC-5)
     const montrealTime = new Date(now.getTime() - 5 * 60 * 60 * 1000)
 
