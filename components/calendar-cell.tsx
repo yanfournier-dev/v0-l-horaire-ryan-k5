@@ -450,7 +450,7 @@ export function CalendarCell({
                                 key={`double-${key}-${displayIndex}`}
                                 className="firefighter-name truncate py-0 md:py-0.5 font-semibold"
                               >
-                                <span className="text-[8px] md:text-sm mr-1">🧑‍🚒🧑‍🚒</span>
+                                <span className="text-[6px] md:text-sm mr-1">🧑‍🚒🧑‍🚒</span>
                                 {initials1} + {initials2}
                               </div>
                             )
@@ -602,7 +602,7 @@ export function CalendarCell({
                               )}
                             {showCptBadge && (
                               <span
-                                className={`role-badge text-[6px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0.5 rounded border ${
+                                className={`role-badge text-[5px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0 md:py-0.5 rounded border ${
                                   showGreenCptBadge
                                     ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
                                     : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
@@ -613,7 +613,7 @@ export function CalendarCell({
                             )}
                             {showLtBadge && (
                               <span
-                                className={`role-badge text-[6px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0.5 rounded border ${
+                                className={`role-badge text-[5px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0 md:py-0.5 rounded border ${
                                   showGreenLtBadge
                                     ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
                                     : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
@@ -623,20 +623,20 @@ export function CalendarCell({
                               </span>
                             )}
                             {isExchange && (
-                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[8px] md:text-sm font-extrabold inline-block">
+                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[6px] md:text-sm font-extrabold inline-block">
                                 ↔
                               </span>
                             )}
                             {isApprovedNotAssigned && !isExchange && (
-                              <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1 text-[8px] md:text-sm">⏳</span>
+                              <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1 text-[6px] md:text-sm">⏳</span>
                             )}
                             {isAssignedReplacement && !isExchange && !isDirectAssignment && (
-                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[8px] md:text-sm font-bold inline-block">
+                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[6px] md:text-sm font-bold inline-block">
                                 ✓
                               </span>
                             )}
                             {isExtraFirefighter && !isExchange && (
-                              <span className="inline-block scale-100 md:scale-125 text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[8px] md:text-sm">
+                              <span className="inline-block scale-100 md:scale-125 text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[6px] md:text-sm">
                                 +
                               </span>
                             )}
@@ -685,8 +685,8 @@ export function CalendarCell({
                       className="w-full mt-0.5 md:mt-1 h-5 md:h-6 text-[7px] md:text-xs font-semibold text-foreground hover:text-foreground hover:bg-accent/50"
                       onClick={(e) => handleNoteClick(shift, e)}
                     >
-                      <FileText className="h-2.5 md:h-3 w-2.5 md:w-3 mr-0.5 md:mr-1" />
-                      Voir la note
+                      <FileText className="h-2 md:h-3 w-2 md:w-3 md:mr-1" />
+                      <span className="hidden md:inline">Voir la note</span>
                     </Button>
                   )}
                   {!shift.has_note && isAdmin && (
