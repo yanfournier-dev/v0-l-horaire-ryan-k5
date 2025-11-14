@@ -182,7 +182,6 @@ export function ShiftAssignmentDrawer({
 
     // Use router.refresh() to reload server data without losing scroll position
     router.refresh()
-    // </CHANGE>
   }, [onOpenChange, router])
 
   useEffect(() => {
@@ -261,7 +260,7 @@ export function ShiftAssignmentDrawer({
         const assignmentResult = await fetch("/api/get-shift-assignment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.JSON.stringify({
+          body: JSON.stringify({
             shiftId: shift.id,
             userId: approvedApp.applicant_id,
           }),
@@ -711,7 +710,6 @@ export function ShiftAssignmentDrawer({
       if (assignment.is_direct_assignment && assignment.replaced_user_id) return false
       return true
     })
-    // </CHANGE>
     .map((assignment) => {
       return {
         ...assignment,
@@ -816,11 +814,6 @@ export function ShiftAssignmentDrawer({
       replaced_position_code: replacedFF?.position_code || "", // Store position_code for sorting
     })
   })
-  // </CHANGE>
-
-  // </CHANGE> Removed debug log for groupedReplacements
-
-  // </CHANGE>
 
   return (
     <>
@@ -905,7 +898,6 @@ export function ShiftAssignmentDrawer({
                     const indexB = originalOrderMap.get(b.id) ?? 999
                     return indexA - indexB
                   })
-                  // </CHANGE>
                   .map((firefighter) => {
                     const replacements = groupedReplacements.get(firefighter.id) || []
                     const hasReplacements = replacements.length > 0
@@ -933,7 +925,8 @@ export function ShiftAssignmentDrawer({
                                   {replacement1 && (
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
-                                        Remplaçant 1: {replacement1.first_name} {replacement1.last_name}
+                                        {replacement2 ? "Remplaçant 1" : "Remplaçant"}: {replacement1.first_name} {replacement1.last_name}
+
                                         {(() => {
                                           // If there's no Replacement 2, show full shift or original times
                                           if (!replacement2) {
@@ -1009,7 +1002,7 @@ export function ShiftAssignmentDrawer({
                                   {replacement2 && (
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
-                                        Remplaçant 2: {replacement2.first_name} {replacement2.last_name}
+                                        {replacement1 ? "Remplaçant 2" : "Remplaçant"}: {replacement2.first_name} {replacement2.last_name}
                                         {replacement2.start_time && replacement2.end_time && (
                                           <span>
                                             {" "}
@@ -1367,11 +1360,7 @@ export function ShiftAssignmentDrawer({
                                         size="sm"
                                         variant="outline"
                                         onClick={() => {
-                                          setSelectedFirefighter({
-                                            id: assignment.user_id,
-                                            first_name: assignment.first_name,
-                                            last_name: assignment.last_name,
-                                          })
+                                          setSelectedFirefighter(firefighter)
                                           setShowDirectAssignmentDialog(true)
                                         }}
                                         disabled={isLoading || loadingReplacements}
@@ -1392,7 +1381,6 @@ export function ShiftAssignmentDrawer({
                                       >
                                         Remplacement
                                       </Button>
-                                      {/* </CHANGE> */}
                                       {assignment.is_acting_captain ? (
                                         <Button
                                           size="sm"
@@ -1525,8 +1513,8 @@ export function ShiftAssignmentDrawer({
 
             {/* Removed the extra section that displays replaced firefighters again */}
 
-            {/* Use currentAssignments to check if it's empty */}
-            {displayedAssignments.length === 0 && (!currentAssignments || currentAssignments.length === 0) && (
+            {/* Use displayedAssignments to check if it's empty */}
+            {displayedAssignments.length === 0 && (
               <Card>
                 <CardContent className="py-8 text-center">
                   <p className="text-muted-foreground">Aucun pompier assigné à ce quart</p>
