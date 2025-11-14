@@ -1319,7 +1319,7 @@ export function ShiftAssignmentDrawer({
                                           handleSetCaptain(assignment.user_id || assignment.id, displayName)
                                         }
                                         disabled={isLoading || loadingReplacements}
-                                        className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                        className="text-cyan-600 hover:bg-cyan-50"
                                       >
                                         Désigner Cpt
                                       </Button>
@@ -1344,7 +1344,7 @@ export function ShiftAssignmentDrawer({
                                           handleSetLieutenant(assignment.user_id || assignment.id, displayName)
                                         }
                                         disabled={isLoading || loadingReplacements}
-                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                        className="text-cyan-600 hover:bg-cyan-50"
                                       >
                                         Désigner Lt
                                       </Button>
@@ -1355,19 +1355,7 @@ export function ShiftAssignmentDrawer({
                                   !isDirectAssignment &&
                                   !assignment.is_extra &&
                                   isAdmin && (
-                                    <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setSelectedFirefighter(firefighter)
-                                          setShowDirectAssignmentDialog(true)
-                                        }}
-                                        disabled={isLoading || loadingReplacements}
-                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                      >
-                                        Assigner directement
-                                      </Button>
+                                    <div className="mt-2 grid grid-cols-2 gap-2">
                                       <Button
                                         size="sm"
                                         variant="outline"
@@ -1377,35 +1365,22 @@ export function ShiftAssignmentDrawer({
                                           last_name: assignment.last_name,
                                         })}
                                         disabled={isLoading || loadingReplacements}
-                                        className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                        className="text-orange-600 hover:bg-orange-50"
                                       >
                                         Remplacement
                                       </Button>
-                                      {assignment.is_acting_captain ? (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            handleRemoveCaptain(assignment.user_id || assignment.id, displayName)
-                                          }
-                                          disabled={isLoading || loadingReplacements}
-                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        >
-                                          Retirer Cpt
-                                        </Button>
-                                      ) : (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            handleSetCaptain(assignment.user_id || assignment.id, displayName)
-                                          }
-                                          disabled={isLoading || loadingReplacements}
-                                          className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                                        >
-                                          Désigner Cpt
-                                        </Button>
-                                      )}
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSelectedFirefighter(firefighter)
+                                          setShowDirectAssignmentDialog(true)
+                                        }}
+                                        disabled={isLoading || loadingReplacements}
+                                        className="text-orange-600 hover:bg-orange-50"
+                                      >
+                                        Assigner directement
+                                      </Button>
                                       {assignment.is_acting_lieutenant ? (
                                         <Button
                                           size="sm"
@@ -1426,9 +1401,34 @@ export function ShiftAssignmentDrawer({
                                             handleSetLieutenant(assignment.user_id || assignment.id, displayName)
                                           }
                                           disabled={isLoading || loadingReplacements}
-                                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                          className="text-cyan-600 hover:bg-cyan-50"
                                         >
                                           Désigner Lt
+                                        </Button>
+                                      )}
+                                      {assignment.is_acting_captain ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleRemoveCaptain(assignment.user_id || assignment.id, displayName)
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          Retirer Cpt
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleSetCaptain(assignment.user_id || assignment.id, displayName)
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-cyan-600 hover:bg-cyan-50"
+                                        >
+                                          Désigner Cpt
                                         </Button>
                                       )}
                                     </div>
@@ -1444,7 +1444,7 @@ export function ShiftAssignmentDrawer({
                                     variant="outline"
                                     onClick={() => handleRemoveExtraFirefighter(assignment.user_id, displayName)}
                                     disabled={isLoading || loadingReplacements}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    className="text-red-600 hover:text-red-600 hover:bg-red-50"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -1471,7 +1471,16 @@ export function ShiftAssignmentDrawer({
                                 <p className="text-xs text-muted-foreground">{firefighter.email}</p>
                               )}
                               {isAdmin && (
-                                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setSelectedFirefighter(firefighter)}
+                                    disabled={isLoading || loadingReplacements}
+                                    className="text-orange-600 hover:bg-orange-50"
+                                  >
+                                    Remplacement
+                                  </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -1480,18 +1489,9 @@ export function ShiftAssignmentDrawer({
                                       setShowDirectAssignmentDialog(true)
                                     }}
                                     disabled={isLoading || loadingReplacements}
-                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    className="text-orange-600 hover:bg-orange-50"
                                   >
                                     Assigner directement
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setSelectedFirefighter(firefighter)}
-                                    disabled={isLoading || loadingReplacements}
-                                    className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                                  >
-                                    Remplacement
                                   </Button>
                                 </div>
                               )}
