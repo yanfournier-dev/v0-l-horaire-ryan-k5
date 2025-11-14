@@ -602,7 +602,7 @@ export function CalendarCell({
                               )}
                             {showCptBadge && (
                               <span
-                                className={`role-badge text-[5px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0 md:py-0.5 rounded border ${
+                                className={`role-badge text-[3px] md:text-[9px] font-semibold px-0 md:px-1 py-0 md:py-0.5 rounded border scale-50 md:scale-100 origin-left ${
                                   showGreenCptBadge
                                     ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
                                     : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
@@ -613,7 +613,7 @@ export function CalendarCell({
                             )}
                             {showLtBadge && (
                               <span
-                                className={`role-badge text-[5px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0 md:py-0.5 rounded border ${
+                                className={`role-badge text-[3px] md:text-[9px] font-semibold px-0 md:px-1 py-0 md:py-0.5 rounded border scale-50 md:scale-100 origin-left ${
                                   showGreenLtBadge
                                     ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
                                     : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
