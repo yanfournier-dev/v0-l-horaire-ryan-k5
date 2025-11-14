@@ -677,18 +677,18 @@ export function ShiftAssignmentDrawer({
     const rolePriority = { captain: 1, lieutenant: 2, firefighter: 3 }
     const priorityA = rolePriority[a.role] || 3
     const priorityB = rolePriority[b.role] || 3
-  
+
     if (priorityA !== priorityB) {
       return priorityA - priorityB
     }
-  
+
     // For same role, sort by position_code (Capitaine, Lieutenant, pp1, pp2, pp3, pp4, pp5, pp6)
     const posA = a.position_code || "pp999" // Changed fallback to pp999 for stable sort
     const posB = b.position_code || "pp999"
-    
+
     const numA = posA.match(/\d+/) ? parseInt(posA.match(/\d+/)[0]) : 999
     const numB = posB.match(/\d+/) ? parseInt(posB.match(/\d+/)[0]) : 999
-    
+
     return numA - numB
   })
 
@@ -940,28 +940,28 @@ export function ShiftAssignmentDrawer({
                                             }
                                             return <span> (Quart complet)</span>
                                           }
-                                          
+
                                           // If Replacement 2 exists, calculate remaining time(s)
                                           const shiftStart = shift?.start_time?.slice(0, 5) || "07:00"
                                           const shiftEnd = shift?.end_time?.slice(0, 5) || "17:00"
                                           const r2Start = replacement2.start_time?.slice(0, 5) || ""
                                           const r2End = replacement2.end_time?.slice(0, 5) || ""
-                                          
+
                                           // Replacement 2 covers beginning of shift
                                           if (r2Start === shiftStart && r2End !== shiftEnd) {
                                             return <span> ({r2End}-{shiftEnd})</span>
                                           }
-                                          
+
                                           // Replacement 2 covers end of shift
                                           if (r2Start !== shiftStart && r2End === shiftEnd) {
                                             return <span> ({shiftStart}-{r2Start})</span>
                                           }
-                                          
+
                                           // Replacement 2 is in the middle - show two periods
                                           if (r2Start !== shiftStart && r2End !== shiftEnd) {
                                             return <span> ({shiftStart}-{r2Start}) ET ({r2End}-{shiftEnd})</span>
                                           }
-                                          
+
                                           // Replacement 2 covers full shift (shouldn't happen)
                                           return <span> (Aucune heure restante)</span>
                                         })()}
@@ -1273,7 +1273,7 @@ export function ShiftAssignmentDrawer({
                                         onClick={() => {
                                           router.push(`/dashboard/replacements/${replacement.id}`)
                                         }}
-                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                        className="text-foreground hover:bg-gray-50"
                                       >
                                         <Users className="h-4 w-4 mr-1" />
                                         Voir les candidats ({replacement.applications.length})
@@ -1356,31 +1356,35 @@ export function ShiftAssignmentDrawer({
                                   !assignment.is_extra &&
                                   isAdmin && (
                                     <div className="mt-2 grid grid-cols-2 gap-2">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setSelectedFirefighter({
-                                          id: assignment.user_id,
-                                          first_name: assignment.first_name,
-                                          last_name: assignment.last_name,
-                                        })}
-                                        disabled={isLoading || loadingReplacements}
-                                        className="text-orange-600 hover:bg-orange-50"
-                                      >
-                                        Remplacement
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setSelectedFirefighter(firefighter)
-                                          setShowDirectAssignmentDialog(true)
-                                        }}
-                                        disabled={isLoading || loadingReplacements}
-                                        className="text-orange-600 hover:bg-orange-50"
-                                      >
-                                        Assigner directement
-                                      </Button>
+                                      {!hasReplacement && (
+                                        <>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setSelectedFirefighter({
+                                              id: assignment.user_id,
+                                              first_name: assignment.first_name,
+                                              last_name: assignment.last_name,
+                                            })}
+                                            disabled={isLoading || loadingReplacements}
+                                            className="text-orange-600 hover:bg-orange-50"
+                                          >
+                                            Remplacement
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              setSelectedFirefighter(firefighter)
+                                              setShowDirectAssignmentDialog(true)
+                                            }}
+                                            disabled={isLoading || loadingReplacements}
+                                            className="text-orange-600 hover:bg-orange-50"
+                                          >
+                                            Assigner directement
+                                          </Button>
+                                        </>
+                                      )}
                                       {assignment.is_acting_lieutenant ? (
                                         <Button
                                           size="sm"

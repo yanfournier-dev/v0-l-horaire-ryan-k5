@@ -149,12 +149,18 @@ export function CalendarCell({
       >
         <CardHeader className="card-header pb-1 p-1.5 md:pb-1.5 md:p-2.5 border-b border-border/30">
           <CardTitle className="date-header text-xs md:text-sm font-semibold text-foreground/90 flex items-center justify-between">
-            <span className="text-[10px] md:text-xs text-muted-foreground/80 font-normal">
-              {getDayOfWeekLabel(day.dayOfWeek)}
+            <span className="md:hidden text-sm font-bold">
+              {day.date.getDate()}/{day.date.getMonth() + 1}
             </span>
-            <span className="text-sm md:text-base font-bold">
-              {day.date.getDate()} {getMonthLabel(day.date.getMonth())}
-            </span>
+            
+            <div className="hidden md:flex md:items-baseline md:gap-1.5">
+              <span className="text-[10px] md:text-xs text-muted-foreground/80 font-normal">
+                {getDayOfWeekLabel(day.dayOfWeek)}
+              </span>
+              <span className="text-sm md:text-base font-bold">
+                {day.date.getDate()} {getMonthLabel(day.date.getMonth())}
+              </span>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="card-content p-1 md:p-2 space-y-1 md:space-y-1.5">
