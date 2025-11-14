@@ -397,7 +397,7 @@ export function CalendarCell({
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <Badge
                       variant="outline"
-                      className="shift-type-badge text-[9px] md:text-[10px] font-medium px-1 md:px-1.5 py-0"
+                      className="shift-type-badge text-[8px] md:text-[10px] font-medium px-1 md:px-1.5 py-0"
                       style={{
                         backgroundColor:
                           shift.shift_type === "full_24h"
@@ -423,7 +423,7 @@ export function CalendarCell({
                     </Badge>
                   </div>
                   {firefighters.length > 0 || displayItems.length > 0 ? (
-                    <div className="text-[10px] md:text-xs leading-snug md:leading-relaxed text-foreground/80 space-y-0">
+                    <div className="text-[9px] md:text-xs leading-snug md:leading-relaxed text-foreground/80 space-y-0">
                       {displayItems.map((item, displayIndex) => {
                         if (item.type === 'double-replacement') {
                           const { key, replacements } = item.data
@@ -450,7 +450,7 @@ export function CalendarCell({
                                 key={`double-${key}-${displayIndex}`}
                                 className="firefighter-name truncate py-0 md:py-0.5 font-semibold"
                               >
-                                <span className="text-sm mr-1">🧑‍🚒🧑‍🚒</span>
+                                <span className="text-xs md:text-sm mr-1">🧑‍🚒🧑‍🚒</span>
                                 {initials1} + {initials2}
                               </div>
                             )
@@ -600,7 +600,7 @@ export function CalendarCell({
                               )}
                             {showCptBadge && (
                               <span
-                                className={`role-badge text-[8px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0.5 rounded border ${
+                                className={`role-badge text-[7px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0.5 rounded border ${
                                   showGreenCptBadge
                                     ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
                                     : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
@@ -611,7 +611,7 @@ export function CalendarCell({
                             )}
                             {showLtBadge && (
                               <span
-                                className={`role-badge text-[8px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0.5 rounded border ${
+                                className={`role-badge text-[7px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0.5 rounded border ${
                                   showGreenLtBadge
                                     ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
                                     : "border-muted-foreground/20 bg-muted/30 text-muted-foreground"
@@ -621,20 +621,20 @@ export function CalendarCell({
                               </span>
                             )}
                             {isExchange && (
-                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-xs md:text-sm font-extrabold inline-block">
+                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[10px] md:text-sm font-extrabold inline-block">
                                 ↔
                               </span>
                             )}
                             {isApprovedNotAssigned && !isExchange && (
-                              <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1">⏳</span>
+                              <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1 text-xs md:text-sm">⏳</span>
                             )}
                             {isAssignedReplacement && !isExchange && !isDirectAssignment && (
-                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-xs md:text-sm font-bold inline-block">
+                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[10px] md:text-sm font-bold inline-block">
                                 ✓
                               </span>
                             )}
                             {isExtraFirefighter && !isExchange && (
-                              <span className="inline-block scale-125 text-green-700 dark:text-green-500 mr-0.5 md:mr-1">
+                              <span className="inline-block scale-100 md:scale-125 text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-xs md:text-sm">
                                 +
                               </span>
                             )}
@@ -642,22 +642,22 @@ export function CalendarCell({
                               ? "Pompier supplémentaire"
                               : formatFirefighterName(displayFirstName, displayLastName)}
                             {isExchange && exchangePartialTimes && (
-                              <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-gray-600 dark:text-gray-400">
+                              <span className="time-indicator ml-0.5 md:ml-1 text-[8px] md:text-[10px] font-normal text-gray-600 dark:text-gray-400">
                                 ({exchangePartialTimes})
                               </span>
                             )}
                             {hasPartialReplacement && !isExchange && (
-                              <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-gray-600 dark:text-gray-400">
+                              <span className="time-indicator ml-0.5 md:ml-1 text-[8px] md:text-[10px] font-normal text-gray-600 dark:text-gray-400">
                                 ({replacement.start_time.slice(0, 5)}-{replacement.end_time.slice(0, 5)})
                               </span>
                             )}
                             {hasExtraPartialTime && !isExchange && (
-                              <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-amber-600 dark:text-amber-400">
+                              <span className="time-indicator ml-0.5 md:ml-1 text-[8px] md:text-[10px] font-normal text-amber-600 dark:text-amber-400">
                                 ({firefighter.startTime!.slice(0, 5)}-{firefighter.endTime!.slice(0, 5)})
                               </span>
                             )}
                             {hasPartialLeave && !isExchange && (
-                              <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-blue-600 dark:text-blue-400">
+                              <span className="time-indicator ml-0.5 md:ml-1 text-[8px] md:text-[10px] font-normal text-blue-600 dark:text-blue-400">
                                 ({firefighterLeave.start_time.slice(0, 5)}-{firefighterLeave.end_time.slice(0, 5)})
                               </span>
                             )}
@@ -665,7 +665,7 @@ export function CalendarCell({
                               firefighter.isPartial &&
                               firefighter.startTime &&
                               firefighter.endTime && (
-                                <span className="time-indicator ml-0.5 md:ml-1 text-[9px] md:text-[10px] font-normal text-blue-600 dark:text-blue-400">
+                                <span className="time-indicator ml-0.5 md:ml-1 text-[8px] md:text-[10px] font-normal text-blue-600 dark:text-blue-400">
                                   ({firefighter.startTime.slice(0, 5)}-{firefighter.endTime.slice(0, 5)})
                                 </span>
                               )}
@@ -674,13 +674,13 @@ export function CalendarCell({
                       })}
                     </div>
                   ) : (
-                    <p className="text-[10px] md:text-xs text-muted-foreground/60 italic">Aucun pompier assigné</p>
+                    <p className="text-[9px] md:text-xs text-muted-foreground/60 italic">Aucun pompier assigné</p>
                   )}
                   {shift.has_note && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-full mt-0.5 md:mt-1 h-5 md:h-6 text-[10px] md:text-xs font-semibold text-foreground hover:text-foreground hover:bg-accent/50"
+                      className="w-full mt-0.5 md:mt-1 h-5 md:h-6 text-[9px] md:text-xs font-semibold text-foreground hover:text-foreground hover:bg-accent/50"
                       onClick={(e) => handleNoteClick(shift, e)}
                     >
                       <FileText className="h-2.5 md:h-3 w-2.5 md:w-3 mr-0.5 md:mr-1" />
@@ -691,7 +691,7 @@ export function CalendarCell({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-full mt-0.5 md:mt-1 h-5 md:h-6 text-[10px] md:text-xs text-muted-foreground/50 hover:text-muted-foreground opacity-40 hover:opacity-70"
+                      className="w-full mt-0.5 md:mt-1 h-5 md:h-6 text-[9px] md:text-xs text-muted-foreground/50 hover:text-muted-foreground opacity-40 hover:opacity-70"
                       onClick={(e) => handleNoteClick(shift, e)}
                     >
                       Note
@@ -701,7 +701,7 @@ export function CalendarCell({
               )
             })
           ) : (
-            <p className="text-[10px] md:text-xs text-muted-foreground/60 text-center py-2 md:py-4">Aucun quart</p>
+            <p className="text-[9px] md:text-xs text-muted-foreground/60 text-center py-2 md:py-4">Aucun quart</p>
           )}
         </CardContent>
       </Card>
