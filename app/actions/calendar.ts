@@ -176,11 +176,12 @@ export async function getAllShiftsWithAssignments() {
                 COALESCE(sa_direct.start_time::text, '') || '|' ||
                 COALESCE(sa_direct.end_time::text, '') || '|' ||
                 COALESCE(sa_direct.is_acting_lieutenant::text, 'null') || '|' ||
-                COALESCE(sa_direct.is_acting_captain::text, 'null') || '|true'
+                COALESCE(sa_direct.is_acting_captain::text, 'null') || '|true|' ||
+                COALESCE(sa_direct.replacement_order::text, '')
               ELSE
                 u.first_name || '|' || u.last_name || '|' || u.role || '|false|false|||' ||
                 COALESCE(sa.is_acting_lieutenant::text, 'null') || '|' ||
-                COALESCE(sa.is_acting_captain::text, 'null') || '|false'
+                COALESCE(sa.is_acting_captain::text, 'null') || '|false|'
             END,
             ';' 
             ORDER BY 
@@ -223,7 +224,8 @@ export async function getAllShiftsWithAssignments() {
             COALESCE(sa.end_time::text, '') || '|' ||
             COALESCE(sa.is_acting_lieutenant::text, 'null') || '|' ||
             COALESCE(sa.is_acting_captain::text, 'null') || '|' ||
-            COALESCE(sa.is_direct_assignment::text, 'false'),
+            COALESCE(sa.is_direct_assignment::text, 'false') || '|' ||
+            COALESCE(sa.replacement_order::text, ''),
             ';'
             ORDER BY
               CASE u.role 

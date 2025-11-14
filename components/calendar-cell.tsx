@@ -11,7 +11,7 @@ import { ShiftAssignmentDrawer } from "@/components/shift-assignment-drawer"
 import { ShiftNoteDialog } from "@/components/shift-note-dialog"
 import { getShiftWithAssignments } from "@/app/actions/calendar"
 import { getShiftNote } from "@/app/actions/shift-notes"
-import { FileText } from "lucide-react"
+import { FileText } from 'lucide-react'
 
 interface CalendarCellProps {
   day: {
@@ -251,6 +251,104 @@ export function CalendarCell({
                 }
               })
 
+              const replacementsByReplacedFirefighter = new Map<string, any[]>()
+              
+              shiftReplacements.forEach((r: any) => {
+                if (r.status === "assigned" && r.replacement_first_name) {
+                  const key = `${r.replaced_first_name}|${r.replaced_last_name}|${r.replaced_role}`
+                  if (!replacementsByReplacedFirefighter.has(key)) {
+                    replacementsByReplacedFirefighter.set(key, [])
+                  }
+                  replacementsByReplacedFirefighter.get(key)!.push(r)
+                }
+              })
+              
+              firefighters.forEach((f: any) => {
+                if (f.isDirectAssignment && f.firstName && f.lastName) {
+                  // Find the replaced firefighter info from shiftReplacements
+                  // Direct assignments should have matching replaced firefighter data
+                  replacementsByReplacedFirefighter.forEach((replacements, key) => {
+                    const [replacedFirstName, replacedLastName, replacedRole] = key.split('|')
+                    
+                    // Add this direct assignment as a replacement
+                    // Direct assignments are always Remplaçant 2, so they should be paired with existing replacements
+                    if (replacements.length === 1) {
+                      replacementsByReplacedFirefighter.get(key)!.push({
+                        replacement_first_name: f.firstName,
+                        replacement_last_name: f.lastName,
+                        replaced_first_name: replacedFirstName,
+                        replaced_last_name: replacedLastName,
+                        replaced_role: replacedRole,
+                        start_time: f.startTime,
+                        end_time: f.endTime,
+                        status: "assigned",
+                        is_direct_assignment: true
+                      })
+                    }
+                  })
+                }
+              })
+
+              const firefightersToHide = new Set<string>()
+              replacementsByReplacedFirefighter.forEach((replacements, key) => {
+                if (replacements.length === 2) {
+                  // This is a double replacement, hide both individual replacement firefighters
+                  replacements.forEach((r: any) => {
+                    const firefighterKey = `${r.replacement_first_name}|${r.replacement_last_name}`
+                    firefightersToHide.add(firefighterKey)
+                  })
+                }
+              })
+
+              const displayItems: Array<{ type: 'firefighter' | 'double-replacement', data: any, role: string, index: number }> = []
+              
+              // Add all firefighters from the main list
+              firefighters.forEach((firefighter, index) => {
+                const firefighterKey = `${firefighter.firstName}|${firefighter.lastName}`
+                if (!firefightersToHide.has(firefighterKey)) {
+                  displayItems.push({
+                    type: 'firefighter',
+                    data: firefighter,
+                    role: firefighter.role,
+                    index
+                  })
+                }
+              })
+              
+              // Add double replacements that are NOT in the main list at their replaced firefighter's rank position
+              Array.from(replacementsByReplacedFirefighter.entries()).forEach(([key, replacements]) => {
+                if (replacements.length !== 2) return
+                
+                const [firstName, lastName, role] = key.split('|')
+                
+                // Check if this firefighter is already in the main firefighters list
+                const isInMainList = firefighters.some((f) => 
+                  f.firstName === firstName && f.lastName === lastName && f.role === role
+                )
+                
+                if (!isInMainList) {
+                  // Add at the position based on role
+                  displayItems.push({
+                    type: 'double-replacement',
+                    data: { key, replacements },
+                    role: role,
+                    index: 999 // Temporary, will be sorted
+                  })
+                }
+              })
+              
+              // Sort display items by role order
+              displayItems.sort((a, b) => {
+                if (a.type === 'firefighter' && a.data.isExtra !== (b.type === 'firefighter' && b.data.isExtra)) {
+                  return (a.type === 'firefighter' && a.data.isExtra) ? 1 : -1
+                }
+                const orderA = roleOrder[a.role] || 9
+                const orderB = roleOrder[b.role] || 9
+                if (orderA !== orderB) return orderA - orderB
+                // Keep original order for items with same role
+                return a.index - b.index
+              })
+
               return (
                 <div
                   key={shift.id}
@@ -289,26 +387,62 @@ export function CalendarCell({
                       {getShiftTypeLabel(shift.shift_type).split(" ")[0]}
                     </Badge>
                   </div>
-                  {firefighters.length > 0 ? (
+                  {firefighters.length > 0 || displayItems.length > 0 ? (
                     <div className="text-[10px] md:text-xs leading-snug md:leading-relaxed text-foreground/80 space-y-0">
-                      {firefighters.map((firefighter, index) => {
+                      {displayItems.map((item, displayIndex) => {
+                        if (item.type === 'double-replacement') {
+                          const { key, replacements } = item.data
+                          
+                          // Sort replacements by start time
+                          const sortedReplacements = [...replacements].sort((a: any, b: any) => {
+                            if (a.start_time && b.start_time) {
+                              return a.start_time.localeCompare(b.start_time)
+                            }
+                            if (!a.start_time) return 1
+                            if (!b.start_time) return -1
+                            return 0
+                          })
+
+                          const replacement1 = sortedReplacements[0]
+                          const replacement2 = sortedReplacements[1]
+                          
+                          if (replacement1?.replacement_first_name && replacement2?.replacement_first_name) {
+                            const initials1 = `${replacement1.replacement_first_name.charAt(0)}${replacement1.replacement_last_name.charAt(0)}`
+                            const initials2 = `${replacement2.replacement_first_name.charAt(0)}${replacement2.replacement_last_name.charAt(0)}`
+                            
+                            return (
+                              <div
+                                key={`double-${key}-${displayIndex}`}
+                                className="firefighter-name truncate py-0 md:py-0.5 font-semibold"
+                              >
+                                <span className="text-sm mr-1">🧑‍🚒🧑‍🚒</span>
+                                {initials1} + {initials2}
+                              </div>
+                            )
+                          }
+                          
+                          return null
+                        }
+                        
+                        // type === 'firefighter'
+                        const firefighter = item.data
+                        const index = item.index
+
                         const replacement = shiftReplacements.find(
                           (r: any) =>
                             r.replaced_first_name === firefighter.firstName &&
                             r.replaced_last_name === firefighter.lastName &&
-                            r.replaced_role === firefighter.role,
+                            r.replaced_role === firefighter.role
                         )
 
                         const exchange = shiftExchanges.find((ex: any) => {
                           if (ex.type === "requester") {
-                            // This is the requester's original shift, so target is taking their place
                             return (
                               ex.requester_first_name === firefighter.firstName &&
                               ex.requester_last_name === firefighter.lastName &&
                               ex.requester_role === firefighter.role
                             )
                           } else {
-                            // This is the target's original shift, so requester is taking their place
                             return (
                               ex.target_first_name === firefighter.firstName &&
                               ex.target_last_name === firefighter.lastName &&
@@ -341,14 +475,12 @@ export function CalendarCell({
                         if (exchange) {
                           isExchange = true
                           if (exchange.type === "requester") {
-                            // Target is taking requester's place
                             displayFirstName = exchange.target_first_name
                             displayLastName = exchange.target_last_name
                             if (exchange.is_partial && exchange.requester_start_time && exchange.requester_end_time) {
                               exchangePartialTimes = `${exchange.requester_start_time.slice(0, 5)}-${exchange.requester_end_time.slice(0, 5)}`
                             }
                           } else {
-                            // Requester is taking target's place
                             displayFirstName = exchange.requester_first_name
                             displayLastName = exchange.requester_last_name
                             if (exchange.is_partial && exchange.target_start_time && exchange.target_end_time) {
@@ -371,6 +503,21 @@ export function CalendarCell({
                         const replacementIsActingLieutenant = replacement?.replacement_is_acting_lieutenant === true
                         const replacementIsActingCaptain = replacement?.replacement_is_acting_captain === true
 
+                        const showCptBadge =
+                          firefighter.isActingCaptain === true ||
+                          (!hasActingCaptain &&
+                            firefighter.role === "captain" &&
+                            firefighter.isActingCaptain !== true) ||
+                          (isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain) ||
+                          (isAssignedReplacement && replacementIsActingCaptain)
+
+                        const showGreenCptBadge =
+                          firefighter.isActingCaptain === true ||
+                          (isAssignedReplacement &&
+                            replacement?.replaced_role === "captain" &&
+                            !hasActingCaptain) ||
+                          (isAssignedReplacement && replacementIsActingCaptain)
+
                         const showLtBadge =
                           firefighter.isActingLieutenant === true ||
                           (!hasActingLieutenant &&
@@ -387,19 +534,6 @@ export function CalendarCell({
                             replacement?.replaced_role === "lieutenant" &&
                             !hasActingLieutenant) ||
                           (isAssignedReplacement && replacementIsActingLieutenant)
-
-                        const showCptBadge =
-                          firefighter.isActingCaptain === true ||
-                          (!hasActingCaptain &&
-                            firefighter.role === "captain" &&
-                            firefighter.isActingCaptain !== true) ||
-                          (isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain) ||
-                          (isAssignedReplacement && replacementIsActingCaptain)
-
-                        const showGreenCptBadge =
-                          firefighter.isActingCaptain === true ||
-                          (isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain) ||
-                          (isAssignedReplacement && replacementIsActingCaptain)
 
                         const isDirectAssignment = firefighter.isDirectAssignment === true
 
@@ -422,6 +556,13 @@ export function CalendarCell({
                                           : ""
                             } ${hasPartialLeave && !replacement && !isExchange ? "bg-blue-50 dark:bg-blue-950/20 px-1 md:px-1.5 rounded text-blue-700 dark:text-blue-300" : ""}`}
                           >
+                            {(hasPartialReplacement ||
+                              hasExtraPartialTime ||
+                              hasPartialLeave ||
+                              (isDirectAssignment && firefighter.isPartial)) &&
+                              !isExchange && (
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 mr-1 align-middle" />
+                              )}
                             {showCptBadge && (
                               <span
                                 className={`role-badge text-[8px] md:text-[9px] font-semibold px-0.5 md:px-1 py-0.5 rounded border ${
@@ -461,9 +602,6 @@ export function CalendarCell({
                               <span className="inline-block scale-125 text-green-700 dark:text-green-500 mr-0.5 md:mr-1">
                                 +
                               </span>
-                            )}
-                            {hasExtraPartialTime && !isExchange && (
-                              <span className="text-amber-500 dark:text-amber-400 font-bold mr-0.5 md:mr-1">*</span>
                             )}
                             {displayFirstName === "Pompier" && displayLastName === "supplémentaire"
                               ? "Pompier supplémentaire"

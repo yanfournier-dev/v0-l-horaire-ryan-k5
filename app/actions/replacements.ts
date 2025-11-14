@@ -463,6 +463,38 @@ export async function approveApplication(applicationId: number, replacementId: n
       WHERE id = ${replacementId}
     `
 
+    await sql`
+      INSERT INTO shift_assignments (
+        shift_id, 
+        user_id, 
+        replaced_user_id,
+        is_extra, 
+        is_direct_assignment,
+        is_partial,
+        start_time,
+        end_time,
+        replacement_order
+      )
+      VALUES (
+        ${shiftId}, 
+        ${applicantId}, 
+        ${replacedUserId},
+        false, 
+        false,
+        ${is_partial || false},
+        ${start_time || null},
+        ${end_time || null},
+        1
+      )
+      ON CONFLICT (shift_id, user_id) DO UPDATE
+      SET 
+        replaced_user_id = ${replacedUserId},
+        is_partial = ${is_partial || false},
+        start_time = ${start_time || null},
+        end_time = ${end_time || null},
+        replacement_order = 1
+    `
+
     await createNotification(
       applicantId,
       "Remplacement assigné",

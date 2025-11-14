@@ -15,9 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { createDirectAssignment } from "@/app/actions/direct-assignments"
 import { toast } from "sonner"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 
@@ -57,18 +54,12 @@ export function DirectAssignmentDialog({
 }: DirectAssignmentDialogProps) {
   const [assignedFirefighter, setAssignedFirefighter] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isRangeMode, setIsRangeMode] = useState(false)
-  const [startDate, setStartDate] = useState<Date | undefined>(shift?.date)
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [isPartial, setIsPartial] = useState(false)
   const [startTime, setStartTime] = useState("07:00")
   const [endTime, setEndTime] = useState("17:00")
 
   useEffect(() => {
     if (open && shift) {
-      setStartDate(shift.date)
-      setEndDate(undefined)
-      setIsRangeMode(false)
       setIsPartial(false)
       setAssignedFirefighter(null)
     }
@@ -86,18 +77,13 @@ export function DirectAssignmentDialog({
   }
 
   const handleSubmit = async () => {
-    if (!shift || !preSelectedFirefighter || !assignedFirefighter || !startDate) {
+    if (!shift || !preSelectedFirefighter || !assignedFirefighter) {
       toast.error("Veuillez remplir tous les champs requis")
       return
     }
 
     if (isPartial && startTime >= endTime) {
       toast.error("L'heure de début doit être avant l'heure de fin")
-      return
-    }
-
-    if (isRangeMode && !endDate) {
-      toast.error("Veuillez sélectionner une date de fin")
       return
     }
 
@@ -108,10 +94,6 @@ export function DirectAssignmentDialog({
         shiftId: shift.id,
         replacedUserId: preSelectedFirefighter.id,
         assignedUserId: assignedFirefighter,
-        dateRange: {
-          start: startDate,
-          end: isRangeMode ? endDate : startDate,
-        },
         isPartial,
         startTime: isPartial ? startTime : undefined,
         endTime: isPartial ? endTime : undefined,
@@ -143,17 +125,17 @@ export function DirectAssignmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Assigner directement un pompier</DialogTitle>
           <DialogDescription>
-            {preSelectedFirefighter && (
+            {preSelectedFirefighter && shift && (
               <span>
                 Remplacer{" "}
                 <strong>
                   {preSelectedFirefighter.first_name} {preSelectedFirefighter.last_name}
                 </strong>{" "}
-                par un autre pompier.
+                par un autre pompier pour le <strong>{format(shift.date, "d MMMM yyyy", { locale: fr })}</strong>.
               </span>
             )}
           </DialogDescription>
@@ -178,78 +160,6 @@ export function DirectAssignmentDialog({
               </SelectContent>
             </Select>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="range-mode"
-              checked={isRangeMode}
-              onCheckedChange={(checked) => setIsRangeMode(checked === true)}
-            />
-            <Label
-              htmlFor="range-mode"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Assigner pour une période
-            </Label>
-          </div>
-
-          {!isRangeMode ? (
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "PPP", { locale: fr }) : <span>Sélectionner une date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={fr} />
-                </PopoverContent>
-              </Popover>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Période</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Date de début</p>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "d MMM", { locale: fr }) : <span>Début</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={fr} />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Date de fin</p>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "d MMM", { locale: fr }) : <span>Fin</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={setEndDate}
-                        initialFocus
-                        locale={fr}
-                        disabled={(date) => (startDate ? date < startDate : false)}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="flex items-center space-x-2">
             <Checkbox id="partial" checked={isPartial} onCheckedChange={(checked) => setIsPartial(checked === true)} />
