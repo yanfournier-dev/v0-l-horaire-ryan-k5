@@ -153,7 +153,7 @@ export function CalendarCell({
               {day.date.getDate()}/{day.date.getMonth() + 1}
             </span>
             
-            <div className="hidden md:flex md:items-baseline md:gap-1.5">
+            <div className="hidden md:flex md:items-baseline md:gap-1.5 whitespace-nowrap">
               <span className="text-[10px] md:text-xs text-muted-foreground/80 font-normal">
                 {getDayOfWeekLabel(day.dayOfWeek)}
               </span>
