@@ -7,7 +7,7 @@ import {
   getExchangesForDateRange,
 } from "@/app/actions/calendar"
 import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
-import { redirect } from "next/navigation"
+import { redirect } from 'next/navigation'
 import { generateMonthView, getCycleDay, parseLocalDate } from "@/lib/calendar"
 import { formatDateForDB, getTodayInLocalTimezone } from "@/lib/date-utils"
 import { Card, CardContent } from "@/components/ui/card"
@@ -72,7 +72,8 @@ export default async function CalendarPage({
     }))
 
     const firstDay = allMonthsDays[0].days[0]?.date
-    const lastDay = allMonthsDays[allMonthsDays.length - 1].days[allMonthsDays.length - 1]?.date
+    const lastMonthDays = allMonthsDays[allMonthsDays.length - 1].days
+    const lastDay = lastMonthDays[lastMonthDays.length - 1]?.date
 
     const allShifts = await getAllShiftsWithAssignments()
 

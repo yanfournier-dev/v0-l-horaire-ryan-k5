@@ -307,10 +307,6 @@ export function ShiftAssignmentDrawer({
       }
     }
 
-    await executeCreateReplacement()
-  }
-
-  const executeCreateReplacement = async () => {
     setIsLoading(true)
 
     const shiftDate = formatDateForDB(shift.date)
@@ -1531,17 +1527,16 @@ export function ShiftAssignmentDrawer({
 
       <AlertDialog
         open={!!selectedFirefighter && !showDeadlineWarning && !showDirectAssignmentDialog}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setSelectedFirefighter(null)
-            setIsPartial(false)
-            setDeadlineSeconds(null)
-            setShowDeadlineWarning(false)
-            const times = getDefaultReplacementTimes(shift?.shift_type)
-            setStartTime(times.startTime)
-            setEndTime(times.endTime)
-          }
-        }}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setSelectedFirefighter(null)
+                setIsPartial(false)
+                setDeadlineSeconds(null)
+                const times = getDefaultReplacementTimes(shift?.shift_type)
+                setStartTime(times.startTime)
+                setEndTime(times.endTime)
+              }
+            }}
       >
         <AlertDialogContent
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -1636,22 +1631,18 @@ export function ShiftAssignmentDrawer({
       <AlertDialog open={showDeadlineWarning} onOpenChange={setShowDeadlineWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>⚠️ Délai par défaut expiré</AlertDialogTitle>
+            <AlertDialogTitle>⚠️ Délai automatique expiré</AlertDialogTitle>
             <AlertDialogDescription>
-              Le délai par défaut pour ce remplacement est déjà passé. Les pompiers ne pourront pas postuler à moins que
-              vous définissiez un nouveau délai.
+              Le délai automatique pour ce remplacement est déjà expiré.
               <br />
               <br />
-              Voulez-vous quand même créer ce remplacement ?
+              Veuillez recommencer en spécifiant un délai personnalisé qui n'est pas expiré.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button variant="outline" onClick={handleCancel}>
-              Annuler
+              Fermer
             </Button>
-            <AlertDialogAction onClick={executeCreateReplacement} className="bg-orange-600 hover:bg-orange-700">
-              Créer quand même
-            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
