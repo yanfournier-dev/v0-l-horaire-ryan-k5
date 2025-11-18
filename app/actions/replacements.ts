@@ -202,6 +202,10 @@ export async function createReplacementFromShift(
   }
 
   try {
+    console.log("[v0] createReplacementFromShift - START")
+    console.log("[v0] createReplacementFromShift - shiftDate:", shiftDate)
+    console.log("[v0] createReplacementFromShift - deadlineSeconds:", deadlineSeconds)
+    
     let applicationDeadline = null
     let deadlineDuration = null
 
@@ -209,9 +213,14 @@ export async function createReplacementFromShift(
       const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
       applicationDeadline = new Date(deadlineTimestamp).toISOString()
       deadlineDuration = Math.max(1, Math.floor(deadlineSeconds / 60))
+      console.log("[v0] createReplacementFromShift - Using custom deadline:", applicationDeadline)
     } else {
       const autoDeadline = calculateAutoDeadline(shiftDate)
+      console.log("[v0] createReplacementFromShift - autoDeadline (local object):", autoDeadline)
+      console.log("[v0] createReplacementFromShift - autoDeadline.toString():", autoDeadline.toString())
+      console.log("[v0] createReplacementFromShift - autoDeadline.toISOString():", autoDeadline.toISOString())
       applicationDeadline = autoDeadline.toISOString()
+      console.log("[v0] createReplacementFromShift - applicationDeadline stored in DB:", applicationDeadline)
       deadlineDuration = null
     }
 
@@ -229,6 +238,7 @@ export async function createReplacementFromShift(
     `
 
     const replacementId = result[0].id
+    console.log("[v0] createReplacementFromShift - Created replacement ID:", replacementId)
 
     const firefighterInfo = await sql`
       SELECT first_name, last_name FROM users WHERE id = ${userId}
