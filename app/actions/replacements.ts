@@ -1,5 +1,7 @@
 "use server"
 
+// Force redeploy - 2024-11-18 17:30
+
 import { sql, invalidateCache } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { createNotification, sendBatchReplacementEmails, createBatchNotificationsInApp } from "./notifications"
@@ -786,7 +788,7 @@ export async function updateReplacementAssignment(replacementId: number, assigne
         INSERT INTO replacement_applications (replacement_id, applicant_id, status, reviewed_by, reviewed_at)
         VALUES (${replacementId}, ${assignedTo}, 'approved', ${user.id}, CURRENT_TIMESTAMP)
         ON CONFLICT (replacement_id, applicant_id) 
-        DO UPDATE SET status = 'approved', reviewed_by = ${user.id}, reviewed_at = ${user.id}
+        DO UPDATE SET status = 'approved', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
       `
 
       await sql`
