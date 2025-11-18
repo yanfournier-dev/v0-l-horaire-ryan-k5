@@ -263,15 +263,15 @@ export function formatDateForDB(date: Date): string {
 
 /**
  * Calculate the automatic deadline for a replacement
- * The deadline is the Monday of the previous week at 5pm (17:00) local time
+ * The deadline is the Monday of the previous week at 5pm (17:00) America/Toronto time
  *
  * @param shiftDate - The date of the shift (YYYY-MM-DD or Date object)
- * @returns Date object representing the deadline
+ * @returns Date object representing the deadline in UTC
  *
  * @example
  * // For a shift on Wednesday, November 5, 2025
  * calculateAutoDeadline("2025-11-05")
- * // Returns: Monday, October 27, 2025 at 17:00
+ * // Returns: Monday, October 27, 2025 at 17:00 America/Toronto (22:00 UTC in winter)
  */
 export function calculateAutoDeadline(shiftDate: string | Date): Date {
   const shift = typeof shiftDate === "string" ? parseLocalDate(shiftDate) : shiftDate
@@ -280,7 +280,6 @@ export function calculateAutoDeadline(shiftDate: string | Date): Date {
   const dayOfWeek = shift.getDay()
 
   // Calculate days to subtract to get to Monday of the shift's week
-  // If Sunday (0), go back 6 days; if Monday (1), go back 0 days; etc.
   const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
 
   // Get Monday of the shift's week
@@ -291,10 +290,31 @@ export function calculateAutoDeadline(shiftDate: string | Date): Date {
   const mondayOfPreviousWeek = new Date(mondayOfShiftWeek)
   mondayOfPreviousWeek.setDate(mondayOfShiftWeek.getDate() - 7)
 
-  // Set time to 17:00 (5pm) local time
-  mondayOfPreviousWeek.setHours(17, 0, 0, 0)
+  // Format as YYYY-MM-DD for the Monday date
+  const year = mondayOfPreviousWeek.getFullYear()
+  const month = String(mondayOfPreviousWeek.getMonth() + 1).padStart(2, "0")
+  const day = String(mondayOfPreviousWeek.getDate()).padStart(2, "0")
+  const dateString = `${year}-${month}-${day}`
 
-  return mondayOfPreviousWeek
+  // Create a date string for 17:00 in America/Toronto timezone
+  // Use Intl.DateTimeFormat to determine if DST is in effect
+  const testDate = new Date(`${dateString}T12:00:00-05:00`) // Noon EST
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Toronto',
+    timeZoneName: 'short'
+  })
+  const parts = formatter.formatToParts(testDate)
+  const timeZoneName = parts.find(part => part.type === 'timeZoneName')?.value || 'EST'
+  
+  // Determine UTC offset based on timezone name
+  // EDT (Eastern Daylight Time) = UTC-4
+  // EST (Eastern Standard Time) = UTC-5
+  const offset = timeZoneName.includes('EDT') || timeZoneName.includes('E') && !timeZoneName.includes('S') ? '-04:00' : '-05:00'
+  
+  // Create UTC date for 17:00 in America/Toronto
+  const deadlineUTC = new Date(`${dateString}T17:00:00${offset}`)
+  
+  return deadlineUTC
 }
 
 /**
