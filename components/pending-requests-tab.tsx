@@ -3,12 +3,12 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Check, X, ArrowUpDown } from "lucide-react"
+import { Check, X, ArrowUpDown } from 'lucide-react'
 import { parseLocalDate, formatShortDate, calculateAutoDeadline } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { approveReplacementRequest, rejectReplacementRequest } from "@/app/actions/replacements"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { compareShifts } from "@/lib/shift-sort"
 import {
@@ -207,22 +207,18 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
       <AlertDialog open={showDeadlineWarning} onOpenChange={setShowDeadlineWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>⚠️ Délai par défaut expiré</AlertDialogTitle>
+            <AlertDialogTitle>⚠️ Délai automatique expiré</AlertDialogTitle>
             <AlertDialogDescription>
-              Le délai par défaut pour ce remplacement est déjà passé. Les pompiers ne pourront pas postuler à moins que
-              vous définissiez un nouveau délai.
+              Le délai automatique pour ce remplacement est déjà expiré.
               <br />
               <br />
-              Voulez-vous quand même approuver cette demande ?
+              Veuillez recommencer en spécifiant un délai personnalisé qui n'est pas expiré.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={handleCancelApproval}>
-              Annuler
-            </Button>
-            <AlertDialogAction onClick={executeApproval} disabled={processingId === selectedRequestId}>
-              {processingId === selectedRequestId ? "Approbation..." : "Approuver quand même"}
-            </AlertDialogAction>
+            <AlertDialogCancel onClick={handleCancelApproval}>
+              Fermer
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

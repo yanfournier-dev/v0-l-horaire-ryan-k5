@@ -898,7 +898,12 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
       deadlineDuration = Math.max(1, Math.floor(deadlineSeconds / 60))
     } else {
       const autoDeadline = calculateAutoDeadline(shiftDate)
+      console.log("[v0] approveReplacementRequest - shiftDate:", shiftDate)
+      console.log("[v0] approveReplacementRequest - autoDeadline (local):", autoDeadline)
+      console.log("[v0] approveReplacementRequest - autoDeadline.toString():", autoDeadline.toString())
+      console.log("[v0] approveReplacementRequest - autoDeadline.toISOString():", autoDeadline.toISOString())
       applicationDeadline = autoDeadline.toISOString()
+      console.log("[v0] approveReplacementRequest - applicationDeadline stored:", applicationDeadline)
       deadlineDuration = null
     }
 
