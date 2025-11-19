@@ -94,7 +94,7 @@ export function CalendarView({
 
       const newReplacementMap = { ...replacementMap }
       data.replacements.forEach((repl: any) => {
-        const dateOnly = formatDateForDB(new Date(repl.shift_date))
+        const dateOnly = formatLocalDate(repl.shift_date)
         const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
         if (!newReplacementMap[key]) {
           newReplacementMap[key] = []
@@ -105,14 +105,14 @@ export function CalendarView({
 
       const newExchangeMap = { ...exchangeMap }
       data.exchanges.forEach((exchange: any) => {
-        const requesterDateOnly = formatDateForDB(new Date(exchange.requester_shift_date))
+        const requesterDateOnly = formatLocalDate(exchange.requester_shift_date)
         const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
         if (!newExchangeMap[requesterKey]) {
           newExchangeMap[requesterKey] = []
         }
         newExchangeMap[requesterKey].push({ ...exchange, type: "requester" })
 
-        const targetDateOnly = formatDateForDB(new Date(exchange.target_shift_date))
+        const targetDateOnly = formatLocalDate(exchange.target_shift_date)
         const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
         if (!newExchangeMap[targetKey]) {
           newExchangeMap[targetKey] = []
@@ -139,7 +139,7 @@ export function CalendarView({
 
       const newNoteMap = { ...noteMap }
       data.shiftNotes.forEach((note: any) => {
-        const dateOnly = formatDateForDB(new Date(note.shift_date))
+        const dateOnly = formatLocalDate(note.shift_date)
         const key = `${note.shift_id}_${dateOnly}`
         newNoteMap[key] = true
       })
@@ -188,7 +188,7 @@ export function CalendarView({
 
       const newReplacementMap = { ...replacementMap }
       data.replacements.forEach((repl: any) => {
-        const dateOnly = formatDateForDB(new Date(repl.shift_date))
+        const dateOnly = formatLocalDate(repl.shift_date)
         const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
         if (!newReplacementMap[key]) {
           newReplacementMap[key] = []
@@ -199,14 +199,14 @@ export function CalendarView({
 
       const newExchangeMap = { ...exchangeMap }
       data.exchanges.forEach((exchange: any) => {
-        const requesterDateOnly = formatDateForDB(new Date(exchange.requester_shift_date))
+        const requesterDateOnly = formatLocalDate(exchange.requester_shift_date)
         const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
         if (!newExchangeMap[requesterKey]) {
           newExchangeMap[requesterKey] = []
         }
         newExchangeMap[requesterKey].push({ ...exchange, type: "requester" })
 
-        const targetDateOnly = formatDateForDB(new Date(exchange.target_shift_date))
+        const targetDateOnly = formatLocalDate(exchange.target_shift_date)
         const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
         if (!newExchangeMap[targetKey]) {
           newExchangeMap[targetKey] = []
@@ -233,7 +233,7 @@ export function CalendarView({
 
       const newNoteMap = { ...noteMap }
       data.shiftNotes.forEach((note: any) => {
-        const dateOnly = formatDateForDB(new Date(note.shift_date))
+        const dateOnly = formatLocalDate(note.shift_date)
         const key = `${note.shift_id}_${dateOnly}`
         newNoteMap[key] = true
       })
