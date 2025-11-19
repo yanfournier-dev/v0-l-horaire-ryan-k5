@@ -76,9 +76,9 @@ export async function getRecentReplacements() {
 
     return replacements
   } catch (error) {
-    console.error("[v0] getRecentReplacements: Error", error instanceof Error ? error.message : String(error))
+    console.error("getRecentReplacements: Error", error instanceof Error ? error.message : String(error))
     if (error instanceof Error && error.message.includes("Too Many")) {
-      console.error("[v0] getRecentReplacements: Rate limiting detected - too many requests")
+      console.error("getRecentReplacements: Rate limiting detected - too many requests")
     }
     return []
   }
@@ -111,9 +111,9 @@ export async function getAllReplacements() {
 
     return replacements
   } catch (error) {
-    console.error("[v0] getAllReplacements: Error", error instanceof Error ? error.message : String(error))
+    console.error("getAllReplacements: Error", error instanceof Error ? error.message : String(error))
     if (error instanceof Error && error.message.includes("Too Many")) {
-      console.error("[v0] getAllReplacements: Rate limiting detected - too many requests")
+      console.error("getAllReplacements: Rate limiting detected - too many requests")
     }
     return []
   }
@@ -148,7 +148,7 @@ export async function getPendingReplacementRequests() {
 
     return requests
   } catch (error) {
-    console.error("[v0] getPendingReplacementRequests: Error", error)
+    console.error("getPendingReplacementRequests: Error", error)
     return []
   }
 }
@@ -181,7 +181,7 @@ export async function getUserReplacementRequests(userId: number) {
 
     return requests
   } catch (error) {
-    console.error("[v0] getUserReplacementRequests: Error", error)
+    console.error("getUserReplacementRequests: Error", error)
     return []
   }
 }
@@ -194,7 +194,7 @@ export async function createReplacementFromShift(
   isPartial = false,
   startTime?: string,
   endTime?: string,
-  deadlineSeconds?: number,
+  deadlineSeconds?: number | string | Date,
 ) {
   const user = await getSession()
   if (!user?.is_admin) {
@@ -202,25 +202,37 @@ export async function createReplacementFromShift(
   }
 
   try {
-    console.log("[v0] createReplacementFromShift - START")
-    console.log("[v0] createReplacementFromShift - shiftDate:", shiftDate)
-    console.log("[v0] createReplacementFromShift - deadlineSeconds:", deadlineSeconds)
-    
     let applicationDeadline = null
     let deadlineDuration = null
 
-    if (deadlineSeconds && deadlineSeconds > 0) {
-      const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
-      applicationDeadline = new Date(deadlineTimestamp).toISOString()
-      deadlineDuration = Math.max(1, Math.floor(deadlineSeconds / 60))
-      console.log("[v0] createReplacementFromShift - Using custom deadline:", applicationDeadline)
+    if (deadlineSeconds) {
+      let deadlineValue: string
+      
+      if (typeof deadlineSeconds === 'object' && deadlineSeconds !== null && deadlineSeconds.toISOString) {
+        deadlineValue = deadlineSeconds.toISOString()
+      } else if (typeof deadlineSeconds === 'string') {
+        deadlineValue = deadlineSeconds
+      } else {
+        deadlineValue = String(deadlineSeconds)
+      }
+      
+      const isISOString = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(deadlineValue)
+      
+      if (isISOString) {
+        applicationDeadline = deadlineValue
+        deadlineDuration = null
+      } else if (!isNaN(Number(deadlineValue)) && Number(deadlineValue) > 0) {
+        const deadlineTimestamp = Date.now() + Number(deadlineValue) * 1000
+        applicationDeadline = new Date(deadlineTimestamp).toISOString()
+        deadlineDuration = Math.max(1, Math.floor(Number(deadlineValue) / 60))
+      } else {
+        const autoDeadline = calculateAutoDeadline(shiftDate)
+        applicationDeadline = autoDeadline.toISOString()
+        deadlineDuration = null
+      }
     } else {
       const autoDeadline = calculateAutoDeadline(shiftDate)
-      console.log("[v0] createReplacementFromShift - autoDeadline (local object):", autoDeadline)
-      console.log("[v0] createReplacementFromShift - autoDeadline.toString():", autoDeadline.toString())
-      console.log("[v0] createReplacementFromShift - autoDeadline.toISOString():", autoDeadline.toISOString())
       applicationDeadline = autoDeadline.toISOString()
-      console.log("[v0] createReplacementFromShift - applicationDeadline stored in DB:", applicationDeadline)
       deadlineDuration = null
     }
 
@@ -238,7 +250,6 @@ export async function createReplacementFromShift(
     `
 
     const replacementId = result[0].id
-    console.log("[v0] createReplacementFromShift - Created replacement ID:", replacementId)
 
     const firefighterInfo = await sql`
       SELECT first_name, last_name FROM users WHERE id = ${userId}
@@ -261,8 +272,6 @@ export async function createReplacementFromShift(
         )
     `
 
-    console.log("[v0] Sending notifications to", eligibleUsers.length, "eligible users")
-
     // Create in-app notifications for all eligible users
     if (eligibleUsers.length > 0) {
       const userIds = eligibleUsers.map((u) => u.id)
@@ -274,17 +283,14 @@ export async function createReplacementFromShift(
         replacementId,
         "replacement",
       ).catch((error) => {
-        console.error("[v0] Background notification creation failed:", error)
+        console.error("Background notification creation failed:", error)
       })
     }
 
     if (process.env.VERCEL_ENV === "production") {
-      console.log("[v0] PRODUCTION: Attempting to send batch emails for replacement", replacementId)
       sendBatchReplacementEmails(replacementId, firefighterToReplaceName).catch((error) => {
-        console.error("[v0] PRODUCTION: Batch email sending failed:", error)
+        console.error("PRODUCTION: Batch email sending failed:", error)
       })
-    } else {
-      console.log("[v0] V0 PREVIEW: Skipping batch emails")
     }
 
     try {
@@ -353,12 +359,12 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] applyForReplacement: Error", error)
+    console.error("applyForReplacement: Error", error)
     return { error: "Erreur lors de la candidature" }
   }
 }
@@ -379,12 +385,12 @@ export async function withdrawApplication(applicationId: number) {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] withdrawApplication: Error", error)
+    console.error("withdrawApplication: Error", error)
     return { error: "Erreur lors du retrait de la candidature" }
   }
 }
@@ -510,7 +516,7 @@ export async function approveApplication(applicationId: number, replacementId: n
     await createNotification(
       applicantId,
       "Remplacement assigné",
-      `Vous avez été assigné au remplacement du ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"})`,
+      `Vous avez été assigné au remplacement du ${formatLocalDate(shiftDate)} (${shiftType === "day" ? "Jour" : "Nuit"})`,
       "application_approved",
       replacementId,
       "replacement",
@@ -520,12 +526,12 @@ export async function approveApplication(applicationId: number, replacementId: n
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true, shiftId }
   } catch (error) {
-    console.error("[v0] approveApplication: Error", error)
+    console.error("approveApplication: Error", error)
     return { error: "Erreur lors de l'assignation" }
   }
 }
@@ -566,12 +572,12 @@ export async function rejectApplication(applicationId: number) {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] rejectApplication: Error", error)
+    console.error("rejectApplication: Error", error)
     return { error: "Erreur lors du rejet" }
   }
 }
@@ -634,12 +640,12 @@ export async function deleteReplacement(replacementId: number) {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] deleteReplacement - Error invalidating cache:", cacheError)
+      console.error("deleteReplacement - Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] deleteReplacement: Error", error)
+    console.error("deleteReplacement: Error", error)
     return { error: "Erreur lors de la suppression" }
   }
 }
@@ -682,7 +688,7 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
       applications: r.applications || [],
     }))
   } catch (error) {
-    console.error("[v0] getReplacementsForShift: Error", error)
+    console.error("getReplacementsForShift: Error", error)
     return []
   }
 }
@@ -694,7 +700,7 @@ export async function createExtraFirefighterReplacement(
   isPartial = false,
   startTime?: string,
   endTime?: string,
-  deadlineSeconds?: number,
+  deadlineSeconds?: number | string | Date,
 ) {
   const user = await getSession()
   if (!user?.is_admin) {
@@ -705,10 +711,31 @@ export async function createExtraFirefighterReplacement(
     let applicationDeadline = null
     let deadlineDuration = null
 
-    if (deadlineSeconds && deadlineSeconds > 0) {
-      const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
-      applicationDeadline = new Date(deadlineTimestamp).toISOString()
-      deadlineDuration = Math.max(1, Math.floor(deadlineSeconds / 60))
+    if (deadlineSeconds) {
+      let deadlineValue: string
+      
+      if (typeof deadlineSeconds === 'object' && deadlineSeconds !== null && deadlineSeconds.toISOString) {
+        deadlineValue = deadlineSeconds.toISOString()
+      } else if (typeof deadlineSeconds === 'string') {
+        deadlineValue = deadlineSeconds
+      } else {
+        deadlineValue = String(deadlineSeconds)
+      }
+      
+      const isISOString = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(deadlineValue)
+      
+      if (isISOString) {
+        applicationDeadline = deadlineValue
+        deadlineDuration = null
+      } else if (!isNaN(Number(deadlineValue)) && Number(deadlineValue) > 0) {
+        const deadlineTimestamp = Date.now() + Number(deadlineValue) * 1000
+        applicationDeadline = new Date(deadlineTimestamp).toISOString()
+        deadlineDuration = Math.max(1, Math.floor(Number(deadlineValue) / 60))
+      } else {
+        const autoDeadline = calculateAutoDeadline(shiftDate)
+        applicationDeadline = autoDeadline.toISOString()
+        deadlineDuration = null
+      }
     } else {
       const autoDeadline = calculateAutoDeadline(shiftDate)
       applicationDeadline = autoDeadline.toISOString()
@@ -746,8 +773,6 @@ export async function createExtraFirefighterReplacement(
         )
     `
 
-    console.log("[v0] Sending notifications to", eligibleUsers.length, "eligible users")
-
     // Create in-app notifications for all eligible users
     if (eligibleUsers.length > 0) {
       const userIds = eligibleUsers.map((u) => u.id)
@@ -759,29 +784,26 @@ export async function createExtraFirefighterReplacement(
         replacementId,
         "replacement",
       ).catch((error) => {
-        console.error("[v0] Background notification creation failed:", error)
+        console.error("Background notification creation failed:", error)
       })
     }
 
     if (process.env.VERCEL_ENV === "production") {
-      console.log("[v0] PRODUCTION: Attempting to send batch emails for replacement", replacementId)
       sendBatchReplacementEmails(replacementId, firefighterToReplaceName).catch((error) => {
-        console.error("[v0] PRODUCTION: Batch email sending failed:", error)
+        console.error("PRODUCTION: Batch email sending failed:", error)
       })
-    } else {
-      console.log("[v0] V0 PREVIEW: Skipping batch emails")
     }
 
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true, id: replacementId }
   } catch (error) {
-    console.error("[v0] createExtraFirefighterReplacement: Error", error)
+    console.error("createExtraFirefighterReplacement: Error", error)
     return { error: "Erreur lors de la création de la demande" }
   }
 }
@@ -836,12 +858,12 @@ export async function updateReplacementAssignment(replacementId: number, assigne
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] updateReplacementAssignment: Error", error)
+    console.error("updateReplacementAssignment: Error", error)
     return { error: "Erreur lors de la mise à jour" }
   }
 }
@@ -853,7 +875,7 @@ export async function getAvailableFirefighters(replacementId: number) {
     `
 
     if (replacement.length === 0) {
-      console.error("[v0] getAvailableFirefighters: Replacement not found")
+      console.error("getAvailableFirefighters: Replacement not found")
       return []
     }
 
@@ -879,12 +901,12 @@ export async function getAvailableFirefighters(replacementId: number) {
 
     return firefighters
   } catch (error) {
-    console.error("[v0] getAvailableFirefighters: Error", error)
+    console.error("getAvailableFirefighters: Error", error)
     return []
   }
 }
 
-export async function approveReplacementRequest(replacementId: number, deadlineSeconds?: number) {
+export async function approveReplacementRequest(replacementId: number, deadlineSeconds?: number | string | Date) {
   const user = await getSession()
   if (!user?.is_admin) {
     return { error: "Non autorisé" }
@@ -904,18 +926,34 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
     let applicationDeadline = null
     let deadlineDuration = null
 
-    if (deadlineSeconds && deadlineSeconds > 0) {
-      const deadlineTimestamp = Date.now() + deadlineSeconds * 1000
-      applicationDeadline = new Date(deadlineTimestamp).toISOString()
-      deadlineDuration = Math.max(1, Math.floor(deadlineSeconds / 60))
+    if (deadlineSeconds) {
+      let deadlineValue: string
+      
+      if (typeof deadlineSeconds === 'object' && deadlineSeconds !== null && deadlineSeconds.toISOString) {
+        deadlineValue = deadlineSeconds.toISOString()
+      } else if (typeof deadlineSeconds === 'string') {
+        deadlineValue = deadlineSeconds
+      } else {
+        deadlineValue = String(deadlineSeconds)
+      }
+      
+      const isISOString = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(deadlineValue)
+      
+      if (isISOString) {
+        applicationDeadline = deadlineValue
+        deadlineDuration = null
+      } else if (!isNaN(Number(deadlineValue)) && Number(deadlineValue) > 0) {
+        const deadlineTimestamp = Date.now() + Number(deadlineValue) * 1000
+        applicationDeadline = new Date(deadlineTimestamp).toISOString()
+        deadlineDuration = Math.max(1, Math.floor(Number(deadlineValue) / 60))
+      } else {
+        const autoDeadline = calculateAutoDeadline(shiftDate)
+        applicationDeadline = autoDeadline.toISOString()
+        deadlineDuration = null
+      }
     } else {
       const autoDeadline = calculateAutoDeadline(shiftDate)
-      console.log("[v0] approveReplacementRequest - shiftDate:", shiftDate)
-      console.log("[v0] approveReplacementRequest - autoDeadline (local):", autoDeadline)
-      console.log("[v0] approveReplacementRequest - autoDeadline.toString():", autoDeadline.toString())
-      console.log("[v0] approveReplacementRequest - autoDeadline.toISOString():", autoDeadline.toISOString())
       applicationDeadline = autoDeadline.toISOString()
-      console.log("[v0] approveReplacementRequest - applicationDeadline stored:", applicationDeadline)
       deadlineDuration = null
     }
 
@@ -931,12 +969,12 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] approveReplacementRequest: Error", error)
+    console.error("approveReplacementRequest: Error", error)
     return { error: "Erreur lors de l'approbation" }
   }
 }
@@ -958,12 +996,12 @@ export async function rejectReplacementRequest(replacementId: number) {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] rejectReplacementRequest: Error", error)
+    console.error("rejectReplacementRequest: Error", error)
     return { error: "Erreur lors du rejet" }
   }
 }
@@ -1000,12 +1038,12 @@ export async function requestReplacement(
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] requestReplacement: Error", error)
+    console.error("requestReplacement: Error", error)
     return { error: "Erreur lors de la demande de remplacement" }
   }
 }
@@ -1093,12 +1131,12 @@ export async function removeReplacementAssignment(replacementId: number) {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] removeReplacementAssignment: Error", error)
+    console.error("removeReplacementAssignment: Error", error)
     return { error: "Erreur lors du retrait de l'assignation" }
   }
 }
@@ -1142,9 +1180,9 @@ export async function getExpiredReplacements() {
 
     return replacements
   } catch (error) {
-    console.error("[v0] getExpiredReplacements: Error", error instanceof Error ? error.message : String(error))
+    console.error("getExpiredReplacements: Error", error instanceof Error ? error.message : String(error))
     if (error instanceof Error && error.message.includes("Too Many")) {
-      console.error("[v0] getExpiredReplacements: Rate limiting detected - too many requests")
+      console.error("getExpiredReplacements: Rate limiting detected - too many requests")
     }
     return []
   }
@@ -1186,12 +1224,12 @@ export async function reactivateApplication(applicationId: number) {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.error("[v0] Error invalidating cache:", cacheError)
+      console.error("Error invalidating cache:", cacheError)
     }
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] reactivateApplication: Error", error)
+    console.error("reactivateApplication: Error", error)
     return { error: "Erreur lors de la réactivation" }
   }
 }
