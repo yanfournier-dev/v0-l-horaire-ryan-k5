@@ -2,6 +2,8 @@
 
 import { sql, invalidateCache } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
+import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
+import { revalidatePath } from "next/cache"
 
 export async function getCycleConfig() {
   try {
@@ -761,5 +763,33 @@ export async function getShiftNotesForDate(shiftId: number, date: string) {
   } catch (error) {
     console.error("[v0] getShiftNotesForDate: Query failed", error)
     return false
+  }
+}
+
+export async function getCalendarDataForDateRange(startDate: string, endDate: string) {
+  const [replacements, exchanges, leaves, shiftNotes] = await Promise.all([
+    getReplacementsForDateRange(startDate, endDate),
+    getExchangesForDateRange(startDate, endDate),
+    getLeavesForDateRange(startDate, endDate),
+    getShiftNotesForDateRange(startDate, endDate),
+  ])
+
+  return {
+    replacements,
+    exchanges,
+    leaves,
+    shiftNotes,
+  }
+}
+
+export async function revalidateCalendar() {
+  "use server"
+  try {
+    revalidatePath("/dashboard/calendar")
+    invalidateCache()
+    return { success: true }
+  } catch (error) {
+    console.error("Error revalidating calendar cache:", error)
+    return { error: "Failed to revalidate cache" }
   }
 }

@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react"
 import { CalendarCell } from "@/components/calendar-cell"
 import { Button } from "@/components/ui/button"
-import { ChevronUp, ChevronDown } from "lucide-react"
+import { ChevronUp, ChevronDown } from 'lucide-react'
 import { generateMonthView, getMonthName } from "@/lib/calendar"
-import { getCurrentLocalDate, formatLocalDate } from "@/lib/date-utils"
+import { getCurrentLocalDate, formatLocalDate, formatDateForDB } from "@/lib/date-utils"
+import { getCalendarDataForDateRange } from "@/app/actions/calendar"
 
 interface CalendarViewProps {
   initialMonths: Array<{
@@ -28,17 +29,23 @@ interface CalendarViewProps {
 export function CalendarView({
   initialMonths,
   shiftsByCycleDay,
-  replacementMap,
-  exchangeMap,
-  leaves,
-  leaveMap,
-  noteMap, // Destructure noteMap
+  replacementMap: initialReplacementMap,
+  exchangeMap: initialExchangeMap,
+  leaves: initialLeaves,
+  leaveMap: initialLeaveMap,
+  noteMap: initialNoteMap,
   isAdmin,
   cycleStartDate,
   currentYear,
   currentMonth,
 }: CalendarViewProps) {
   const [months, setMonths] = useState(initialMonths)
+  const [replacementMap, setReplacementMap] = useState(initialReplacementMap)
+  const [exchangeMap, setExchangeMap] = useState(initialExchangeMap)
+  const [leaves, setLeaves] = useState(initialLeaves)
+  const [leaveMap, setLeaveMap] = useState(initialLeaveMap)
+  const [noteMap, setNoteMap] = useState(initialNoteMap)
+  const [loading, setLoading] = useState(false)
   const scrollAnchorRef = useRef<string | null>(null)
 
   const todayStr = getCurrentLocalDate()
@@ -60,7 +67,8 @@ export function CalendarView({
     }
   }, []) // Empty dependency array - run only once on mount
 
-  const loadPreviousMonths = () => {
+  const loadPreviousMonths = async () => {
+    setLoading(true)
     const firstMonth = months[0]
     scrollAnchorRef.current = `month-${firstMonth.year}-${firstMonth.month}`
 
@@ -78,7 +86,68 @@ export function CalendarView({
       })
     }
 
+    const firstDay = newMonths[0].days[0]?.date
+    const lastDay = newMonths[newMonths.length - 1].days[newMonths[newMonths.length - 1].days.length - 1]?.date
+
+    if (firstDay && lastDay) {
+      const data = await getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
+
+      const newReplacementMap = { ...replacementMap }
+      data.replacements.forEach((repl: any) => {
+        const dateOnly = formatDateForDB(new Date(repl.shift_date))
+        const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
+        if (!newReplacementMap[key]) {
+          newReplacementMap[key] = []
+        }
+        newReplacementMap[key].push(repl)
+      })
+      setReplacementMap(newReplacementMap)
+
+      const newExchangeMap = { ...exchangeMap }
+      data.exchanges.forEach((exchange: any) => {
+        const requesterDateOnly = formatDateForDB(new Date(exchange.requester_shift_date))
+        const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
+        if (!newExchangeMap[requesterKey]) {
+          newExchangeMap[requesterKey] = []
+        }
+        newExchangeMap[requesterKey].push({ ...exchange, type: "requester" })
+
+        const targetDateOnly = formatDateForDB(new Date(exchange.target_shift_date))
+        const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
+        if (!newExchangeMap[targetKey]) {
+          newExchangeMap[targetKey] = []
+        }
+        newExchangeMap[targetKey].push({ ...exchange, type: "target" })
+      })
+      setExchangeMap(newExchangeMap)
+
+      const newLeaveMap = { ...leaveMap }
+      data.leaves.forEach((leave: any) => {
+        const startDate = new Date(leave.start_date)
+        const endDate = new Date(leave.end_date)
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          const dateStr = formatDateForDB(d)
+          const key = `${dateStr}_${leave.user_id}`
+          if (!newLeaveMap[key]) {
+            newLeaveMap[key] = []
+          }
+          newLeaveMap[key].push(leave)
+        }
+      })
+      setLeaveMap(newLeaveMap)
+      setLeaves([...leaves, ...data.leaves])
+
+      const newNoteMap = { ...noteMap }
+      data.shiftNotes.forEach((note: any) => {
+        const dateOnly = formatDateForDB(new Date(note.shift_date))
+        const key = `${note.shift_id}_${dateOnly}`
+        newNoteMap[key] = true
+      })
+      setNoteMap(newNoteMap)
+    }
+
     setMonths([...newMonths, ...months])
+    setLoading(false)
 
     setTimeout(() => {
       if (scrollAnchorRef.current) {
@@ -94,7 +163,8 @@ export function CalendarView({
     }, 50)
   }
 
-  const loadNextMonths = () => {
+  const loadNextMonths = async () => {
+    setLoading(true)
     const lastMonth = months[months.length - 1]
     const newMonths = []
 
@@ -110,15 +180,76 @@ export function CalendarView({
       })
     }
 
+    const firstDay = newMonths[0].days[0]?.date
+    const lastDay = newMonths[newMonths.length - 1].days[newMonths[newMonths.length - 1].days.length - 1]?.date
+
+    if (firstDay && lastDay) {
+      const data = await getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
+
+      const newReplacementMap = { ...replacementMap }
+      data.replacements.forEach((repl: any) => {
+        const dateOnly = formatDateForDB(new Date(repl.shift_date))
+        const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
+        if (!newReplacementMap[key]) {
+          newReplacementMap[key] = []
+        }
+        newReplacementMap[key].push(repl)
+      })
+      setReplacementMap(newReplacementMap)
+
+      const newExchangeMap = { ...exchangeMap }
+      data.exchanges.forEach((exchange: any) => {
+        const requesterDateOnly = formatDateForDB(new Date(exchange.requester_shift_date))
+        const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
+        if (!newExchangeMap[requesterKey]) {
+          newExchangeMap[requesterKey] = []
+        }
+        newExchangeMap[requesterKey].push({ ...exchange, type: "requester" })
+
+        const targetDateOnly = formatDateForDB(new Date(exchange.target_shift_date))
+        const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
+        if (!newExchangeMap[targetKey]) {
+          newExchangeMap[targetKey] = []
+        }
+        newExchangeMap[targetKey].push({ ...exchange, type: "target" })
+      })
+      setExchangeMap(newExchangeMap)
+
+      const newLeaveMap = { ...leaveMap }
+      data.leaves.forEach((leave: any) => {
+        const startDate = new Date(leave.start_date)
+        const endDate = new Date(leave.end_date)
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          const dateStr = formatDateForDB(d)
+          const key = `${dateStr}_${leave.user_id}`
+          if (!newLeaveMap[key]) {
+            newLeaveMap[key] = []
+          }
+          newLeaveMap[key].push(leave)
+        }
+      })
+      setLeaveMap(newLeaveMap)
+      setLeaves([...leaves, ...data.leaves])
+
+      const newNoteMap = { ...noteMap }
+      data.shiftNotes.forEach((note: any) => {
+        const dateOnly = formatDateForDB(new Date(note.shift_date))
+        const key = `${note.shift_id}_${dateOnly}`
+        newNoteMap[key] = true
+      })
+      setNoteMap(newNoteMap)
+    }
+
     setMonths([...months, ...newMonths])
+    setLoading(false)
   }
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-center">
-        <Button onClick={loadPreviousMonths} variant="outline" className="gap-2 bg-transparent">
+        <Button onClick={loadPreviousMonths} variant="outline" className="gap-2 bg-transparent" disabled={loading}>
           <ChevronUp className="h-4 w-4" />
-          Charger les mois précédents
+          {loading ? "Chargement..." : "Charger les mois précédents"}
         </Button>
       </div>
 
@@ -186,8 +317,8 @@ export function CalendarView({
       })}
 
       <div className="flex justify-center">
-        <Button onClick={loadNextMonths} variant="outline" className="gap-2 bg-transparent">
-          Charger les mois suivants
+        <Button onClick={loadNextMonths} variant="outline" className="gap-2 bg-transparent" disabled={loading}>
+          {loading ? "Chargement..." : "Charger les mois suivants"}
           <ChevronDown className="h-4 w-4" />
         </Button>
       </div>
