@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams } from 'next/navigation'
 import { getCurrentLocalDate } from "@/lib/date-utils"
 
 export function ScrollToTodayOnNav() {
@@ -9,6 +9,13 @@ export function ScrollToTodayOnNav() {
   const lastProcessedParamRef = useRef<string | null>(null)
 
   useEffect(() => {
+    const skipFlag = sessionStorage.getItem('skip-scroll-to-today')
+    if (skipFlag === 'true') {
+      console.log("[v0] ScrollToTodayOnNav - skipping due to skip flag")
+      sessionStorage.removeItem('skip-scroll-to-today')
+      return
+    }
+    
     const shouldScroll = searchParams.get("scrollToToday")
     const currentParamValue = searchParams.toString()
 

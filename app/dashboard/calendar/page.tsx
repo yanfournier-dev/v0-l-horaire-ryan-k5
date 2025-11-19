@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { CalendarView } from "@/components/calendar-view"
 import { TodayButton } from "@/components/today-button"
-import { PreserveScroll } from "@/components/preserve-scroll"
 import { ScrollToTodayOnNav } from "@/components/scroll-to-today-on-nav"
 
 export const dynamic = "force-dynamic"
@@ -163,7 +162,6 @@ export default async function CalendarPage({
 
     return (
       <div className="p-4 md:p-6">
-        <PreserveScroll />
         <ScrollToTodayOnNav />
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

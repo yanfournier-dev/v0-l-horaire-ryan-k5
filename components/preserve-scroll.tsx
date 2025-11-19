@@ -4,6 +4,8 @@ import { useEffect } from "react"
 
 export function PreserveScroll() {
   useEffect(() => {
+    if (typeof window === "undefined") return
+
     console.log("[v0] PreserveScroll mounted")
 
     const saveScroll = () => {
@@ -32,12 +34,24 @@ export function PreserveScroll() {
 
       if (savedScroll > 100 && currentScroll < 50) {
         console.log("[v0] PreserveScroll - restoring scroll to:", savedScroll)
-        window.scrollTo(0, savedScroll)
+        
+        const restoreScroll = () => {
+          window.scrollTo(0, savedScroll)
+        }
+
+        // Immediate attempt
+        restoreScroll()
+        
+        // Additional attempts with delays to ensure restoration sticks
+        requestAnimationFrame(restoreScroll)
+        setTimeout(restoreScroll, 50)
+        setTimeout(restoreScroll, 100)
+        setTimeout(restoreScroll, 200)
 
         // Verify restoration
         setTimeout(() => {
           console.log("[v0] PreserveScroll - scroll after restore:", window.scrollY)
-        }, 50)
+        }, 250)
       }
     })
 

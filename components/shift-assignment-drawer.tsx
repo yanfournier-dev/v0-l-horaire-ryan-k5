@@ -116,8 +116,8 @@ export function ShiftAssignmentDrawer({
   isAdmin = false,
   currentUserId,
 }: ShiftAssignmentDrawerProps) {
-  const router = useRouter()
-  const scrollPositionRef = useRef<number>(0)
+  // const router = useRouter()
+
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
     id: number
@@ -162,27 +162,11 @@ export function ShiftAssignmentDrawer({
     }
   }, [open, shift, teamFirefighters, currentAssignments])
 
-  useEffect(() => {
-    if (open) {
-      const savedScrollPosition = sessionStorage.getItem("scroll-position")
-      if (savedScrollPosition) {
-        window.scrollTo(0, Number.parseInt(savedScrollPosition, 10))
-        sessionStorage.removeItem("scroll-position")
-      }
-      scrollPositionRef.current = window.scrollY
-    }
-  }, [open])
 
   const refreshAndClose = useCallback(() => {
-    const position = window.scrollY
-    if (position > 0) {
-      sessionStorage.setItem("calendar-scroll-position", position.toString())
-    }
-    onOpenChange(false)
-
-    // Use router.refresh() to reload server data without losing scroll position
-    router.refresh()
-  }, [onOpenChange, router])
+  // Just close the drawer
+  onOpenChange(false)
+}, [onOpenChange])
 
   useEffect(() => {
     if (open) {
@@ -260,7 +244,7 @@ export function ShiftAssignmentDrawer({
         const assignmentResult = await fetch("/api/get-shift-assignment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: JSON.JSON.stringify({
             shiftId: shift.id,
             userId: approvedApp.applicant_id,
           }),
@@ -289,6 +273,13 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleCreateReplacement = async () => {
+    if (typeof window !== 'undefined') {
+      const scrollPos = window.scrollY
+      console.log('[v0] Drawer - saving scroll at start of handleCreateReplacement:', scrollPos)
+      sessionStorage.setItem('calendar-scroll-position', scrollPos.toString())
+      sessionStorage.setItem('skip-scroll-to-today', 'true')
+    }
+
     if (!selectedFirefighter || isLoading) return
 
     if (isPartial && startTime >= endTime) {

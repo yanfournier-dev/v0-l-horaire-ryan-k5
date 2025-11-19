@@ -51,21 +51,74 @@ export function CalendarView({
   const todayStr = getCurrentLocalDate()
 
   useEffect(() => {
-    const hasScrolled = sessionStorage.getItem("calendar-scrolled-to-today")
-
-    if (!hasScrolled) {
-      setTimeout(() => {
-        const todayElement = document.getElementById(`day-${todayStr}`)
-        if (todayElement) {
-          todayElement.scrollIntoView({
-            behavior: "instant",
-            block: "center",
-          })
+    let pollInterval: NodeJS.Timeout | null = null
+    let restoreInterval: NodeJS.Timeout | null = null
+    let currentlyRestoring = false // Local flag to prevent duplicate processing
+    
+    const checkAndRestore = () => {
+      if (currentlyRestoring) {
+        return
+      }
+      
+      const skipFlag = sessionStorage.getItem("skip-scroll-to-today")
+      const savedScrollPosition = sessionStorage.getItem("calendar-scroll-position")
+      
+      if (skipFlag && savedScrollPosition) {
+        currentlyRestoring = true
+        
+        // Immediately consume BOTH flags
+        sessionStorage.removeItem("skip-scroll-to-today")
+        sessionStorage.removeItem("calendar-scroll-position")
+        
+        const scrollPos = Number.parseInt(savedScrollPosition, 10)
+        console.log('[v0] CalendarView - restoring scroll to:', scrollPos)
+        
+        for (let i = 0; i < 5; i++) {
+          setTimeout(() => {
+            window.scrollTo(0, scrollPos)
+          }, i * 10)
         }
-        sessionStorage.setItem("calendar-scrolled-to-today", "true")
-      }, 100)
+        
+        const startTime = Date.now()
+        let restoreCount = 0
+        
+        if (restoreInterval) {
+          clearInterval(restoreInterval)
+        }
+        
+        restoreInterval = setInterval(() => {
+          const elapsed = Date.now() - startTime
+          if (elapsed > 1000) {
+            if (restoreInterval) {
+              clearInterval(restoreInterval)
+              restoreInterval = null
+            }
+            console.log('[v0] CalendarView - scroll restoration complete after', restoreCount, 'corrections')
+            currentlyRestoring = false
+            return
+          }
+          
+          const currentScroll = window.scrollY
+          if (Math.abs(currentScroll - scrollPos) > 5) {
+            restoreCount++
+            window.scrollTo(0, scrollPos)
+          }
+        }, 10)
+      }
     }
-  }, []) // Empty dependency array - run only once on mount
+    
+    // Check immediately on mount
+    checkAndRestore()
+    
+    pollInterval = setInterval(() => {
+      checkAndRestore()
+    }, 100)
+    
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+      if (restoreInterval) clearInterval(restoreInterval)
+    }
+  }, []) // Empty deps - only setup once
 
   const loadPreviousMonths = async () => {
     setLoading(true)
