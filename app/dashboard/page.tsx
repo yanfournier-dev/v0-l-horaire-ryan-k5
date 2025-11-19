@@ -1,5 +1,5 @@
 import { getSession } from "@/app/actions/auth"
-import { redirect } from "next/navigation"
+import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { getUserLeaves } from "@/app/actions/leaves"
@@ -36,7 +36,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <Link href="/dashboard/calendar">
+        <Link href="/dashboard/calendar?scrollToToday=true" scroll={false}>
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
             <CardHeader>
               <CardTitle className="text-lg md:text-xl">Calendrier 28 jours</CardTitle>
