@@ -58,10 +58,6 @@ export function PendingExchangesTab({ exchanges }: PendingExchangesTabProps) {
       ) {
         return
       }
-    } else {
-      if (!confirm("Êtes-vous sûr de vouloir approuver cet échange?")) {
-        return
-      }
     }
 
     setProcessingId(exchangeId)

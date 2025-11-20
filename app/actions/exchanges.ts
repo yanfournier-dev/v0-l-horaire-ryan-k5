@@ -527,11 +527,6 @@ export async function approveExchange(exchangeId: number) {
         VALUES 
           (${exchange.target_id}, ${requesterShiftId}, false, ${exchange.is_partial}, ${exchange.requester_start_time || null}, ${exchange.requester_end_time || null}),
           (${exchange.requester_id}, ${targetShiftId}, false, ${exchange.is_partial}, ${exchange.target_start_time || null}, ${exchange.target_end_time || null})
-        ON CONFLICT (shift_id, user_id) DO UPDATE SET
-          is_extra = EXCLUDED.is_extra,
-          is_partial = EXCLUDED.is_partial,
-          start_time = EXCLUDED.start_time,
-          end_time = EXCLUDED.end_time
       `
 
       console.log("[v0] Created swapped assignments")
@@ -1061,11 +1056,6 @@ export async function createExchangeAsAdmin(data: {
           VALUES 
             (${data.targetId}, ${requesterShiftId}, false, ${data.isPartial}, ${data.requesterStartTime || null}, ${data.requesterEndTime || null}),
             (${data.requesterId}, ${targetShiftId}, false, ${data.isPartial}, ${data.targetStartTime || null}, ${data.targetEndTime || null})
-          ON CONFLICT (shift_id, user_id) DO UPDATE SET
-            is_extra = EXCLUDED.is_extra,
-            is_partial = EXCLUDED.is_partial,
-            start_time = EXCLUDED.start_time,
-            end_time = EXCLUDED.end_time
         `
 
         console.log("[v0] Created swapped assignments")
