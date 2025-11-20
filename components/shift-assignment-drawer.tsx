@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -34,9 +34,9 @@ import {
   removeDirectAssignment,
   removeReplacement, // Added import from direct-assignments
 } from "@/app/actions/direct-assignments"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
-import { UserPlus, Trash2, Users } from 'lucide-react'
+import { UserPlus, Trash2, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -116,7 +116,7 @@ export function ShiftAssignmentDrawer({
   isAdmin = false,
   currentUserId,
 }: ShiftAssignmentDrawerProps) {
-  // const router = useRouter()
+  const router = useRouter() // Added missing import
 
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
@@ -162,11 +162,10 @@ export function ShiftAssignmentDrawer({
     }
   }, [open, shift, teamFirefighters, currentAssignments])
 
-
   const refreshAndClose = useCallback(() => {
-  // Just close the drawer
-  onOpenChange(false)
-}, [onOpenChange])
+    // Just close the drawer
+    onOpenChange(false)
+  }, [onOpenChange])
 
   useEffect(() => {
     if (open) {
@@ -273,11 +272,11 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleCreateReplacement = async () => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const scrollPos = window.scrollY
-      console.log('[v0] Drawer - saving scroll at start of handleCreateReplacement:', scrollPos)
-      sessionStorage.setItem('calendar-scroll-position', scrollPos.toString())
-      sessionStorage.setItem('skip-scroll-to-today', 'true')
+      console.log("[v0] Drawer - saving scroll at start of handleCreateReplacement:", scrollPos)
+      sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
+      sessionStorage.setItem("skip-scroll-to-today", "true")
     }
 
     if (!selectedFirefighter || isLoading) return
@@ -319,6 +318,12 @@ export function ShiftAssignmentDrawer({
     }
 
     toast.success("Demande de remplacement créée avec succès")
+
+    if (typeof window !== "undefined") {
+      setTimeout(() => {
+        router.refresh()
+      }, 3500)
+    }
 
     const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
     setReplacements(data)
@@ -673,8 +678,8 @@ export function ShiftAssignmentDrawer({
     const posA = a.position_code || "pp999" // Changed fallback to pp999 for stable sort
     const posB = b.position_code || "pp999"
 
-    const numA = posA.match(/\d+/) ? parseInt(posA.match(/\d+/)[0]) : 999
-    const numB = posB.match(/\d+/) ? parseInt(posB.match(/\d+/)[0]) : 999
+    const numA = posA.match(/\d+/) ? Number.parseInt(posA.match(/\d+/)[0]) : 999
+    const numB = posB.match(/\d+/) ? Number.parseInt(posB.match(/\d+/)[0]) : 999
 
     return numA - numB
   })
@@ -912,8 +917,8 @@ export function ShiftAssignmentDrawer({
                                   {replacement1 && (
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
-                                        {replacement2 ? "Remplaçant 1" : "Remplaçant"}: {replacement1.first_name} {replacement1.last_name}
-
+                                        {replacement2 ? "Remplaçant 1" : "Remplaçant"}: {replacement1.first_name}{" "}
+                                        {replacement1.last_name}
                                         {(() => {
                                           // If there's no Replacement 2, show full shift or original times
                                           if (!replacement2) {
@@ -921,7 +926,8 @@ export function ShiftAssignmentDrawer({
                                               return (
                                                 <span>
                                                   {" "}
-                                                  ({replacement1.start_time.slice(0, 5)}-{replacement1.end_time.slice(0, 5)})
+                                                  ({replacement1.start_time.slice(0, 5)}-
+                                                  {replacement1.end_time.slice(0, 5)})
                                                 </span>
                                               )
                                             }
@@ -936,17 +942,32 @@ export function ShiftAssignmentDrawer({
 
                                           // Replacement 2 covers beginning of shift
                                           if (r2Start === shiftStart && r2End !== shiftEnd) {
-                                            return <span> ({r2End}-{shiftEnd})</span>
+                                            return (
+                                              <span>
+                                                {" "}
+                                                ({r2End}-{shiftEnd})
+                                              </span>
+                                            )
                                           }
 
                                           // Replacement 2 covers end of shift
                                           if (r2Start !== shiftStart && r2End === shiftEnd) {
-                                            return <span> ({shiftStart}-{r2Start})</span>
+                                            return (
+                                              <span>
+                                                {" "}
+                                                ({shiftStart}-{r2Start})
+                                              </span>
+                                            )
                                           }
 
                                           // Replacement 2 is in the middle - show two periods
                                           if (r2Start !== shiftStart && r2End !== shiftEnd) {
-                                            return <span> ({shiftStart}-{r2Start}) ET ({r2End}-{shiftEnd})</span>
+                                            return (
+                                              <span>
+                                                {" "}
+                                                ({shiftStart}-{r2Start}) ET ({r2End}-{shiftEnd})
+                                              </span>
+                                            )
                                           }
 
                                           // Replacement 2 covers full shift (shouldn't happen)
@@ -989,7 +1010,8 @@ export function ShiftAssignmentDrawer({
                                   {replacement2 && (
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
-                                        {replacement1 ? "Remplaçant 2" : "Remplaçant"}: {replacement2.first_name} {replacement2.last_name}
+                                        {replacement1 ? "Remplaçant 2" : "Remplaçant"}: {replacement2.first_name}{" "}
+                                        {replacement2.last_name}
                                         {replacement2.start_time && replacement2.end_time && (
                                           <span>
                                             {" "}
@@ -1348,11 +1370,13 @@ export function ShiftAssignmentDrawer({
                                           <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={() => setSelectedFirefighter({
-                                              id: assignment.user_id,
-                                              first_name: assignment.first_name,
-                                              last_name: assignment.last_name,
-                                            })}
+                                            onClick={() =>
+                                              setSelectedFirefighter({
+                                                id: assignment.user_id,
+                                                first_name: assignment.first_name,
+                                                last_name: assignment.last_name,
+                                              })
+                                            }
                                             disabled={isLoading || loadingReplacements}
                                             className="text-orange-600 hover:bg-orange-50"
                                           >
@@ -1518,16 +1542,16 @@ export function ShiftAssignmentDrawer({
 
       <AlertDialog
         open={!!selectedFirefighter && !showDeadlineWarning && !showDirectAssignmentDialog}
-            onOpenChange={(isOpen) => {
-              if (!isOpen) {
-                setSelectedFirefighter(null)
-                setIsPartial(false)
-                setDeadlineSeconds(null)
-                const times = getDefaultReplacementTimes(shift?.shift_type)
-                setStartTime(times.startTime)
-                setEndTime(times.endTime)
-              }
-            }}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setSelectedFirefighter(null)
+            setIsPartial(false)
+            setDeadlineSeconds(null)
+            const times = getDefaultReplacementTimes(shift?.shift_type)
+            setStartTime(times.startTime)
+            setEndTime(times.endTime)
+          }
+        }}
       >
         <AlertDialogContent
           onPointerDownOutside={(e) => e.preventDefault()}
