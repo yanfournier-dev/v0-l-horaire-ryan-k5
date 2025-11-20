@@ -319,12 +319,6 @@ export function ShiftAssignmentDrawer({
 
     toast.success("Demande de remplacement créée avec succès")
 
-    if (typeof window !== "undefined") {
-      setTimeout(() => {
-        router.refresh()
-      }, 3500)
-    }
-
     const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
     setReplacements(data)
 
