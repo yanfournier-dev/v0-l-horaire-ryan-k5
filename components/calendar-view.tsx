@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { CalendarCell } from "@/components/calendar-cell"
 import { Button } from "@/components/ui/button"
 import { ChevronUp, ChevronDown } from "lucide-react"
@@ -297,6 +297,36 @@ export function CalendarView({
     setLoading(false)
   }
 
+  const handleReplacementCreated = useCallback(async () => {
+    console.log("[v0] CalendarView - replacement created, reloading data")
+
+    // Get the first month date range
+    const firstMonth = months[0]
+    if (!firstMonth || !firstMonth.days.length) return
+
+    const firstDay = firstMonth.days[0].date
+    const lastMonth = months[months.length - 1]
+    const lastDay = lastMonth.days[lastMonth.days.length - 1].date
+
+    // Fetch new data
+    const data = await getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
+
+    // Build new replacement map
+    const newReplacementMap: Record<string, any[]> = {}
+    data.replacements.forEach((repl: any) => {
+      const dateOnly = formatLocalDate(repl.shift_date)
+      const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
+      if (!newReplacementMap[key]) {
+        newReplacementMap[key] = []
+      }
+      newReplacementMap[key].push(repl)
+    })
+
+    // Update state with new map (immutable update)
+    setReplacementMap(newReplacementMap)
+    console.log("[v0] CalendarView - replacement map updated")
+  }, [months])
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-center">
@@ -361,6 +391,7 @@ export function CalendarView({
                     leaveMap={leaveMap}
                     dateStr={dateStr}
                     isAdmin={isAdmin}
+                    onReplacementCreated={handleReplacementCreated} // Pass callback to each cell
                   />
                 )
               })}

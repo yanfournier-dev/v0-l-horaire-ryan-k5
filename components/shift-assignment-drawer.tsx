@@ -96,6 +96,7 @@ interface ShiftAssignmentDrawerProps {
   dateStr: string
   isAdmin?: boolean
   currentUserId?: number
+  onReplacementCreated?: () => void
 }
 
 function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
@@ -115,6 +116,7 @@ export function ShiftAssignmentDrawer({
   currentAssignments,
   isAdmin = false,
   currentUserId,
+  onReplacementCreated,
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter() // Added missing import
 
@@ -330,6 +332,10 @@ export function ShiftAssignmentDrawer({
     const times = getDefaultReplacementTimes(shift.shift_type)
     setStartTime(times.startTime)
     setEndTime(times.endTime)
+
+    if (onReplacementCreated) {
+      onReplacementCreated()
+    }
 
     refreshAndClose()
   }
