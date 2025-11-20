@@ -176,6 +176,9 @@ export function ApproveApplicationButton({
       setShowRoleSelectionDialog(false)
       setSelectedLieutenantId("")
       setSelectedCaptainId("")
+
+      const currentPath = window.location.pathname + window.location.search
+      router.push(currentPath)
       router.refresh()
     } else {
       toast.error(result.error || "Erreur lors de l'assignation")

@@ -151,39 +151,6 @@ export async function getPendingReplacementRequests() {
   }
 }
 
-export async function getUserReplacementRequests(userId: number) {
-  try {
-    const requests = await sql`
-      SELECT 
-        r.*,
-        t.name as team_name,
-        t.color as team_color,
-        replaced_user.first_name as first_name,
-        replaced_user.last_name as last_name,
-        replacement_user.first_name as assigned_first_name,
-        replacement_user.last_name as assigned_last_name,
-        l.start_date as leave_start_date,
-        l.end_date as leave_end_date
-      FROM replacements r
-      LEFT JOIN teams t ON r.team_id = t.id
-      LEFT JOIN leaves l ON r.leave_id = l.id
-      LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
-      LEFT JOIN replacement_applications ra_approved 
-        ON r.id = ra_approved.replacement_id 
-        AND ra_approved.status = 'approved'
-      LEFT JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
-      WHERE r.user_id = ${userId}
-        AND r.status != 'cancelled'
-      ORDER BY r.shift_date DESC, r.shift_type
-    `
-
-    return requests
-  } catch (error) {
-    console.error("getUserReplacementRequests: Error", error)
-    return []
-  }
-}
-
 export async function createReplacementFromShift(
   userId: number,
   shiftDate: string,
@@ -205,17 +172,17 @@ export async function createReplacementFromShift(
 
     if (deadlineSeconds) {
       let deadlineValue: string
-      
-      if (typeof deadlineSeconds === 'object' && deadlineSeconds !== null && deadlineSeconds.toISOString) {
+
+      if (typeof deadlineSeconds === "object" && deadlineSeconds !== null && deadlineSeconds.toISOString) {
         deadlineValue = deadlineSeconds.toISOString()
-      } else if (typeof deadlineSeconds === 'string') {
+      } else if (typeof deadlineSeconds === "string") {
         deadlineValue = deadlineSeconds
       } else {
         deadlineValue = String(deadlineSeconds)
       }
-      
+
       const isISOString = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(deadlineValue)
-      
+
       if (isISOString) {
         applicationDeadline = deadlineValue
         deadlineDuration = null
@@ -479,6 +446,14 @@ export async function approveApplication(applicationId: number, replacementId: n
       WHERE id = ${replacementId}
     `
 
+    // Delete any existing assignments first to avoid conflicts
+    await sql`
+      DELETE FROM shift_assignments
+      WHERE shift_id = ${shiftId}
+        AND user_id = ${applicantId}
+    `
+
+    // Then insert the new assignment
     await sql`
       INSERT INTO shift_assignments (
         shift_id, 
@@ -502,19 +477,12 @@ export async function approveApplication(applicationId: number, replacementId: n
         ${end_time || null},
         1
       )
-      ON CONFLICT (shift_id, user_id) DO UPDATE
-      SET 
-        replaced_user_id = ${replacedUserId},
-        is_partial = ${is_partial || false},
-        start_time = ${start_time || null},
-        end_time = ${end_time || null},
-        replacement_order = 1
     `
 
     await createNotification(
       applicantId,
       "Remplacement assigné",
-      `Vous avez été assigné au remplacement du ${formatLocalDate(shiftDate)} (${shiftType === "day" ? "Jour" : "Nuit"})`,
+      `Vous avez été assigné au remplacement du ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"})`,
       "application_approved",
       replacementId,
       "replacement",
@@ -648,49 +616,6 @@ export async function deleteReplacement(replacementId: number) {
   }
 }
 
-export async function getReplacementsForShift(shiftDate: string, shiftType: string, teamId: number) {
-  try {
-    const replacements = await sql`
-      SELECT 
-        r.*,
-        u.first_name,
-        u.last_name,
-        u.role,
-        u.email,
-        (
-          SELECT json_agg(
-            json_build_object(
-              'id', ra.id,
-              'applicant_id', ra.applicant_id,
-              'status', ra.status,
-              'applied_at', ra.applied_at,
-              'first_name', app_user.first_name,
-              'last_name', app_user.last_name
-            )
-          )
-          FROM replacement_applications ra
-          JOIN users app_user ON ra.applicant_id = app_user.id
-          WHERE ra.replacement_id = r.id
-        ) as applications
-      FROM replacements r
-      LEFT JOIN users u ON r.user_id = u.id
-      WHERE r.shift_date = ${shiftDate}
-        AND r.shift_type = ${shiftType}
-        AND r.team_id = ${teamId}
-        AND r.status != 'cancelled'
-      ORDER BY r.created_at DESC
-    `
-
-    return replacements.map((r) => ({
-      ...r,
-      applications: r.applications || [],
-    }))
-  } catch (error) {
-    console.error("getReplacementsForShift: Error", error)
-    return []
-  }
-}
-
 export async function createExtraFirefighterReplacement(
   shiftDate: string,
   shiftType: string,
@@ -711,17 +636,17 @@ export async function createExtraFirefighterReplacement(
 
     if (deadlineSeconds) {
       let deadlineValue: string
-      
-      if (typeof deadlineSeconds === 'object' && deadlineSeconds !== null && deadlineSeconds.toISOString) {
+
+      if (typeof deadlineSeconds === "object" && deadlineSeconds !== null && deadlineSeconds.toISOString) {
         deadlineValue = deadlineSeconds.toISOString()
-      } else if (typeof deadlineSeconds === 'string') {
+      } else if (typeof deadlineSeconds === "string") {
         deadlineValue = deadlineSeconds
       } else {
         deadlineValue = String(deadlineSeconds)
       }
-      
+
       const isISOString = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(deadlineValue)
-      
+
       if (isISOString) {
         applicationDeadline = deadlineValue
         deadlineDuration = null
@@ -926,17 +851,17 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
 
     if (deadlineSeconds) {
       let deadlineValue: string
-      
-      if (typeof deadlineSeconds === 'object' && deadlineSeconds !== null && deadlineSeconds.toISOString) {
+
+      if (typeof deadlineSeconds === "object" && deadlineSeconds !== null && deadlineSeconds.toISOString) {
         deadlineValue = deadlineSeconds.toISOString()
-      } else if (typeof deadlineSeconds === 'string') {
+      } else if (typeof deadlineSeconds === "string") {
         deadlineValue = deadlineSeconds
       } else {
         deadlineValue = String(deadlineSeconds)
       }
-      
+
       const isISOString = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(deadlineValue)
-      
+
       if (isISOString) {
         applicationDeadline = deadlineValue
         deadlineDuration = null
@@ -1229,5 +1154,81 @@ export async function reactivateApplication(applicationId: number) {
   } catch (error) {
     console.error("reactivateApplication: Error", error)
     return { error: "Erreur lors de la réactivation" }
+  }
+}
+
+export async function getReplacementsForShift(shiftDate: string, shiftType: string, teamId: number) {
+  try {
+    const replacements = await sql`
+      SELECT 
+        r.*,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.email,
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', ra.id,
+              'applicant_id', ra.applicant_id,
+              'status', ra.status,
+              'applied_at', ra.applied_at,
+              'first_name', app_user.first_name,
+              'last_name', app_user.last_name
+            )
+          )
+          FROM replacement_applications ra
+          JOIN users app_user ON ra.applicant_id = app_user.id
+          WHERE ra.replacement_id = r.id
+        ) as applications
+      FROM replacements r
+      LEFT JOIN users u ON r.user_id = u.id
+      WHERE r.shift_date = ${shiftDate}
+        AND r.shift_type = ${shiftType}
+        AND r.team_id = ${teamId}
+        AND r.status != 'cancelled'
+      ORDER BY r.created_at DESC
+    `
+
+    return replacements.map((r) => ({
+      ...r,
+      applications: r.applications || [],
+    }))
+  } catch (error) {
+    console.error("getReplacementsForShift: Error", error)
+    return []
+  }
+}
+
+export async function getUserReplacementRequests(userId: number) {
+  try {
+    const requests = await sql`
+      SELECT 
+        r.*,
+        t.name as team_name,
+        t.color as team_color,
+        replaced_user.first_name as first_name,
+        replaced_user.last_name as last_name,
+        replacement_user.first_name as assigned_first_name,
+        replacement_user.last_name as assigned_last_name,
+        l.start_date as leave_start_date,
+        l.end_date as leave_end_date
+      FROM replacements r
+      LEFT JOIN teams t ON r.team_id = t.id
+      LEFT JOIN leaves l ON r.leave_id = l.id
+      LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+      LEFT JOIN replacement_applications ra_approved 
+        ON r.id = ra_approved.replacement_id 
+        AND ra_approved.status = 'approved'
+      LEFT JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+      WHERE r.user_id = ${userId}
+        AND r.status != 'cancelled'
+      ORDER BY r.shift_date DESC, r.shift_type
+    `
+
+    return requests
+  } catch (error) {
+    console.error("getUserReplacementRequests: Error", error)
+    return []
   }
 }
