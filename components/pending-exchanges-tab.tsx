@@ -122,7 +122,7 @@ export function PendingExchangesTab({ exchanges }: PendingExchangesTabProps) {
             <Card key={exchange.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-lg">
                       {exchange.requester_first_name} {exchange.requester_last_name} ↔ {exchange.target_first_name}{" "}
                       {exchange.target_last_name}
@@ -130,11 +130,21 @@ export function PendingExchangesTab({ exchanges }: PendingExchangesTabProps) {
                     <CardDescription>
                       Demandé le {parseLocalDate(exchange.created_at).toLocaleDateString("fr-CA")}
                     </CardDescription>
+                    {countInfo && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Échanges de {exchange.requester_first_name} cette année:{" "}
+                        <span
+                          className={`font-semibold ${countInfo.count >= 8 ? "text-red-600 dark:text-red-400" : ""}`}
+                        >
+                          {countInfo.count} / 8
+                        </span>
+                      </p>
+                    )}
                   </div>
                   {showWarning && (
                     <Badge variant="destructive" className="gap-1">
                       <AlertTriangle className="h-3 w-3" />
-                      {countInfo.count}/8 en {countInfo.year}
+                      Limite atteinte
                     </Badge>
                   )}
                 </div>
