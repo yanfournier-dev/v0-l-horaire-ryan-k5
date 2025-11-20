@@ -50,6 +50,8 @@ export function AvailableReplacementsTab({
       name: `${r.first_name} ${r.last_name}`,
       shift_date: r.shift_date,
       deadline: r.application_deadline,
+      deadline_duration: r.deadline_duration,
+      isFirstCome: r.deadline_duration === -1,
       isExpired,
     })
   })
@@ -127,9 +129,14 @@ export function AvailableReplacementsTab({
           const candidateCount = Number.parseInt(replacement.application_count) || 0
           const isOwnReplacement = replacement.user_id === userId
           const isExpired = replacement.application_deadline && new Date(replacement.application_deadline) < new Date()
+          // Check if deadline_duration is exactly -1 for first-come replacements
+          const isFirstCome = replacement.deadline_duration === -1
 
           return (
-            <Card key={replacement.id} className="overflow-hidden">
+            <Card
+              key={replacement.id}
+              className={`overflow-hidden ${isFirstCome ? "ring-2 ring-green-500 dark:ring-green-400" : ""}`}
+            >
               <CardContent className="py-0 px-1.5">
                 <div className="flex items-center gap-2 text-sm">
                   <div className="flex items-center gap-1.5 min-w-[140px]">
@@ -140,6 +147,11 @@ export function AvailableReplacementsTab({
                       {getShiftTypeLabel(replacement.shift_type).split(" ")[0]}
                     </Badge>
                     <PartTimeTeamBadge shiftDate={replacement.shift_date} />
+                    {isFirstCome && (
+                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs px-1.5 py-0 h-5 leading-none whitespace-nowrap">
+                        Premier arrivé, premier servi
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0 leading-none">

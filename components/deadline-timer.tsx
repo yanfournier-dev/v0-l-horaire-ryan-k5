@@ -18,7 +18,7 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
   const [displayDeadline, setDisplayDeadline] = useState<string>("")
 
   useEffect(() => {
-    if (deadlineDuration !== null && deadline) {
+    if (deadlineDuration !== null && deadlineDuration !== -1 && deadline) {
       const effectiveDeadline = new Date(deadline)
 
       const updateTimer = () => {
@@ -93,8 +93,7 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
     return () => clearInterval(interval)
   }, [deadline, deadlineDuration, shiftDate])
 
-  if (deadlineDuration === null) {
-    // Automatic or manual deadline
+  if (deadlineDuration === null || deadlineDuration === -1) {
     return (
       <Badge
         variant="secondary"
@@ -110,7 +109,6 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
 
   if (!deadline) return null
 
-  // Countdown timer
   return (
     <Badge
       variant={isExpired ? "destructive" : "default"}

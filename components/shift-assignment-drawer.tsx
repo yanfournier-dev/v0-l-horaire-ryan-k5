@@ -311,6 +311,8 @@ export function ShiftAssignmentDrawer({
       isPartial ? startTime : undefined,
       isPartial ? endTime : undefined,
       deadlineSeconds ?? undefined,
+      shift.start_time,
+      shift.end_time,
     )
 
     if (result.error) {
@@ -806,6 +808,14 @@ export function ShiftAssignmentDrawer({
       replaced_position_code: replacedFF?.position_code || "", // Store position_code for sorting
     })
   })
+
+  const handleDeadlineChange = (selectedValue: number | null | Date | null) => {
+    if (selectedValue === -1) {
+      setDeadlineSeconds(-1)
+    } else {
+      setDeadlineSeconds(selectedValue)
+    }
+  }
 
   return (
     <>
@@ -1569,7 +1579,18 @@ export function ShiftAssignmentDrawer({
           </AlertDialogHeader>
 
           <div className="space-y-4 py-4">
-            {shift && <DeadlineSelect value={deadlineSeconds} onValueChange={setDeadlineSeconds} />}
+            {shift && (
+              <DeadlineSelect
+                value={deadlineSeconds}
+                onValueChange={handleDeadlineChange}
+                shiftDate={shift.date}
+                shiftEndTime={isPartial ? endTime : shift.end_time}
+                partialEndTime={isPartial ? endTime : undefined}
+                isPartial={isPartial}
+                shift={shift}
+                // </CHANGE>
+              />
+            )}
 
             <div className="flex items-center space-x-2">
               <Checkbox

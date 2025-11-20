@@ -299,22 +299,72 @@ export function calculateAutoDeadline(shiftDate: string | Date): Date {
   // Create a date string for 17:00 in America/Toronto timezone
   // Use Intl.DateTimeFormat to determine if DST is in effect
   const testDate = new Date(`${dateString}T12:00:00-05:00`) // Noon EST
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Toronto',
-    timeZoneName: 'short'
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Toronto",
+    timeZoneName: "short",
   })
   const parts = formatter.formatToParts(testDate)
-  const timeZoneName = parts.find(part => part.type === 'timeZoneName')?.value || 'EST'
-  
+  const timeZoneName = parts.find((part) => part.type === "timeZoneName")?.value || "EST"
+
   // Determine UTC offset based on timezone name
   // EDT (Eastern Daylight Time) = UTC-4
   // EST (Eastern Standard Time) = UTC-5
-  const offset = timeZoneName.includes('EDT') || timeZoneName.includes('E') && !timeZoneName.includes('S') ? '-04:00' : '-05:00'
-  
+  const offset =
+    timeZoneName.includes("EDT") || (timeZoneName.includes("E") && !timeZoneName.includes("S")) ? "-04:00" : "-05:00"
+
   // Create UTC date for 17:00 in America/Toronto
   const deadlineUTC = new Date(`${dateString}T17:00:00${offset}`)
-  
+
   return deadlineUTC
+}
+
+/**
+ * Calculate the deadline as the end time of the shift
+ * Used for "Premier arrivé, premier servi" option
+ *
+ * @param shiftDate - The date of the shift (YYYY-MM-DD or Date object)
+ * @param endTime - The end time of the shift (HH:MM:SS or HH:MM)
+ * @param startTime - The start time of the shift (HH:MM:SS or HH:MM)
+ * @returns Date object representing the deadline (end of shift)
+ *
+ * @example
+ * // For a day shift on December 25, 2025 ending at 17:00
+ * calculateEndOfShiftDeadline("2025-12-25", "17:00:00")
+ * // Returns: December 25, 2025 at 17:00
+ *
+ * // For a night shift on December 25, 2025 starting at 17:00 and ending at 07:00
+ * calculateEndOfShiftDeadline("2025-12-25", "07:00:00", "17:00:00")
+ * // Returns: December 26, 2025 at 07:00 (next day)
+ *
+ * // For a 24h shift on December 25, 2025 starting at 07:00 and ending at 07:00
+ * calculateEndOfShiftDeadline("2025-12-25", "07:00:00", "07:00:00")
+ * // Returns: December 26, 2025 at 07:00 (next day)
+ */
+export function calculateEndOfShiftDeadline(shiftDate: string | Date, endTime: string, startTime?: string): Date {
+  const shift = typeof shiftDate === "string" ? parseLocalDate(shiftDate) : shiftDate
+
+  // Extract hours and minutes from times (handle both HH:MM:SS and HH:MM formats)
+  const [endHours, endMinutes] = endTime.split(":").map(Number)
+
+  let needsNextDay = false
+  if (startTime) {
+    const [startHours] = startTime.split(":").map(Number)
+    // This handles both night shifts (17h-7h) and 24h shifts (7h-7h)
+    if (endHours <= startHours) {
+      needsNextDay = true
+    }
+  }
+
+  // Create deadline at the end time of the shift
+  const deadline = new Date(shift)
+  deadline.setHours(endHours, endMinutes, 0, 0)
+
+  // Add one day if needed for night shifts or 24h shifts
+  if (needsNextDay) {
+    deadline.setDate(deadline.getDate() + 1)
+  }
+
+  return deadline
 }
 
 /**

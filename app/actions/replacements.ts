@@ -3,8 +3,9 @@
 import { sql, invalidateCache } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { createNotification, sendBatchReplacementEmails, createBatchNotificationsInApp } from "./notifications"
-import { calculateAutoDeadline, formatLocalDate } from "@/lib/date-utils"
+import { calculateAutoDeadline, formatLocalDate, calculateEndOfShiftDeadline } from "@/lib/date-utils"
 import { revalidatePath } from "next/cache"
+import { neon } from "@neondatabase/serverless"
 
 export async function getUserApplications(userId: number) {
   try {
@@ -154,12 +155,14 @@ export async function getPendingReplacementRequests() {
 export async function createReplacementFromShift(
   userId: number,
   shiftDate: string,
-  shiftType: string,
+  shiftType: "day" | "night" | "full_24h",
   teamId: number,
-  isPartial = false,
-  startTime?: string,
-  endTime?: string,
-  deadlineSeconds?: number | string | Date,
+  isPartial: boolean,
+  startTime?: string | null,
+  endTime?: string | null,
+  deadlineSeconds?: number | null,
+  shiftStartTime?: string | null,
+  shiftEndTime?: string | null,
 ) {
   const user = await getSession()
   if (!user?.is_admin) {
@@ -167,48 +170,38 @@ export async function createReplacementFromShift(
   }
 
   try {
-    let applicationDeadline = null
-    let deadlineDuration = null
+    const db = neon(process.env.DATABASE_URL!)
 
-    if (deadlineSeconds) {
-      let deadlineValue: string
+    let applicationDeadline: string
 
-      if (typeof deadlineSeconds === "object" && deadlineSeconds !== null && deadlineSeconds.toISOString) {
-        deadlineValue = deadlineSeconds.toISOString()
-      } else if (typeof deadlineSeconds === "string") {
-        deadlineValue = deadlineSeconds
-      } else {
-        deadlineValue = String(deadlineSeconds)
+    let deadlineDuration: number | null = deadlineSeconds ?? null
+
+    if (typeof deadlineSeconds === "number" && deadlineSeconds > 0) {
+      // Fixed deadline in seconds from now
+      const deadline = new Date(Date.now() + deadlineSeconds * 1000)
+      applicationDeadline = deadline.toISOString()
+    } else if (deadlineSeconds === -1) {
+      // First-come, first-served: deadline is end of shift
+      if (!shiftStartTime || !shiftEndTime) {
+        throw new Error("Start time and end time required for first-come deadline")
       }
 
-      const isISOString = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(deadlineValue)
-
-      if (isISOString) {
-        applicationDeadline = deadlineValue
-        deadlineDuration = null
-      } else if (!isNaN(Number(deadlineValue)) && Number(deadlineValue) > 0) {
-        const deadlineTimestamp = Date.now() + Number(deadlineValue) * 1000
-        applicationDeadline = new Date(deadlineTimestamp).toISOString()
-        deadlineDuration = Math.max(1, Math.floor(Number(deadlineValue) / 60))
-      } else {
-        const autoDeadline = calculateAutoDeadline(shiftDate)
-        applicationDeadline = autoDeadline.toISOString()
-        deadlineDuration = null
-      }
-    } else {
-      const autoDeadline = calculateAutoDeadline(shiftDate)
-      applicationDeadline = autoDeadline.toISOString()
+      const calcStartTime = shiftStartTime
+      const calcEndTime = shiftEndTime
+      applicationDeadline = calculateEndOfShiftDeadline(shiftDate, calcEndTime, calcStartTime)
+    } else if (deadlineSeconds === null || deadlineSeconds === undefined) {
+      applicationDeadline = calculateAutoDeadline(shiftDate)
       deadlineDuration = null
     }
 
-    const result = await sql`
+    const result = await db`
       INSERT INTO replacements (
         shift_date, shift_type, team_id, status, is_partial, start_time, end_time, user_id,
         application_deadline, deadline_duration
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
-        ${isPartial}, ${startTime || null}, ${endTime || null}, ${userId},
+        ${isPartial}, ${isPartial ? startTime : null}, ${isPartial ? endTime : null}, ${userId},
         ${applicationDeadline}, ${deadlineDuration}
       )
       RETURNING id
@@ -216,13 +209,13 @@ export async function createReplacementFromShift(
 
     const replacementId = result[0].id
 
-    const firefighterInfo = await sql`
+    const firefighterInfo = await db`
       SELECT first_name, last_name FROM users WHERE id = ${userId}
     `
     const firefighterToReplaceName =
       firefighterInfo.length > 0 ? `${firefighterInfo[0].first_name} ${firefighterInfo[0].last_name}` : "Pompier"
 
-    const eligibleUsers = await sql`
+    const eligibleUsers = await db`
       SELECT DISTINCT u.id
       FROM users u
       LEFT JOIN notification_preferences np ON u.id = np.user_id
@@ -285,7 +278,9 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
   const applicantId = firefighterId || user.id
 
   try {
-    const replacement = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const replacement = await db`
       SELECT user_id, application_deadline FROM replacements WHERE id = ${replacementId}
     `
 
@@ -305,7 +300,7 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
       return { error: "Vous ne pouvez pas postuler pour votre propre remplacement" }
     }
 
-    const existingApplication = await sql`
+    const existingApplication = await db`
       SELECT id FROM replacement_applications
       WHERE replacement_id = ${replacementId} AND applicant_id = ${applicantId}
     `
@@ -314,7 +309,7 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
       return { error: "Ce pompier a déjà postulé pour ce remplacement" }
     }
 
-    const insertResult = await sql`
+    const insertResult = await db`
       INSERT INTO replacement_applications (replacement_id, applicant_id, status)
       VALUES (${replacementId}, ${applicantId}, 'pending')
       RETURNING applied_at
@@ -341,7 +336,9 @@ export async function withdrawApplication(applicationId: number) {
   }
 
   try {
-    await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    await db`
       DELETE FROM replacement_applications
       WHERE id = ${applicationId} AND applicant_id = ${user.id}
     `
@@ -367,7 +364,9 @@ export async function approveApplication(applicationId: number, replacementId: n
   }
 
   try {
-    const appResult = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const appResult = await db`
       SELECT 
         ra.applicant_id, 
         r.shift_date, 
@@ -397,7 +396,7 @@ export async function approveApplication(applicationId: number, replacementId: n
       user_id: replacedUserId,
     } = appResult[0]
 
-    const cycleConfig = await sql`
+    const cycleConfig = await db`
       SELECT start_date, cycle_length_days
       FROM cycle_config
       WHERE is_active = true
@@ -414,7 +413,7 @@ export async function approveApplication(applicationId: number, replacementId: n
     const daysDiff = Math.floor((shiftDateObj.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     const cycleDay = (daysDiff % cycle_length_days) + 1
 
-    const shiftResult = await sql`
+    const shiftResult = await db`
       SELECT id FROM shifts
       WHERE team_id = ${team_id}
         AND cycle_day = ${cycleDay}
@@ -428,33 +427,33 @@ export async function approveApplication(applicationId: number, replacementId: n
 
     const shiftId = shiftResult[0].id
 
-    await sql`
+    await db`
       UPDATE replacement_applications
       SET status = 'approved', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
       WHERE id = ${applicationId}
     `
 
-    await sql`
+    await db`
       UPDATE replacement_applications
       SET status = 'rejected'
       WHERE replacement_id = ${replacementId} AND id != ${applicationId}
     `
 
-    await sql`
+    await db`
       UPDATE replacements
       SET status = 'assigned'
       WHERE id = ${replacementId}
     `
 
     // Delete any existing assignments first to avoid conflicts
-    await sql`
+    await db`
       DELETE FROM shift_assignments
       WHERE shift_id = ${shiftId}
         AND user_id = ${applicantId}
     `
 
     // Then insert the new assignment
-    await sql`
+    await db`
       INSERT INTO shift_assignments (
         shift_id, 
         user_id, 
@@ -509,7 +508,9 @@ export async function rejectApplication(applicationId: number) {
   }
 
   try {
-    const appResult = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const appResult = await db`
       SELECT applicant_id FROM replacement_applications WHERE id = ${applicationId}
     `
 
@@ -519,7 +520,7 @@ export async function rejectApplication(applicationId: number) {
 
     const applicantId = appResult[0].applicant_id
 
-    await sql`
+    await db`
       UPDATE replacement_applications
       SET status = 'rejected', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
       WHERE id = ${applicationId}
@@ -555,7 +556,9 @@ export async function deleteReplacement(replacementId: number) {
   }
 
   try {
-    const replacementDetails = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const replacementDetails = await db`
       SELECT r.*, u.first_name, u.last_name
       FROM replacements r
       LEFT JOIN users u ON r.user_id = u.id
@@ -565,7 +568,7 @@ export async function deleteReplacement(replacementId: number) {
     if (replacementDetails.length > 0) {
       const { shift_date, shift_type, team_id } = replacementDetails[0]
 
-      const cycleConfig = await sql`
+      const cycleConfig = await db`
         SELECT start_date, cycle_length_days
         FROM cycle_config
         WHERE is_active = true
@@ -579,7 +582,7 @@ export async function deleteReplacement(replacementId: number) {
         const daysDiff = Math.floor((shiftDateObj.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
         const cycleDay = (daysDiff % cycle_length_days) + 1
 
-        const shiftResult = await sql`
+        const shiftResult = await db`
           SELECT id FROM shifts
           WHERE team_id = ${team_id}
             AND cycle_day = ${cycleDay}
@@ -590,7 +593,7 @@ export async function deleteReplacement(replacementId: number) {
         if (shiftResult.length > 0) {
           const shiftId = shiftResult[0].id
 
-          await sql`
+          await db`
             DELETE FROM shift_assignments
             WHERE shift_id = ${shiftId}
           `
@@ -598,7 +601,7 @@ export async function deleteReplacement(replacementId: number) {
       }
     }
 
-    await sql`
+    await db`
       DELETE FROM replacements WHERE id = ${replacementId}
     `
 
@@ -618,12 +621,14 @@ export async function deleteReplacement(replacementId: number) {
 
 export async function createExtraFirefighterReplacement(
   shiftDate: string,
-  shiftType: string,
+  shiftType: "day" | "night" | "full_24h",
   teamId: number,
-  isPartial = false,
-  startTime?: string,
-  endTime?: string,
-  deadlineSeconds?: number | string | Date,
+  isPartial: boolean,
+  startTime?: string | null,
+  endTime?: string | null,
+  deadlineSeconds?: number | null,
+  shiftStartTime?: string | null,
+  shiftEndTime?: string | null,
 ) {
   const user = await getSession()
   if (!user?.is_admin) {
@@ -631,48 +636,38 @@ export async function createExtraFirefighterReplacement(
   }
 
   try {
-    let applicationDeadline = null
-    let deadlineDuration = null
+    const db = neon(process.env.DATABASE_URL!)
 
-    if (deadlineSeconds) {
-      let deadlineValue: string
+    let applicationDeadline: string
 
-      if (typeof deadlineSeconds === "object" && deadlineSeconds !== null && deadlineSeconds.toISOString) {
-        deadlineValue = deadlineSeconds.toISOString()
-      } else if (typeof deadlineSeconds === "string") {
-        deadlineValue = deadlineSeconds
-      } else {
-        deadlineValue = String(deadlineSeconds)
+    let deadlineDuration: number | null = deadlineSeconds ?? null
+
+    if (typeof deadlineSeconds === "number" && deadlineSeconds > 0) {
+      // Fixed deadline in seconds from now
+      const deadline = new Date(Date.now() + deadlineSeconds * 1000)
+      applicationDeadline = deadline.toISOString()
+    } else if (deadlineSeconds === -1) {
+      // First-come, first-served: deadline is end of shift
+      if (!shiftStartTime || !shiftEndTime) {
+        throw new Error("Start time and end time required for first-come deadline")
       }
 
-      const isISOString = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(deadlineValue)
-
-      if (isISOString) {
-        applicationDeadline = deadlineValue
-        deadlineDuration = null
-      } else if (!isNaN(Number(deadlineValue)) && Number(deadlineValue) > 0) {
-        const deadlineTimestamp = Date.now() + Number(deadlineValue) * 1000
-        applicationDeadline = new Date(deadlineTimestamp).toISOString()
-        deadlineDuration = Math.max(1, Math.floor(Number(deadlineValue) / 60))
-      } else {
-        const autoDeadline = calculateAutoDeadline(shiftDate)
-        applicationDeadline = autoDeadline.toISOString()
-        deadlineDuration = null
-      }
-    } else {
-      const autoDeadline = calculateAutoDeadline(shiftDate)
-      applicationDeadline = autoDeadline.toISOString()
+      const calcStartTime = shiftStartTime
+      const calcEndTime = shiftEndTime
+      applicationDeadline = calculateEndOfShiftDeadline(shiftDate, calcEndTime, calcStartTime)
+    } else if (deadlineSeconds === null || deadlineSeconds === undefined) {
+      applicationDeadline = calculateAutoDeadline(shiftDate)
       deadlineDuration = null
     }
 
-    const result = await sql`
+    const result = await db`
       INSERT INTO replacements (
         shift_date, shift_type, team_id, status, is_partial, start_time, end_time, is_extra,
         application_deadline, deadline_duration
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
-        ${isPartial}, ${startTime || null}, ${endTime || null}, true,
+        ${isPartial}, ${isPartial ? startTime : null}, ${isPartial ? endTime : null}, true,
         ${applicationDeadline}, ${deadlineDuration}
       )
       RETURNING id
@@ -682,7 +677,7 @@ export async function createExtraFirefighterReplacement(
 
     const firefighterToReplaceName = "Pompier supplémentaire"
 
-    const eligibleUsers = await sql`
+    const eligibleUsers = await db`
       SELECT DISTINCT u.id
       FROM users u
       LEFT JOIN notification_preferences np ON u.id = np.user_id
@@ -738,39 +733,41 @@ export async function updateReplacementAssignment(replacementId: number, assigne
   }
 
   try {
+    const db = neon(process.env.DATABASE_URL!)
+
     if (assignedTo) {
-      await sql`
+      await db`
         INSERT INTO replacement_applications (replacement_id, applicant_id, status, reviewed_by, reviewed_at)
         VALUES (${replacementId}, ${assignedTo}, 'approved', ${user.id}, CURRENT_TIMESTAMP)
         ON CONFLICT (replacement_id, applicant_id) 
         DO UPDATE SET status = 'approved', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
       `
 
-      await sql`
+      await db`
         UPDATE replacement_applications
         SET status = 'rejected'
         WHERE replacement_id = ${replacementId} AND applicant_id != ${assignedTo}
       `
 
-      await sql`
+      await db`
         UPDATE replacements
         SET status = 'assigned'
         WHERE id = ${replacementId}
       `
     } else {
-      await sql`
+      await db`
         UPDATE replacement_applications
         SET status = 'rejected'
         WHERE replacement_id = ${replacementId} AND status = 'approved'
       `
 
-      await sql`
+      await db`
         UPDATE replacement_applications
         SET status = 'pending', reviewed_by = NULL, reviewed_at = NULL
         WHERE replacement_id = ${replacementId} AND status = 'rejected'
       `
 
-      await sql`
+      await db`
         UPDATE replacements
         SET status = 'open'
         WHERE id = ${replacementId}
@@ -793,7 +790,9 @@ export async function updateReplacementAssignment(replacementId: number, assigne
 
 export async function getAvailableFirefighters(replacementId: number) {
   try {
-    const replacement = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const replacement = await db`
       SELECT shift_date, shift_type FROM replacements WHERE id = ${replacementId}
     `
 
@@ -804,7 +803,7 @@ export async function getAvailableFirefighters(replacementId: number) {
 
     const { shift_date: shiftDate } = replacement[0]
 
-    const firefighters = await sql`
+    const firefighters = await db`
       SELECT 
         u.id,
         u.first_name,
@@ -829,14 +828,16 @@ export async function getAvailableFirefighters(replacementId: number) {
   }
 }
 
-export async function approveReplacementRequest(replacementId: number, deadlineSeconds?: number | string | Date) {
+export async function approveReplacementRequest(replacementId: number, deadlineSeconds?: number | null) {
   const user = await getSession()
   if (!user?.is_admin) {
     return { error: "Non autorisé" }
   }
 
   try {
-    const replacement = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const replacement = await db`
       SELECT shift_date FROM replacements WHERE id = ${replacementId}
     `
 
@@ -846,41 +847,26 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
 
     const shiftDate = replacement[0].shift_date
 
-    let applicationDeadline = null
-    let deadlineDuration = null
+    let applicationDeadline: string
 
-    if (deadlineSeconds) {
-      let deadlineValue: string
+    let deadlineDuration: number | null = deadlineSeconds ?? null
 
-      if (typeof deadlineSeconds === "object" && deadlineSeconds !== null && deadlineSeconds.toISOString) {
-        deadlineValue = deadlineSeconds.toISOString()
-      } else if (typeof deadlineSeconds === "string") {
-        deadlineValue = deadlineSeconds
-      } else {
-        deadlineValue = String(deadlineSeconds)
-      }
-
-      const isISOString = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(deadlineValue)
-
-      if (isISOString) {
-        applicationDeadline = deadlineValue
-        deadlineDuration = null
-      } else if (!isNaN(Number(deadlineValue)) && Number(deadlineValue) > 0) {
-        const deadlineTimestamp = Date.now() + Number(deadlineValue) * 1000
-        applicationDeadline = new Date(deadlineTimestamp).toISOString()
-        deadlineDuration = Math.max(1, Math.floor(Number(deadlineValue) / 60))
-      } else {
-        const autoDeadline = calculateAutoDeadline(shiftDate)
-        applicationDeadline = autoDeadline.toISOString()
-        deadlineDuration = null
-      }
-    } else {
-      const autoDeadline = calculateAutoDeadline(shiftDate)
-      applicationDeadline = autoDeadline.toISOString()
+    if (typeof deadlineSeconds === "number" && deadlineSeconds > 0) {
+      // Fixed deadline in seconds from now
+      const deadline = new Date(Date.now() + deadlineSeconds * 1000)
+      applicationDeadline = deadline.toISOString()
+    } else if (deadlineSeconds === -1) {
+      // First-come, first-served: deadline is end of shift
+      const startTime = "00:00" // Declare startTime here
+      const endTime = "23:59" // Declare endTime here
+      applicationDeadline = calculateEndOfShiftDeadline(shiftDate, endTime, startTime)
+    } else if (deadlineSeconds === null || deadlineSeconds === undefined) {
+      applicationDeadline = calculateAutoDeadline(shiftDate)
       deadlineDuration = null
     }
 
-    await sql`
+    // Add deadline_duration to the UPDATE statement
+    await db`
       UPDATE replacements
       SET status = 'open', 
           application_deadline = ${applicationDeadline},
@@ -909,7 +895,9 @@ export async function rejectReplacementRequest(replacementId: number) {
   }
 
   try {
-    await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    await db`
       UPDATE replacements
       SET status = 'cancelled'
       WHERE id = ${replacementId}
@@ -931,11 +919,11 @@ export async function rejectReplacementRequest(replacementId: number) {
 
 export async function requestReplacement(
   shiftDate: string,
-  shiftType: string,
+  shiftType: "day" | "night" | "full_24h",
   teamId: number,
-  isPartial = false,
-  startTime?: string,
-  endTime?: string,
+  isPartial: boolean,
+  startTime?: string | null,
+  endTime?: string | null,
 ) {
   const user = await getSession()
   if (!user) {
@@ -947,7 +935,9 @@ export async function requestReplacement(
   }
 
   try {
-    await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    await db`
       INSERT INTO replacements (
         shift_date, shift_type, team_id, user_id, status, is_partial, start_time, end_time
       )
@@ -978,7 +968,9 @@ export async function removeReplacementAssignment(replacementId: number) {
   }
 
   try {
-    const replacementDetails = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const replacementDetails = await db`
       SELECT r.shift_date, r.shift_type, r.team_id, ra.applicant_id
       FROM replacements r
       LEFT JOIN replacement_applications ra ON r.id = ra.replacement_id AND ra.status = 'approved'
@@ -988,7 +980,7 @@ export async function removeReplacementAssignment(replacementId: number) {
     if (replacementDetails.length > 0) {
       const { shift_date, shift_type, team_id, applicant_id } = replacementDetails[0]
 
-      const cycleConfig = await sql`
+      const cycleConfig = await db`
         SELECT start_date, cycle_length_days
         FROM cycle_config
         WHERE is_active = true
@@ -1002,7 +994,7 @@ export async function removeReplacementAssignment(replacementId: number) {
         const daysDiff = Math.floor((shiftDateObj.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
         const cycleDay = (daysDiff % cycle_length_days) + 1
 
-        const shiftResult = await sql`
+        const shiftResult = await db`
           SELECT id FROM shifts
           WHERE team_id = ${team_id}
             AND cycle_day = ${cycleDay}
@@ -1013,7 +1005,7 @@ export async function removeReplacementAssignment(replacementId: number) {
         if (shiftResult.length > 0) {
           const shiftId = shiftResult[0].id
 
-          await sql`
+          await db`
             DELETE FROM shift_assignments
             WHERE shift_id = ${shiftId}
           `
@@ -1032,19 +1024,19 @@ export async function removeReplacementAssignment(replacementId: number) {
       }
     }
 
-    await sql`
+    await db`
       UPDATE replacement_applications
       SET status = 'rejected'
       WHERE replacement_id = ${replacementId} AND status = 'approved'
     `
 
-    await sql`
+    await db`
       UPDATE replacement_applications
       SET status = 'pending', reviewed_by = NULL, reviewed_at = NULL
       WHERE replacement_id = ${replacementId} AND status = 'rejected'
     `
 
-    await sql`
+    await db`
       UPDATE replacements
       SET status = 'open'
       WHERE id = ${replacementId}
@@ -1066,24 +1058,9 @@ export async function removeReplacementAssignment(replacementId: number) {
 
 export async function getExpiredReplacements() {
   try {
-    const allOpenReplacements = await sql`
-      SELECT 
-        r.id,
-        r.shift_date,
-        r.shift_type,
-        r.status,
-        r.application_deadline,
-        replaced_user.first_name,
-        replaced_user.last_name,
-        (SELECT COUNT(*) FROM replacement_applications WHERE replacement_id = r.id) as application_count
-      FROM replacements r
-      LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
-      WHERE r.status = 'open'
-        AND r.shift_date >= CURRENT_DATE - INTERVAL '7 days'
-      ORDER BY r.shift_date ASC
-    `
+    const db = neon(process.env.DATABASE_URL!)
 
-    const replacements = await sql`
+    const replacements = await db`
       SELECT 
         r.*,
         t.name as team_name,
@@ -1118,7 +1095,9 @@ export async function reactivateApplication(applicationId: number) {
   }
 
   try {
-    const appResult = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const appResult = await db`
       SELECT r.status, ra.status as application_status
       FROM replacement_applications ra
       JOIN replacements r ON ra.replacement_id = r.id
@@ -1137,7 +1116,7 @@ export async function reactivateApplication(applicationId: number) {
       return { error: "Seules les candidatures rejetées peuvent être réactivées" }
     }
 
-    await sql`
+    await db`
       UPDATE replacement_applications
       SET status = 'pending', reviewed_by = NULL, reviewed_at = NULL
       WHERE id = ${applicationId}
@@ -1159,7 +1138,9 @@ export async function reactivateApplication(applicationId: number) {
 
 export async function getReplacementsForShift(shiftDate: string, shiftType: string, teamId: number) {
   try {
-    const replacements = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const replacements = await db`
       SELECT 
         r.*,
         u.first_name,
@@ -1202,7 +1183,9 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
 
 export async function getUserReplacementRequests(userId: number) {
   try {
-    const requests = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+
+    const requests = await db`
       SELECT 
         r.*,
         t.name as team_name,

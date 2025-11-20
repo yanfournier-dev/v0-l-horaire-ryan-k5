@@ -5,26 +5,43 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Calendar } from "lucide-react"
+import { calculateEndOfShiftDeadline } from "@/lib/date-utils"
 
 interface DeadlineSelectProps {
   value: number | null | Date | null
   onValueChange: (value: number | null | Date | null) => void
+  shiftDate?: Date
+  shiftEndTime?: string
+  partialEndTime?: string
+  isPartial?: boolean
+  shift?: any // Assuming shift is an object that contains start_time
 }
 
-export function DeadlineSelect({ value, onValueChange }: DeadlineSelectProps) {
-  const [deadlineType, setDeadlineType] = useState<"none" | "preset" | "manual">(
-    value === null ? "none" : value instanceof Date ? "manual" : "preset",
+export function DeadlineSelect({
+  value,
+  onValueChange,
+  shiftDate,
+  shiftEndTime,
+  partialEndTime,
+  isPartial,
+  shift,
+}: DeadlineSelectProps) {
+  const [deadlineType, setDeadlineType] = useState<"none" | "preset" | "manual" | "first-come">(
+    value === null ? "none" : value instanceof Date ? "manual" : value === -1 ? "first-come" : "preset",
   )
   const [manualDate, setManualDate] = useState<string>("")
   const [manualTime, setManualTime] = useState<string>("17:00")
 
-  const stringValue = value === null ? "none" : value instanceof Date ? "manual" : value.toString()
+  const stringValue =
+    value === null ? "none" : value === -1 ? "first-come" : value instanceof Date ? "manual" : value.toString()
 
   const handleTypeChange = (newType: string) => {
-    setDeadlineType(newType as "none" | "preset" | "manual")
+    setDeadlineType(newType as "none" | "preset" | "manual" | "first-come")
 
     if (newType === "none") {
       onValueChange(null)
+    } else if (newType === "first-come") {
+      onValueChange(-1)
     } else if (newType === "manual") {
       // Don't change value yet, wait for date selection
     }
@@ -33,6 +50,9 @@ export function DeadlineSelect({ value, onValueChange }: DeadlineSelectProps) {
   const handlePresetChange = (newValue: string) => {
     if (newValue === "none") {
       onValueChange(null)
+    } else if (newValue === "first-come") {
+      setDeadlineType("first-come")
+      onValueChange(-1)
     } else if (newValue === "manual") {
       setDeadlineType("manual")
     } else {
@@ -56,19 +76,54 @@ export function DeadlineSelect({ value, onValueChange }: DeadlineSelectProps) {
     }
   }
 
+  const getFirstComeDisplayText = () => {
+    if (!shiftDate || !shiftEndTime) return "Premier arrivé, premier servi"
+
+    const endTime = isPartial && partialEndTime ? partialEndTime : shiftEndTime
+    const startTime = shift?.start_time || "07:00"
+    const actualDeadline = calculateEndOfShiftDeadline(shiftDate, endTime, startTime)
+
+    const year = actualDeadline.getFullYear()
+    const month = actualDeadline.getMonth()
+    const day = actualDeadline.getDate()
+    const hours = actualDeadline.getHours()
+    const minutes = actualDeadline.getMinutes()
+
+    const monthNames = [
+      "janvier",
+      "février",
+      "mars",
+      "avril",
+      "mai",
+      "juin",
+      "juillet",
+      "août",
+      "septembre",
+      "octobre",
+      "novembre",
+      "décembre",
+    ]
+    const dateStr = `${day} ${monthNames[month]} ${year}`
+    const timeStr = `${String(hours).padStart(2, "0")} h ${String(minutes).padStart(2, "0")}`
+
+    return `Premier arrivé, premier servi (${dateStr} à ${timeStr})`
+  }
+
   return (
     <div className="space-y-2">
       <Label htmlFor="deadline">Délai pour postuler</Label>
       <Select
-        value={deadlineType === "manual" ? "manual" : stringValue}
-        onValueChange={deadlineType === "manual" ? handleTypeChange : handlePresetChange}
+        value={deadlineType === "manual" || deadlineType === "first-come" ? deadlineType : stringValue}
+        onValueChange={
+          deadlineType === "manual" || deadlineType === "first-come" ? handleTypeChange : handlePresetChange
+        }
       >
         <SelectTrigger id="deadline">
           <SelectValue placeholder="Aucun délai (automatique)" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="none">Aucun délai (automatique)</SelectItem>
-          <SelectItem value="30">30 secondes (test)</SelectItem>
+          <SelectItem value="first-come">{getFirstComeDisplayText()}</SelectItem>
           <SelectItem value="900">15 minutes</SelectItem>
           <SelectItem value="86400">24 heures</SelectItem>
           <SelectItem value="manual">Deadline manuel</SelectItem>
