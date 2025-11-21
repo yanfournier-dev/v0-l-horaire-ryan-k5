@@ -26,22 +26,40 @@ export function DeadlineSelect({
   isPartial,
   shift,
 }: DeadlineSelectProps) {
-  const [deadlineType, setDeadlineType] = useState<"none" | "preset" | "manual" | "first-come">(
-    value === null ? "none" : value instanceof Date ? "manual" : value === -1 ? "first-come" : "preset",
+  const [deadlineType, setDeadlineType] = useState<"none" | "preset" | "manual" | "first-come" | "summer-vacation">(
+    value === null
+      ? "none"
+      : value instanceof Date
+        ? "manual"
+        : value === -1
+          ? "first-come"
+          : value === -2
+            ? "summer-vacation"
+            : "preset",
   )
   const [manualDate, setManualDate] = useState<string>("")
   const [manualTime, setManualTime] = useState<string>("17:00")
 
   const stringValue =
-    value === null ? "none" : value === -1 ? "first-come" : value instanceof Date ? "manual" : value.toString()
+    value === null
+      ? "none"
+      : value === -1
+        ? "first-come"
+        : value === -2
+          ? "summer-vacation"
+          : value instanceof Date
+            ? "manual"
+            : value.toString()
 
   const handleTypeChange = (newType: string) => {
-    setDeadlineType(newType as "none" | "preset" | "manual" | "first-come")
+    setDeadlineType(newType as "none" | "preset" | "manual" | "first-come" | "summer-vacation")
 
     if (newType === "none") {
       onValueChange(null)
     } else if (newType === "first-come") {
       onValueChange(-1)
+    } else if (newType === "summer-vacation") {
+      onValueChange(-2)
     } else if (newType === "manual") {
       // Don't change value yet, wait for date selection
     }
@@ -53,6 +71,9 @@ export function DeadlineSelect({
     } else if (newValue === "first-come") {
       setDeadlineType("first-come")
       onValueChange(-1)
+    } else if (newValue === "summer-vacation") {
+      setDeadlineType("summer-vacation")
+      onValueChange(-2)
     } else if (newValue === "manual") {
       setDeadlineType("manual")
     } else {
@@ -113,17 +134,24 @@ export function DeadlineSelect({
     <div className="space-y-2">
       <Label htmlFor="deadline">Délai pour postuler</Label>
       <Select
-        value={deadlineType === "manual" || deadlineType === "first-come" ? deadlineType : stringValue}
+        value={
+          deadlineType === "manual" || deadlineType === "first-come" || deadlineType === "summer-vacation"
+            ? deadlineType
+            : stringValue
+        }
         onValueChange={
-          deadlineType === "manual" || deadlineType === "first-come" ? handleTypeChange : handlePresetChange
+          deadlineType === "manual" || deadlineType === "first-come" || deadlineType === "summer-vacation"
+            ? handleTypeChange
+            : handlePresetChange
         }
       >
         <SelectTrigger id="deadline">
-          <SelectValue placeholder="Aucun délai (automatique)" />
+          <SelectValue placeholder="Lundi 17h (automatique)" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">Aucun délai (automatique)</SelectItem>
+          <SelectItem value="none">Lundi 17h (automatique)</SelectItem>
           <SelectItem value="first-come">{getFirstComeDisplayText()}</SelectItem>
+          <SelectItem value="summer-vacation">Vacance estivale (16 mai minuit)</SelectItem>
           <SelectItem value="900">15 minutes</SelectItem>
           <SelectItem value="86400">24 heures</SelectItem>
           <SelectItem value="manual">Deadline manuel</SelectItem>

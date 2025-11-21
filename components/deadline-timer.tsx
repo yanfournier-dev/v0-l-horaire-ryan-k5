@@ -18,7 +18,7 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
   const [displayDeadline, setDisplayDeadline] = useState<string>("")
 
   useEffect(() => {
-    if (deadlineDuration !== null && deadlineDuration !== -1 && deadline) {
+    if (deadlineDuration !== null && deadlineDuration !== -1 && deadlineDuration !== -2 && deadline) {
       const effectiveDeadline = new Date(deadline)
 
       const updateTimer = () => {
@@ -93,7 +93,7 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
     return () => clearInterval(interval)
   }, [deadline, deadlineDuration, shiftDate])
 
-  if (deadlineDuration === null || deadlineDuration === -1) {
+  if (deadlineDuration === null || deadlineDuration === -1 || deadlineDuration === -2) {
     return (
       <Badge
         variant="secondary"
@@ -101,6 +101,7 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
           isExpired ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" : ""
         }`}
       >
+        {deadlineDuration === -2 && <span className="text-2xl">🌴</span>}
         <Calendar className="h-3 w-3" />
         {isExpired ? "Fermé" : displayDeadline}
       </Badge>

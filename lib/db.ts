@@ -1,13 +1,26 @@
 import "server-only"
 import { neon } from "@neondatabase/serverless"
 
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL
+function getConnectionString() {
+  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL
 
-if (!connectionString) {
-  throw new Error("Database connection string not found. Please set DATABASE_URL or POSTGRES_URL environment variable.")
+  if (!connectionString) {
+    throw new Error(
+      "Database connection string not found. Please set DATABASE_URL or POSTGRES_URL environment variable.",
+    )
+  }
+
+  return connectionString
 }
 
-const sqlClient = neon(connectionString)
+let sqlClient: ReturnType<typeof neon> | null = null
+
+function getSqlClient() {
+  if (!sqlClient) {
+    sqlClient = neon(getConnectionString())
+  }
+  return sqlClient
+}
 
 interface CacheEntry {
   data: any
@@ -57,8 +70,9 @@ export async function sql(query: TemplateStringsArray | string, ...params: any[]
   }
 
   try {
+    const client = getSqlClient()
     // Execute query
-    const result = typeof query === "string" ? await sqlClient(query, params) : await sqlClient(query, ...params)
+    const result = typeof query === "string" ? await client(query, params) : await client(query, ...params)
 
     // Store in cache
     queryCache.set(cacheKey, { data: result, timestamp: now })

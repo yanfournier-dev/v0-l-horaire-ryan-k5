@@ -189,6 +189,11 @@ export async function createReplacementFromShift(
       const calcStartTime = shiftStartTime
       const calcEndTime = shiftEndTime
       applicationDeadline = calculateEndOfShiftDeadline(shiftDate, calcEndTime, calcStartTime)
+    } else if (deadlineSeconds === -2) {
+      const shiftYear = new Date(shiftDate).getFullYear()
+      // Create date in local timezone (Eastern Time)
+      const summerDeadline = new Date(shiftYear, 4, 16, 0, 0, 0, 0) // Month is 0-indexed, so 4 = May
+      applicationDeadline = summerDeadline.toISOString()
     } else if (deadlineSeconds === null || deadlineSeconds === undefined) {
       applicationDeadline = calculateAutoDeadline(shiftDate)
       deadlineDuration = null
@@ -655,6 +660,11 @@ export async function createExtraFirefighterReplacement(
       const calcStartTime = shiftStartTime
       const calcEndTime = shiftEndTime
       applicationDeadline = calculateEndOfShiftDeadline(shiftDate, calcEndTime, calcStartTime)
+    } else if (deadlineSeconds === -2) {
+      const shiftYear = new Date(shiftDate).getFullYear()
+      // Create date in local timezone (Eastern Time)
+      const summerDeadline = new Date(shiftYear, 4, 16, 0, 0, 0, 0) // Month is 0-indexed, so 4 = May
+      applicationDeadline = summerDeadline.toISOString()
     } else if (deadlineSeconds === null || deadlineSeconds === undefined) {
       applicationDeadline = calculateAutoDeadline(shiftDate)
       deadlineDuration = null
@@ -860,6 +870,11 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
       const startTime = "00:00" // Declare startTime here
       const endTime = "23:59" // Declare endTime here
       applicationDeadline = calculateEndOfShiftDeadline(shiftDate, endTime, startTime)
+    } else if (deadlineSeconds === -2) {
+      const shiftYear = new Date(shiftDate).getFullYear()
+      // Create date in local timezone (Eastern Time)
+      const summerDeadline = new Date(shiftYear, 4, 16, 0, 0, 0, 0) // Month is 0-indexed, so 4 = May
+      applicationDeadline = summerDeadline.toISOString()
     } else if (deadlineSeconds === null || deadlineSeconds === undefined) {
       applicationDeadline = calculateAutoDeadline(shiftDate)
       deadlineDuration = null
