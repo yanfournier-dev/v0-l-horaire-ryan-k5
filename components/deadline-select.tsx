@@ -98,7 +98,7 @@ export function DeadlineSelect({
   }
 
   const getFirstComeDisplayText = () => {
-    if (!shiftDate || !shiftEndTime) return "Premier arrivé, premier servi"
+    if (!shiftDate || !shiftEndTime) return "Sans délai"
 
     const endTime = isPartial && partialEndTime ? partialEndTime : shiftEndTime
     const startTime = shift?.start_time || "07:00"
@@ -127,7 +127,7 @@ export function DeadlineSelect({
     const dateStr = `${day} ${monthNames[month]} ${year}`
     const timeStr = `${String(hours).padStart(2, "0")} h ${String(minutes).padStart(2, "0")}`
 
-    return `Premier arrivé, premier servi (${dateStr} à ${timeStr})`
+    return `Sans délai (${dateStr} à ${timeStr})`
   }
 
   return (

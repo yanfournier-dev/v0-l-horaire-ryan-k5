@@ -401,3 +401,38 @@ export function getTodayInLocalTimezone(): Date {
   // In V0 or other environments, use default behavior
   return new Date()
 }
+
+/**
+ * Calculate the deadline as the end time of the shift
+ * Used for "Sans délai" option
+ *
+ * @param shiftDate - The date of the shift (YYYY-MM-DD or Date object)
+ * @param endTime - The end time of the shift (HH:MM:SS or HH:MM)
+ * @param startTime - The start time of the shift (HH:MM:SS or HH:MM)
+ * @returns Date object representing the deadline (end of shift)
+ *
+ * @example
+ * // For a day shift on December 25, 2025 ending at 17:00
+ * calculateEndOfShiftDeadline("2025-12-25", "17:00:00")
+ * // Returns: December 25, 2025 at 17:00
+ *
+ * // For a night shift on December 25, 2025 starting at 17:00 and ending at 07:00
+ * calculateEndOfShiftDeadline("2025-12-25", "07:00:00", "17:00:00")
+ * // Returns: December 26, 2025 at 07:00 (next day)
+ *
+ * // For a 24h shift on December 25, 2025 starting at 07:00 and ending at 07:00
+ * calculateEndOfShiftDeadline("2025-12-25", "07:00:00", "07:00:00")
+ * // Returns: December 26, 2025 at 07:00 (next day)
+ */
+export function calculateEndOfShiftDeadlineSansDélai(shiftDate: string | Date, endTime: string): Date {
+  const shift = typeof shiftDate === "string" ? parseLocalDate(shiftDate) : shiftDate
+
+  // Extract hours and minutes from times (handle both HH:MM:SS and HH:MM formats)
+  const [endHours, endMinutes] = endTime.split(":").map(Number)
+
+  // Create deadline at the end time of the shift
+  const deadline = new Date(shift)
+  deadline.setHours(endHours, endMinutes, 0, 0)
+
+  return deadline
+}

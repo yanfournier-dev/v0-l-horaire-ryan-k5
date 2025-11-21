@@ -149,7 +149,7 @@ export function AvailableReplacementsTab({
                     <PartTimeTeamBadge shiftDate={replacement.shift_date} />
                     {isFirstCome && (
                       <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs px-1.5 py-0 h-5 leading-none whitespace-nowrap">
-                        Premier arrivé, premier servi
+                        Sans délai
                       </Badge>
                     )}
                   </div>
