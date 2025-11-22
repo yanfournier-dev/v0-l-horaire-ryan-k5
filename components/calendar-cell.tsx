@@ -297,59 +297,44 @@ export function CalendarCell({
               })
 
               directAssignmentsByRole.forEach((assignments, role) => {
-                if (assignments.length === 2) {
-                  // Sort by replacement_order to get remplaçant 1 and 2
-                  const sorted = [...assignments].sort((a, b) => (a.replacementOrder || 0) - (b.replacementOrder || 0))
+                console.log(
+                  "[v0] firefighters list:",
+                  firefighters.map((f: any) => ({
+                    name: `${f.firstName} ${f.lastName}`,
+                    role: f.role,
+                    isExtra: f.isExtra,
+                  })),
+                )
+
+                const replacement1 = assignments.find((a) => a.replacementOrder === 1)
+                const replacement2 = assignments.find((a) => a.replacementOrder === 2)
+
+                if (replacement1 && replacement2) {
+                  const replacedFirefighterIndex = firefighters.findIndex((f: any) => f.role === role && !f.isExtra)
+
+                  console.log("[v0] Double replacement position:", { role, replacedFirefighterIndex })
 
                   // Create a synthetic key for this double replacement
-                  const key = `direct|${role}|${sorted[0].firstName}|${sorted[0].lastName}`
+                  const key = `direct|${role}|${replacement1.firstName}|${replacement1.lastName}`
 
                   replacementsByReplacedFirefighter.set(key, [
                     {
-                      replacement_first_name: sorted[0].firstName,
-                      replacement_last_name: sorted[0].lastName,
-                      start_time: sorted[0].startTime,
-                      end_time: sorted[0].endTime,
-                      replacement_order: sorted[0].replacementOrder,
+                      replacement_first_name: replacement1.firstName,
+                      replacement_last_name: replacement1.lastName,
+                      start_time: replacement1.startTime,
+                      end_time: replacement1.endTime,
+                      replacement_order: replacement1.replacementOrder,
                       replaced_role: role,
                     },
                     {
-                      replacement_first_name: sorted[1].firstName,
-                      replacement_last_name: sorted[1].lastName,
-                      start_time: sorted[1].startTime,
-                      end_time: sorted[1].endTime,
-                      replacement_order: sorted[1].replacementOrder,
+                      replacement_first_name: replacement2.firstName,
+                      replacement_last_name: replacement2.lastName,
+                      start_time: replacement2.startTime,
+                      end_time: replacement2.endTime,
+                      replacement_order: replacement2.replacementOrder,
                       replaced_role: role,
                     },
                   ])
-                }
-              })
-
-              // These would have isDirectAssignment:true and would be the "Remplaçant 2"
-              // Look for firefighters that don't match any original team member roles
-              firefighters.forEach((f: any) => {
-                if (f.isDirectAssignment && !f.replacementOrder) {
-                  // Try to find if this direct assignment is replacing someone
-                  // by looking in shiftReplacements for a replacement of this role
-                  const potentialReplaced = shiftReplacements.find(
-                    (r: any) => r.replaced_role === f.role && r.status === "assigned",
-                  )
-
-                  if (potentialReplaced) {
-                    const key = `${potentialReplaced.replaced_first_name}|${potentialReplaced.replaced_last_name}|${potentialReplaced.replaced_role}`
-                    if (!replacementsByReplacedFirefighter.has(key)) {
-                      replacementsByReplacedFirefighter.set(key, [])
-                    }
-                    // Add this direct assignment as a replacement
-                    replacementsByReplacedFirefighter.get(key)!.push({
-                      ...potentialReplaced,
-                      replacement_first_name: f.firstName,
-                      replacement_last_name: f.lastName,
-                      start_time: f.startTime,
-                      end_time: f.endTime,
-                      replacement_order: 2, // Mark as second replacement
-                    })
-                  }
                 }
               })
 
@@ -413,6 +398,12 @@ export function CalendarCell({
                   )
 
                   if (!alreadyAdded) {
+                    const replacedFirefighterIndex = firefighters.findIndex((f: any) => f.role === role && !f.isExtra)
+
+                    const originalIndex = replacedFirefighterIndex !== -1 ? replacedFirefighterIndex : 999
+
+                    console.log("[v0] Double replacement position:", { role, originalIndex, replacedFirefighterIndex })
+
                     displayItems.push({
                       type: "double-replacement",
                       data: {
@@ -420,11 +411,13 @@ export function CalendarCell({
                         replacements: replacementsByReplacedFirefighter.get(key)!,
                       },
                       role,
-                      index: 999, // Put at end
+                      index: originalIndex,
                     })
                   }
                 }
               })
+
+              displayItems.sort((a, b) => a.index - b.index)
 
               return (
                 <div
