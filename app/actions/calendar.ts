@@ -340,6 +340,8 @@ export async function getAllShiftsWithAssignments() {
 
 export async function getShiftWithAssignments(shiftId: number) {
   try {
+    console.log("[v0] getShiftWithAssignments called for shiftId:", shiftId)
+
     const result = await sql`
       WITH shift_info AS (
         SELECT 
@@ -542,6 +544,27 @@ export async function getShiftWithAssignments(shiftId: number) {
     const { shift_data, assignments_data } = result[0]
     const shift = shift_data
     const assignments = assignments_data || []
+
+    console.log(
+      "[v0] getShiftWithAssignments result:",
+      JSON.stringify(
+        {
+          shiftId: shift.id,
+          assignmentsCount: assignments.length,
+          assignments: assignments.map((a: any) => ({
+            name: `${a.first_name} ${a.last_name}`,
+            is_partial: a.is_partial,
+            start_time: a.start_time,
+            end_time: a.end_time,
+            is_direct_assignment: a.is_direct_assignment,
+            replaced_user_id: a.replaced_user_id,
+            replaced_name: a.replaced_name,
+          })),
+        },
+        null,
+        2,
+      ),
+    )
 
     if (!shift || !shift.team_name) {
       console.error("[v0] getShiftWithAssignments: Invalid shift data returned")

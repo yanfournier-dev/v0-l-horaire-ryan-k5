@@ -245,7 +245,7 @@ export function ShiftAssignmentDrawer({
         const assignmentResult = await fetch("/api/get-shift-assignment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.JSON.stringify({
+          body: JSON.stringify({
             shiftId: shift.id,
             userId: approvedApp.applicant_id,
           }),
@@ -930,7 +930,6 @@ export function ShiftAssignmentDrawer({
                                         {replacement2 ? "Remplaçant 1" : "Remplaçant"}: {replacement1.first_name}{" "}
                                         {replacement1.last_name}
                                         {(() => {
-                                          // If there's no Replacement 2, show full shift or original times
                                           if (!replacement2) {
                                             if (replacement1.start_time && replacement1.end_time) {
                                               return (
@@ -944,43 +943,50 @@ export function ShiftAssignmentDrawer({
                                             return <span> (Quart complet)</span>
                                           }
 
-                                          // If Replacement 2 exists, calculate remaining time(s)
-                                          const shiftStart = shift?.start_time?.slice(0, 5) || "07:00"
-                                          const shiftEnd = shift?.end_time?.slice(0, 5) || "17:00"
+                                          // If Replacement 2 exists, use replacement 1's hours as the base (not shift hours)
+                                          // This handles partial replacements correctly
+                                          const r1Start =
+                                            replacement1.start_time?.slice(0, 5) ||
+                                            shift?.start_time?.slice(0, 5) ||
+                                            "07:00"
+                                          const r1End =
+                                            replacement1.end_time?.slice(0, 5) ||
+                                            shift?.end_time?.slice(0, 5) ||
+                                            "17:00"
                                           const r2Start = replacement2.start_time?.slice(0, 5) || ""
                                           const r2End = replacement2.end_time?.slice(0, 5) || ""
 
-                                          // Replacement 2 covers beginning of shift
-                                          if (r2Start === shiftStart && r2End !== shiftEnd) {
+                                          // Replacement 2 covers beginning of replacement period
+                                          if (r2Start === r1Start && r2End !== r1End) {
                                             return (
                                               <span>
                                                 {" "}
-                                                ({r2End}-{shiftEnd})
+                                                ({r2End}-{r1End})
                                               </span>
                                             )
                                           }
 
-                                          // Replacement 2 covers end of shift
-                                          if (r2Start !== shiftStart && r2End === shiftEnd) {
+                                          // Replacement 2 covers end of replacement period
+                                          if (r2Start !== r1Start && r2End === r1End) {
                                             return (
                                               <span>
                                                 {" "}
-                                                ({shiftStart}-{r2Start})
+                                                ({r1Start}-{r2Start})
                                               </span>
                                             )
                                           }
 
                                           // Replacement 2 is in the middle - show two periods
-                                          if (r2Start !== shiftStart && r2End !== shiftEnd) {
+                                          if (r2Start !== r1Start && r2End !== r1End) {
                                             return (
                                               <span>
                                                 {" "}
-                                                ({shiftStart}-{r2Start}) ET ({r2End}-{shiftEnd})
+                                                ({r1Start}-{r2Start}) ET ({r2End}-{r1End})
                                               </span>
                                             )
                                           }
 
-                                          // Replacement 2 covers full shift (shouldn't happen)
+                                          // Replacement 2 covers full replacement period (shouldn't happen)
                                           return <span> (Aucune heure restante)</span>
                                         })()}
                                       </Badge>
@@ -1588,7 +1594,6 @@ export function ShiftAssignmentDrawer({
                 partialEndTime={isPartial ? endTime : undefined}
                 isPartial={isPartial}
                 shift={shift}
-                // </CHANGE>
               />
             )}
 

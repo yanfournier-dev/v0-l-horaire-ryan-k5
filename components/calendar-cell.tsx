@@ -200,6 +200,17 @@ export function CalendarCell({
                       isDirectAssignment: isDirectAssignment === "true",
                     }
 
+                    // Log direct assignments with partial times for debugging
+                    if (firefighterData.isDirectAssignment && firefighterData.isPartial) {
+                      console.log("[v0] Parsed direct assignment:", {
+                        name: `${firstName} ${lastName}`,
+                        isPartial: firefighterData.isPartial,
+                        startTime: firefighterData.startTime,
+                        endTime: firefighterData.endTime,
+                        rawEntry: entry,
+                      })
+                    }
+
                     return firefighterData
                   })
                 : []

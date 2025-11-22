@@ -87,19 +87,71 @@ export async function addSecondReplacement(params: {
   endTime: string
 }) {
   try {
-    console.log("[v0 SERVER] addSecondReplacement called with:", params)
+    console.log("[v0] addSecondReplacement called with:", params)
 
     const { shiftId, replacedUserId, assignedUserId, startTime, endTime } = params
 
-    const shiftInfo = await sql`
-      SELECT end_time FROM shifts WHERE id = ${shiftId}
+    const replacement1Info = await sql`
+      SELECT start_time, end_time, is_partial 
+      FROM shift_assignments
+      WHERE shift_id = ${shiftId}
+        AND replaced_user_id = ${replacedUserId}
+        AND replacement_order = 1
     `
 
-    if (shiftInfo.length === 0) {
-      return { success: false, error: "Quart introuvable" }
+    console.log("[v0] Replacement 1 info from database:", replacement1Info)
+
+    if (replacement1Info.length === 0) {
+      return { success: false, error: "Remplaçant 1 introuvable" }
     }
 
-    const shiftEndTime = shiftInfo[0].end_time
+    let adjustedEndTime = replacement1Info[0].end_time
+
+    console.log("[v0] Initial adjustedEndTime:", adjustedEndTime)
+
+    if (!adjustedEndTime) {
+      // First try to get it from the replacement record (table replacements)
+      const replacementInfo = await sql`
+        SELECT end_time, is_partial
+        FROM replacements
+        WHERE shift_date || '-' || shift_type || '-' || team_id IN (
+          SELECT CONCAT(
+            TO_CHAR((
+              SELECT start_date + (s.cycle_day - 1) * INTERVAL '1 day'
+              FROM cycle_config
+              WHERE is_active = true
+              LIMIT 1
+            ), 'YYYY-MM-DD'), '-', s.shift_type, '-', s.team_id
+          )
+          FROM shifts s
+          WHERE s.id = ${shiftId}
+        )
+        AND user_id = ${replacedUserId}
+        AND status != 'cancelled'
+        LIMIT 1
+      `
+
+      console.log("[v0] Replacement info from replacements table:", replacementInfo)
+
+      if (replacementInfo.length > 0 && replacementInfo[0].end_time) {
+        adjustedEndTime = replacementInfo[0].end_time
+      } else {
+        // Last resort: get shift end_time
+        const shiftInfo = await sql`
+          SELECT end_time FROM shifts WHERE id = ${shiftId}
+        `
+
+        console.log("[v0] Shift info:", shiftInfo)
+
+        if (shiftInfo.length === 0) {
+          return { success: false, error: "Quart introuvable" }
+        }
+
+        adjustedEndTime = shiftInfo[0].end_time
+      }
+    }
+
+    console.log("[v0] Final adjustedEndTime:", adjustedEndTime)
 
     // Check if there's already a second replacement
     const existingSecond = await sql`
@@ -109,7 +161,7 @@ export async function addSecondReplacement(params: {
         AND replacement_order = 2
     `
 
-    console.log("[v0 SERVER] Existing second replacement:", existingSecond)
+    console.log("[v0] Existing second replacement:", existingSecond)
 
     if (existingSecond.length > 0) {
       return {
@@ -122,14 +174,24 @@ export async function addSecondReplacement(params: {
       UPDATE shift_assignments
       SET 
         start_time = ${endTime},
-        end_time = ${shiftEndTime},
-        is_partial = true
+        end_time = ${adjustedEndTime},
+        is_partial = true,
+        is_direct_assignment = true
       WHERE shift_id = ${shiftId}
         AND replaced_user_id = ${replacedUserId}
         AND replacement_order = 1
     `
 
-    console.log("[v0 SERVER] Updated replacement 1 hours:", { startTime: endTime, endTime: shiftEndTime })
+    console.log("[v0] Updated replacement 1 hours:", { startTime: endTime, endTime: adjustedEndTime })
+
+    const verifyUpdate = await sql`
+      SELECT start_time, end_time, is_partial 
+      FROM shift_assignments
+      WHERE shift_id = ${shiftId}
+        AND replaced_user_id = ${replacedUserId}
+        AND replacement_order = 1
+    `
+    console.log("[v0] VERIFICATION - Replacement 1 after UPDATE:", verifyUpdate)
 
     // Insert the second replacement
     const result = await sql`
@@ -158,14 +220,14 @@ export async function addSecondReplacement(params: {
       RETURNING *
     `
 
-    console.log("[v0 SERVER] Insert result:", result)
+    console.log("[v0] Insert result:", result)
 
     revalidatePath("/dashboard")
     revalidatePath("/calendar")
 
     return { success: true }
   } catch (error) {
-    console.error("[v0 SERVER] addSecondReplacement error:", error)
+    console.error("[v0] addSecondReplacement error:", error)
     return {
       success: false,
       error:
