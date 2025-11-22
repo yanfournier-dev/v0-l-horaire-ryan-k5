@@ -297,22 +297,11 @@ export function CalendarCell({
               })
 
               directAssignmentsByRole.forEach((assignments, role) => {
-                console.log(
-                  "[v0] firefighters list:",
-                  firefighters.map((f: any) => ({
-                    name: `${f.firstName} ${f.lastName}`,
-                    role: f.role,
-                    isExtra: f.isExtra,
-                  })),
-                )
-
                 const replacement1 = assignments.find((a) => a.replacementOrder === 1)
                 const replacement2 = assignments.find((a) => a.replacementOrder === 2)
 
                 if (replacement1 && replacement2) {
                   const replacedFirefighterIndex = firefighters.findIndex((f: any) => f.role === role && !f.isExtra)
-
-                  console.log("[v0] Double replacement position:", { role, replacedFirefighterIndex })
 
                   // Create a synthetic key for this double replacement
                   const key = `direct|${role}|${replacement1.firstName}|${replacement1.lastName}`
@@ -401,8 +390,6 @@ export function CalendarCell({
                     const replacedFirefighterIndex = firefighters.findIndex((f: any) => f.role === role && !f.isExtra)
 
                     const originalIndex = replacedFirefighterIndex !== -1 ? replacedFirefighterIndex : 999
-
-                    console.log("[v0] Double replacement position:", { role, originalIndex, replacedFirefighterIndex })
 
                     displayItems.push({
                       type: "double-replacement",
