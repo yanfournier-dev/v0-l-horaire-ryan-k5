@@ -943,8 +943,6 @@ export function ShiftAssignmentDrawer({
                                             return <span> (Quart complet)</span>
                                           }
 
-                                          // If Replacement 2 exists, use replacement 1's hours as the base (not shift hours)
-                                          // This handles partial replacements correctly
                                           const r1Start =
                                             replacement1.start_time?.slice(0, 5) ||
                                             shift?.start_time?.slice(0, 5) ||
@@ -955,6 +953,22 @@ export function ShiftAssignmentDrawer({
                                             "17:00"
                                           const r2Start = replacement2.start_time?.slice(0, 5) || ""
                                           const r2End = replacement2.end_time?.slice(0, 5) || ""
+
+                                          // Check if replacement 2 overlaps replacement 1
+                                          const hasOverlap = r2Start < r1End
+
+                                          if (!hasOverlap) {
+                                            // No overlap - replacement 2 starts after replacement 1 ends
+                                            // Just show replacement 1's original hours
+                                            return (
+                                              <span>
+                                                {" "}
+                                                ({r1Start}-{r1End})
+                                              </span>
+                                            )
+                                          }
+
+                                          // There is overlap - adjust display based on where replacement 2 is
 
                                           // Replacement 2 covers beginning of replacement period
                                           if (r2Start === r1Start && r2End !== r1End) {
@@ -977,7 +991,7 @@ export function ShiftAssignmentDrawer({
                                           }
 
                                           // Replacement 2 is in the middle - show two periods
-                                          if (r2Start !== r1Start && r2End !== r1End) {
+                                          if (r2Start !== r1Start && r2End !== r1End && r2End < r1End) {
                                             return (
                                               <span>
                                                 {" "}
@@ -986,7 +1000,7 @@ export function ShiftAssignmentDrawer({
                                             )
                                           }
 
-                                          // Replacement 2 covers full replacement period (shouldn't happen)
+                                          // Replacement 2 covers full replacement period or extends beyond
                                           return <span> (Aucune heure restante)</span>
                                         })()}
                                       </Badge>
