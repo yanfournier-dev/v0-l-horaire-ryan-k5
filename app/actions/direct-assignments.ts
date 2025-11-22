@@ -106,8 +106,9 @@ export async function addSecondReplacement(params: {
     }
 
     let adjustedEndTime = replacement1Info[0].end_time
+    const originalStartTime = replacement1Info[0].start_time
 
-    console.log("[v0] Initial adjustedEndTime:", adjustedEndTime)
+    console.log("[v0] Replacement 1 original hours:", { startTime: originalStartTime, endTime: adjustedEndTime })
 
     if (!adjustedEndTime) {
       // First try to get it from the replacement record (table replacements)
@@ -170,19 +171,44 @@ export async function addSecondReplacement(params: {
       }
     }
 
-    await sql`
-      UPDATE shift_assignments
-      SET 
-        start_time = ${endTime},
-        end_time = ${adjustedEndTime},
-        is_partial = true,
-        is_direct_assignment = true
-      WHERE shift_id = ${shiftId}
-        AND replaced_user_id = ${replacedUserId}
-        AND replacement_order = 1
-    `
+    // Check if replacement 2 starts before replacement 1 ends
+    const replacement2StartsBeforeReplacement1Ends = startTime < (adjustedEndTime || "23:59:59")
 
-    console.log("[v0] Updated replacement 1 hours:", { startTime: endTime, endTime: adjustedEndTime })
+    console.log("[v0] Overlap check:", {
+      replacement2Start: startTime,
+      replacement1End: adjustedEndTime,
+      hasOverlap: replacement2StartsBeforeReplacement1Ends,
+    })
+
+    if (replacement2StartsBeforeReplacement1Ends) {
+      // There's an overlap - adjust replacement 1 to end when replacement 2 starts
+      await sql`
+        UPDATE shift_assignments
+        SET 
+          start_time = ${originalStartTime},
+          end_time = ${startTime},
+          is_partial = true,
+          is_direct_assignment = true
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+      console.log("[v0] Updated replacement 1 (overlap case):", {
+        startTime: originalStartTime,
+        endTime: startTime,
+      })
+    } else {
+      // No overlap - keep replacement 1 as is, just mark it as direct assignment
+      await sql`
+        UPDATE shift_assignments
+        SET 
+          is_direct_assignment = true
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+      console.log("[v0] Replacement 1 kept as is (no overlap)")
+    }
 
     const verifyUpdate = await sql`
       SELECT start_time, end_time, is_partial 
