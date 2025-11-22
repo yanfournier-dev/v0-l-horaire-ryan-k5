@@ -930,7 +930,9 @@ export function ShiftAssignmentDrawer({
                                         {replacement2 ? "Remplaçant 1" : "Remplaçant"}: {replacement1.first_name}{" "}
                                         {replacement1.last_name}
                                         {(() => {
-                                          if (!replacement2) {
+                                          // The server has already adjusted R1's times correctly
+                                          if (replacement2) {
+                                            // Just display what the server sent - it's already adjusted
                                             if (replacement1.start_time && replacement1.end_time) {
                                               return (
                                                 <span>
@@ -943,65 +945,18 @@ export function ShiftAssignmentDrawer({
                                             return <span> (Quart complet)</span>
                                           }
 
-                                          const r1Start =
-                                            replacement1.start_time?.slice(0, 5) ||
-                                            shift?.start_time?.slice(0, 5) ||
-                                            "07:00"
-                                          const r1End =
-                                            replacement1.end_time?.slice(0, 5) ||
-                                            shift?.end_time?.slice(0, 5) ||
-                                            "17:00"
-                                          const r2Start = replacement2.start_time?.slice(0, 5) || ""
-                                          const r2End = replacement2.end_time?.slice(0, 5) || ""
-
-                                          // Check if replacement 2 overlaps replacement 1
-                                          const hasOverlap = r2Start < r1End
-
-                                          if (!hasOverlap) {
-                                            // No overlap - replacement 2 starts after replacement 1 ends
-                                            // Just show replacement 1's original hours
-                                            return (
-                                              <span>
-                                                {" "}
-                                                ({r1Start}-{r1End})
-                                              </span>
-                                            )
+                                          if (!replacement2) {
+                                            if (replacement1.start_time && replacement1.end_time) {
+                                              return (
+                                                <span>
+                                                  {" "}
+                                                  ({replacement1.start_time.slice(0, 5)}-
+                                                  {replacement1.end_time.slice(0, 5)})
+                                                </span>
+                                              )
+                                            }
+                                            return <span> (Quart complet)</span>
                                           }
-
-                                          // There is overlap - adjust display based on where replacement 2 is
-
-                                          // Replacement 2 covers beginning of replacement period
-                                          if (r2Start === r1Start && r2End !== r1End) {
-                                            return (
-                                              <span>
-                                                {" "}
-                                                ({r2End}-{r1End})
-                                              </span>
-                                            )
-                                          }
-
-                                          // Replacement 2 covers end of replacement period
-                                          if (r2Start !== r1Start && r2End === r1End) {
-                                            return (
-                                              <span>
-                                                {" "}
-                                                ({r1Start}-{r2Start})
-                                              </span>
-                                            )
-                                          }
-
-                                          // Replacement 2 is in the middle - show two periods
-                                          if (r2Start !== r1Start && r2End !== r1End && r2End < r1End) {
-                                            return (
-                                              <span>
-                                                {" "}
-                                                ({r1Start}-{r2Start}) ET ({r2End}-{r1End})
-                                              </span>
-                                            )
-                                          }
-
-                                          // Replacement 2 covers full replacement period or extends beyond
-                                          return <span> (Aucune heure restante)</span>
                                         })()}
                                       </Badge>
                                       {isAdmin && (

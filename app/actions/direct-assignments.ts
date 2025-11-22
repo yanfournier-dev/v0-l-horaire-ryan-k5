@@ -171,43 +171,92 @@ export async function addSecondReplacement(params: {
       }
     }
 
-    // Check if replacement 2 starts before replacement 1 ends
-    const replacement2StartsBeforeReplacement1Ends = startTime < (adjustedEndTime || "23:59:59")
+    const r1Start = originalStartTime || "07:00:00"
+    const r1End = adjustedEndTime || "17:00:00"
+    const r2Start = startTime
+    const r2End = endTime
 
-    console.log("[v0] Overlap check:", {
-      replacement2Start: startTime,
-      replacement1End: adjustedEndTime,
-      hasOverlap: replacement2StartsBeforeReplacement1Ends,
+    console.log("[v0] Analyzing overlap:", {
+      r1Start,
+      r1End,
+      r2Start,
+      r2End,
     })
 
-    if (replacement2StartsBeforeReplacement1Ends) {
-      // There's an overlap - adjust replacement 1 to end when replacement 2 starts
+    // Determine overlap type and adjust accordingly
+    if (r2Start >= r1End) {
+      // Case 1: No overlap - R2 starts after R1 ends (e.g., R1: 7-11, R2: 11-17)
+      // Keep R1 as is
+      await sql`
+        UPDATE shift_assignments
+        SET is_direct_assignment = true
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+      console.log("[v0] No overlap - R1 kept as is:", { r1Start, r1End })
+    } else if (r2Start <= r1Start && r2End >= r1End) {
+      // Case 2: R2 covers entire R1 period - shouldn't happen, but keep R1 with no hours
       await sql`
         UPDATE shift_assignments
         SET 
-          start_time = ${originalStartTime},
-          end_time = ${startTime},
+          start_time = ${r1Start},
+          end_time = ${r1Start},
           is_partial = true,
           is_direct_assignment = true
         WHERE shift_id = ${shiftId}
           AND replaced_user_id = ${replacedUserId}
           AND replacement_order = 1
       `
-      console.log("[v0] Updated replacement 1 (overlap case):", {
-        startTime: originalStartTime,
-        endTime: startTime,
-      })
-    } else {
-      // No overlap - keep replacement 1 as is, just mark it as direct assignment
+      console.log("[v0] R2 covers entire R1 - R1 has no hours")
+    } else if (r2Start <= r1Start && r2End < r1End) {
+      // Case 3: R2 covers beginning (e.g., R1: 7-12, R2: 7-9 → R1 becomes 9-12)
       await sql`
         UPDATE shift_assignments
         SET 
+          start_time = ${r2End},
+          end_time = ${r1End},
+          is_partial = true,
           is_direct_assignment = true
         WHERE shift_id = ${shiftId}
           AND replaced_user_id = ${replacedUserId}
           AND replacement_order = 1
       `
-      console.log("[v0] Replacement 1 kept as is (no overlap)")
+      console.log("[v0] R2 covers beginning - R1 adjusted:", {
+        newStart: r2End,
+        newEnd: r1End,
+      })
+    } else if (r2Start > r1Start && r2End >= r1End) {
+      // Case 4: R2 covers end (e.g., R1: 7-17, R2: 11-17 → R1 becomes 7-11)
+      await sql`
+        UPDATE shift_assignments
+        SET 
+          start_time = ${r1Start},
+          end_time = ${r2Start},
+          is_partial = true,
+          is_direct_assignment = true
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+      console.log("[v0] R2 covers end - R1 adjusted:", {
+        newStart: r1Start,
+        newEnd: r2Start,
+      })
+    } else {
+      // Case 5: R2 is in the middle (e.g., R1: 7-17, R2: 9-11)
+      // Keep R1 as is - drawer will show split periods
+      await sql`
+        UPDATE shift_assignments
+        SET is_direct_assignment = true
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+      console.log("[v0] R2 in middle - R1 kept as is (drawer will show split):", {
+        r1Start,
+        r1End,
+      })
     }
 
     const verifyUpdate = await sql`
