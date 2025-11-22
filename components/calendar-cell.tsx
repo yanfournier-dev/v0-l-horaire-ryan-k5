@@ -184,6 +184,7 @@ export function CalendarCell({
                       isActingLieutenant,
                       isActingCaptain,
                       isDirectAssignment,
+                      replacementOrder,
                     ] = entry.trim().split("|")
 
                     const firefighterData = {
@@ -198,6 +199,7 @@ export function CalendarCell({
                         isActingLieutenant === "true" ? true : isActingLieutenant === "false" ? false : null,
                       isActingCaptain: isActingCaptain === "true" ? true : isActingCaptain === "false" ? false : null,
                       isDirectAssignment: isDirectAssignment === "true",
+                      replacementOrder: replacementOrder ? Number.parseInt(replacementOrder) : null,
                     }
 
                     // Log direct assignments with partial times for debugging
@@ -207,6 +209,7 @@ export function CalendarCell({
                         isPartial: firefighterData.isPartial,
                         startTime: firefighterData.startTime,
                         endTime: firefighterData.endTime,
+                        replacementOrder: firefighterData.replacementOrder,
                         rawEntry: entry,
                       })
                     }
@@ -272,6 +275,7 @@ export function CalendarCell({
 
               const replacementsByReplacedFirefighter = new Map<string, any[]>()
 
+              // First, group traditional replacements from shiftReplacements
               shiftReplacements.forEach((r: any) => {
                 if (r.status === "assigned" && r.replacement_first_name) {
                   const key = `${r.replaced_first_name}|${r.replaced_last_name}|${r.replaced_role}`
@@ -282,10 +286,49 @@ export function CalendarCell({
                 }
               })
 
+              const directAssignmentsByRole = new Map<string, any[]>()
+              firefighters.forEach((f: any) => {
+                if (f.isDirectAssignment && f.replacementOrder) {
+                  if (!directAssignmentsByRole.has(f.role)) {
+                    directAssignmentsByRole.set(f.role, [])
+                  }
+                  directAssignmentsByRole.get(f.role)!.push(f)
+                }
+              })
+
+              directAssignmentsByRole.forEach((assignments, role) => {
+                if (assignments.length === 2) {
+                  // Sort by replacement_order to get remplaçant 1 and 2
+                  const sorted = [...assignments].sort((a, b) => (a.replacementOrder || 0) - (b.replacementOrder || 0))
+
+                  // Create a synthetic key for this double replacement
+                  const key = `direct|${role}|${sorted[0].firstName}|${sorted[0].lastName}`
+
+                  replacementsByReplacedFirefighter.set(key, [
+                    {
+                      replacement_first_name: sorted[0].firstName,
+                      replacement_last_name: sorted[0].lastName,
+                      start_time: sorted[0].startTime,
+                      end_time: sorted[0].endTime,
+                      replacement_order: sorted[0].replacementOrder,
+                      replaced_role: role,
+                    },
+                    {
+                      replacement_first_name: sorted[1].firstName,
+                      replacement_last_name: sorted[1].lastName,
+                      start_time: sorted[1].startTime,
+                      end_time: sorted[1].endTime,
+                      replacement_order: sorted[1].replacementOrder,
+                      replaced_role: role,
+                    },
+                  ])
+                }
+              })
+
               // These would have isDirectAssignment:true and would be the "Remplaçant 2"
               // Look for firefighters that don't match any original team member roles
               firefighters.forEach((f: any) => {
-                if (f.isDirectAssignment) {
+                if (f.isDirectAssignment && !f.replacementOrder) {
                   // Try to find if this direct assignment is replacing someone
                   // by looking in shiftReplacements for a replacement of this role
                   const potentialReplaced = shiftReplacements.find(
@@ -309,20 +352,6 @@ export function CalendarCell({
                   }
                 }
               })
-
-              if (dateStr === "2025-11-12" && shift.shift_type === "day") {
-                console.log(
-                  "[v0] Nov 12 day shift - replacementsByReplacedFirefighter:",
-                  Array.from(replacementsByReplacedFirefighter.entries()).map(([k, v]) => ({
-                    key: k,
-                    count: v.length,
-                    replacements: v.map((r) => ({
-                      name: `${r.replacement_first_name} ${r.replacement_last_name}`,
-                      times: `${r.start_time}-${r.end_time}`,
-                    })),
-                  })),
-                )
-              }
 
               const firefightersToHide = new Set<string>()
               replacementsByReplacedFirefighter.forEach((replacements, key) => {
@@ -351,7 +380,9 @@ export function CalendarCell({
                   replacementsByReplacedFirefighter.has(replacedKey) &&
                   replacementsByReplacedFirefighter.get(replacedKey)!.length === 2
 
-                if (!firefightersToHide.has(firefighterKey) && !hasDoubleReplacement) {
+                const isPartOfDoubleDirectAssignment = firefightersToHide.has(firefighterKey)
+
+                if (!isPartOfDoubleDirectAssignment && !hasDoubleReplacement) {
                   displayItems.push({
                     type: "firefighter",
                     data: firefighter,
@@ -371,37 +402,28 @@ export function CalendarCell({
                 }
               })
 
-              Array.from(replacementsByReplacedFirefighter.entries()).forEach(([key, replacements]) => {
-                if (replacements.length !== 2) return
+              directAssignmentsByRole.forEach((assignments, role) => {
+                if (assignments.length === 2) {
+                  const sorted = [...assignments].sort((a, b) => (a.replacementOrder || 0) - (b.replacementOrder || 0))
+                  const key = `direct|${role}|${sorted[0].firstName}|${sorted[0].lastName}`
 
-                const [firstName, lastName, role] = key.split("|")
+                  // Only add if we haven't already added this as a replacement
+                  const alreadyAdded = displayItems.some(
+                    (item) => item.type === "double-replacement" && item.data.key === key,
+                  )
 
-                // Check if this firefighter is already in the main firefighters list
-                const isInMainList = firefighters.some(
-                  (f) => f.firstName === firstName && f.lastName === lastName && f.role === role,
-                )
-
-                if (!isInMainList) {
-                  // Add at the position based on role
-                  displayItems.push({
-                    type: "double-replacement",
-                    data: { key, replacements },
-                    role: role,
-                    index: 999, // Temporary, will be sorted
-                  })
+                  if (!alreadyAdded) {
+                    displayItems.push({
+                      type: "double-replacement",
+                      data: {
+                        key,
+                        replacements: replacementsByReplacedFirefighter.get(key)!,
+                      },
+                      role,
+                      index: 999, // Put at end
+                    })
+                  }
                 }
-              })
-
-              // Sort display items by role order
-              displayItems.sort((a, b) => {
-                if (a.type === "firefighter" && a.data.isExtra !== (b.type === "firefighter" && b.data.isExtra)) {
-                  return a.type === "firefighter" && a.data.isExtra ? 1 : -1
-                }
-                const orderA = roleOrder[a.role] || 9
-                const orderB = roleOrder[b.role] || 9
-                if (orderA !== orderB) return orderA - orderB
-                // Keep original order for items with same role
-                return a.index - b.index
               })
 
               return (
