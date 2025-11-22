@@ -772,7 +772,7 @@ export function ShiftAssignmentDrawer({
         is_partial: assignment.is_partial,
         is_direct_assignment: true,
         is_replacement: false,
-        replacement_order: assignment.replacement_order || 2,
+        replacement_order: assignment.replacement_order || 1,
         // Store the real names from allFirefighters
         replaced_first_name: replacedFF?.first_name || "Pompier",
         replaced_last_name: replacedFF?.last_name || "Inconnu",

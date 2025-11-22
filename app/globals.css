@@ -180,3 +180,124 @@
     }
   }
 }
+
+/* Adding missing animation utilities for Tailwind CSS v4 */
+@layer utilities {
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes zoom-in {
+    from {
+      transform: scale(0.95);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes zoom-out {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(0.95);
+    }
+  }
+
+  @keyframes slide-in-from-top {
+    from {
+      transform: translateY(-0.5rem);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-in-from-bottom {
+    from {
+      transform: translateY(0.5rem);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-in-from-left {
+    from {
+      transform: translateX(-0.5rem);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slide-in-from-right {
+    from {
+      transform: translateX(0.5rem);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-in {
+    animation-duration: 150ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-fill-mode: both;
+  }
+
+  .animate-out {
+    animation-duration: 150ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-fill-mode: both;
+    animation-direction: reverse;
+  }
+
+  .fade-in-0 {
+    animation-name: fade-in;
+    opacity: 1;
+  }
+  .fade-out-0 {
+    animation-name: fade-out;
+    opacity: 0;
+  }
+  .zoom-in-90 {
+    animation-name: zoom-in;
+    transform: scale(1);
+  }
+  .zoom-in-95 {
+    animation-name: zoom-in;
+    transform: scale(1);
+  }
+  .zoom-out-95 {
+    animation-name: zoom-out;
+    transform: scale(0.95);
+  }
+  .slide-in-from-top-2 {
+    animation-name: slide-in-from-top;
+  }
+  .slide-in-from-bottom-2 {
+    animation-name: slide-in-from-bottom;
+  }
+  .slide-in-from-left-2 {
+    animation-name: slide-in-from-left;
+  }
+  .slide-in-from-right-2 {
+    animation-name: slide-in-from-right;
+  }
+}

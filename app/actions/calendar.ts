@@ -388,6 +388,7 @@ export async function getShiftWithAssignments(shiftId: number) {
             WHEN sa_direct.user_id IS NOT NULL THEN u.first_name || ' ' || u.last_name
             ELSE NULL
           END::text as replaced_name,
+          sa_direct.replacement_order::integer,
           1 as source_order
         FROM team_members tm
         JOIN users u ON tm.user_id = u.id
@@ -436,6 +437,7 @@ export async function getShiftWithAssignments(shiftId: number) {
           false as is_direct_assignment,
           NULL::integer as replaced_user_id,
           NULL::text as replaced_name,
+          NULL::integer as replacement_order,
           2 as source_order
         FROM shift_assignments sa
         JOIN users u ON sa.user_id = u.id
@@ -501,7 +503,8 @@ export async function getShiftWithAssignments(shiftId: number) {
               'is_acting_captain', tm.is_acting_captain,
               'is_direct_assignment', tm.is_direct_assignment,
               'replaced_user_id', tm.replaced_user_id,
-              'replaced_name', tm.replaced_name
+              'replaced_name', tm.replaced_name,
+              'replacement_order', tm.replacement_order
             ) ORDER BY tm.source_order, 
               CASE tm.role 
                 WHEN 'captain' THEN 1 
@@ -559,6 +562,7 @@ export async function getShiftWithAssignments(shiftId: number) {
             is_direct_assignment: a.is_direct_assignment,
             replaced_user_id: a.replaced_user_id,
             replaced_name: a.replaced_name,
+            replacement_order: a.replacement_order,
           })),
         },
         null,
