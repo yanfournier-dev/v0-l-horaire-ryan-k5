@@ -689,6 +689,7 @@ export async function getReplacementsForDateRange(startDate: string, endDate: st
       WHERE r.shift_date >= ${startDate}
         AND r.shift_date <= ${endDate}
         AND r.status != 'cancelled'
+        AND (r.replacement_order IS NULL OR r.replacement_order = 1)
     `
 
     return replacements

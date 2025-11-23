@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { DeadlineSelect } from "@/components/deadline-select"
 import { addSecondReplacement } from "@/app/actions/direct-assignments"
+import { createSecondReplacementRequest } from "@/app/actions/replacements"
 import { toast } from "sonner"
 
 interface AddSecondReplacementDialogProps {
@@ -85,8 +86,32 @@ export function AddSecondReplacementDialog({
     setIsLoading(true)
 
     if (assignmentType === "request") {
-      toast.error("Fonctionnalité en développement - Utilisez l'assignation directe")
+      if (!deadlineSeconds) {
+        toast.error("Veuillez sélectionner une date limite")
+        setIsLoading(false)
+        return
+      }
+
+      const result = await createSecondReplacementRequest({
+        shiftId: shift.id,
+        replacedUserId: replacedFirefighter.id,
+        shiftDate: shift.date?.toISOString().split("T")[0] || "",
+        shiftType: shift.shift_type as "day" | "night" | "full_24h",
+        startTime,
+        endTime,
+        deadlineSeconds,
+      })
+
+      if (result.error) {
+        toast.error(result.error)
+        setIsLoading(false)
+        return
+      }
+
+      toast.success("Demande de remplacement créée avec succès")
       setIsLoading(false)
+      onOpenChange(false)
+      onSuccess()
       return
     }
 
