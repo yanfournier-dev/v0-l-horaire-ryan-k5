@@ -51,19 +51,17 @@ export async function getRecentReplacements() {
         r.*,
         t.name as team_name,
         t.color as team_color,
-        COALESCE(replaced_user.first_name, '') as first_name,
-        COALESCE(replaced_user.last_name, '') as last_name,
-        CONCAT(COALESCE(replaced_user.first_name, ''), ' ', COALESCE(replaced_user.last_name, '')) as firefighter_full_name,
+        replaced_user.first_name as first_name,
+        replaced_user.last_name as last_name,
         replacement_user.first_name as assigned_first_name,
         replacement_user.last_name as assigned_last_name,
         l.start_date as leave_start_date,
         l.end_date as leave_end_date,
-        (SELECT COUNT(*) FROM replacement_applications WHERE replacement_id = r.id) as application_count,
-        r.requester_name
+        (SELECT COUNT(*) FROM replacement_applications WHERE replacement_id = r.id) as application_count
       FROM replacements r
       LEFT JOIN teams t ON r.team_id = t.id
       LEFT JOIN leaves l ON r.leave_id = l.id
-      LEFT JOIN users replaced_user ON COALESCE(r.user_id, r.replaced_user_id) = replaced_user.id
+      LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
       LEFT JOIN replacement_applications ra_approved 
         ON r.id = ra_approved.replacement_id 
         AND ra_approved.status = 'approved'
@@ -75,60 +73,7 @@ export async function getRecentReplacements() {
       LIMIT 50
     `
 
-    const mappedReplacements = replacements.map((r: any) => {
-      const firstName = String(r.first_name || "").trim()
-      const lastName = String(r.last_name || "").trim()
-      const fullNameFromConcat = String(r.firefighter_full_name || "").trim()
-      const fullNameFromParts = `${firstName} ${lastName}`.trim()
-
-      const finalName = fullNameFromConcat || fullNameFromParts || null
-
-      return {
-        id: r.id,
-        user_id: r.user_id,
-        replaced_user_id: r.replaced_user_id,
-        shift_date: r.shift_date,
-        shift_type: r.shift_type,
-        team_id: r.team_id,
-        team_name: r.team_name,
-        team_color: r.team_color,
-        status: r.status,
-        is_partial: r.is_partial,
-        start_time: r.start_time,
-        end_time: r.end_time,
-        notes: r.notes,
-        created_at: r.created_at,
-        replacement_order: r.replacement_order,
-        application_count: r.application_count,
-        requester_name: r.requester_name,
-        name: finalName,
-        first_name: firstName,
-        last_name: lastName,
-        firefighter_full_name: fullNameFromConcat || null,
-        assigned_first_name: r.assigned_first_name,
-        assigned_last_name: r.assigned_last_name,
-        leave_start_date: r.leave_start_date,
-        leave_end_date: r.leave_end_date,
-        application_deadline: r.application_deadline,
-        deadline_duration: r.deadline_duration,
-        leave_id: r.leave_id,
-      }
-    })
-
-    const replacement2 = mappedReplacements.find((r: any) => r.replacement_order === 2)
-    if (replacement2) {
-      console.log("[v0] Replacement 2 from SQL (mapped):", {
-        id: replacement2.id,
-        user_id: replacement2.user_id,
-        replaced_user_id: replacement2.replaced_user_id,
-        first_name: replacement2.first_name,
-        last_name: replacement2.last_name,
-        firefighter_full_name: replacement2.firefighter_full_name,
-        replacement_order: replacement2.replacement_order,
-      })
-    }
-
-    return mappedReplacements
+    return replacements
   } catch (error) {
     console.error("getRecentReplacements: Error", error instanceof Error ? error.message : String(error))
     if (error instanceof Error && error.message.includes("Too Many")) {
@@ -151,8 +96,7 @@ export async function getAllReplacements() {
         replacement_user.last_name as assigned_last_name,
         l.start_date as leave_start_date,
         l.end_date as leave_end_date,
-        (SELECT COUNT(*) FROM replacement_applications WHERE replacement_id = r.id) as application_count,
-        r.requester_name
+        (SELECT COUNT(*) FROM replacement_applications WHERE replacement_id = r.id) as application_count
       FROM replacements r
       LEFT JOIN teams t ON r.team_id = t.id
       LEFT JOIN leaves l ON r.leave_id = l.id
@@ -164,47 +108,7 @@ export async function getAllReplacements() {
       ORDER BY r.shift_date DESC, r.shift_type
     `
 
-    const mappedReplacements = replacements.map((r: any) => {
-      const firstName = String(r.first_name || "").trim()
-      const lastName = String(r.last_name || "").trim()
-      const fullNameFromConcat = String(r.firefighter_full_name || "").trim()
-      const fullNameFromParts = `${firstName} ${lastName}`.trim()
-
-      const finalName = fullNameFromConcat || fullNameFromParts || null
-
-      return {
-        id: r.id,
-        user_id: r.user_id,
-        replaced_user_id: r.replaced_user_id,
-        shift_date: r.shift_date,
-        shift_type: r.shift_type,
-        team_id: r.team_id,
-        team_name: r.team_name,
-        team_color: r.team_color,
-        status: r.status,
-        is_partial: r.is_partial,
-        start_time: r.start_time,
-        end_time: r.end_time,
-        notes: r.notes,
-        created_at: r.created_at,
-        replacement_order: r.replacement_order,
-        application_count: r.application_count,
-        requester_name: r.requester_name,
-        name: finalName,
-        first_name: firstName,
-        last_name: lastName,
-        firefighter_full_name: fullNameFromConcat || null,
-        assigned_first_name: r.assigned_first_name,
-        assigned_last_name: r.assigned_last_name,
-        leave_start_date: r.leave_start_date,
-        leave_end_date: r.leave_end_date,
-        application_deadline: r.application_deadline,
-        deadline_duration: r.deadline_duration,
-        leave_id: r.leave_id,
-      }
-    })
-
-    return mappedReplacements
+    return replacements
   } catch (error) {
     console.error("getAllReplacements: Error", error instanceof Error ? error.message : String(error))
     if (error instanceof Error && error.message.includes("Too Many")) {
@@ -971,7 +875,7 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
       // Create date in local timezone (Eastern Time)
       const summerDeadline = new Date(shiftYear, 4, 16, 0, 0, 0, 0) // Month is 0-indexed, so 4 = May
       applicationDeadline = summerDeadline.toISOString()
-    } else {
+    } else if (deadlineSeconds === null || deadlineSeconds === undefined) {
       applicationDeadline = calculateAutoDeadline(shiftDate)
       deadlineDuration = null
     }
@@ -1178,8 +1082,7 @@ export async function getExpiredReplacements() {
         t.color as team_color,
         replaced_user.first_name as first_name,
         replaced_user.last_name as last_name,
-        (SELECT COUNT(*) FROM replacement_applications WHERE replacement_id = r.id) as application_count,
-        r.requester_name
+        (SELECT COUNT(*) FROM replacement_applications WHERE replacement_id = r.id) as application_count
       FROM replacements r
       LEFT JOIN teams t ON r.team_id = t.id
       LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
@@ -1190,23 +1093,7 @@ export async function getExpiredReplacements() {
       ORDER BY r.application_deadline ASC
     `
 
-    const mappedReplacements = replacements.map((r: any) => {
-      const firstName = String(r.first_name || "").trim()
-      const lastName = String(r.last_name || "").trim()
-      const fullNameFromConcat = String(r.firefighter_full_name || "").trim()
-      const fullNameFromParts = `${firstName} ${lastName}`.trim()
-
-      const finalName = fullNameFromConcat || fullNameFromParts || null
-
-      return {
-        ...r,
-        first_name: firstName,
-        last_name: lastName,
-        name: finalName,
-      }
-    })
-
-    return mappedReplacements
+    return replacements
   } catch (error) {
     console.error("getExpiredReplacements: Error", error instanceof Error ? error.message : String(error))
     if (error instanceof Error && error.message.includes("Too Many")) {
@@ -1337,100 +1224,9 @@ export async function getUserReplacementRequests(userId: number) {
       ORDER BY r.shift_date DESC, r.shift_type
     `
 
-    const mappedRequests = requests.map((r: any) => {
-      const firstName = String(r.first_name || "").trim()
-      const lastName = String(r.last_name || "").trim()
-      const fullNameFromConcat = String(r.firefighter_full_name || "").trim()
-      const fullNameFromParts = `${firstName} ${lastName}`.trim()
-
-      const finalName = fullNameFromConcat || fullNameFromParts || null
-
-      return {
-        ...r,
-        name: finalName,
-      }
-    })
-
-    return mappedRequests
+    return requests
   } catch (error) {
     console.error("getUserReplacementRequests: Error", error)
     return []
-  }
-}
-
-export async function createSecondReplacementRequest(data: {
-  replacedUserId: number
-  shiftId: number
-  shiftDate: string
-  shiftType: string
-  teamId: number
-  startTime: string
-  endTime: string
-  deadlineDuration: number
-}) {
-  console.log("[v0] createSecondReplacementRequest called with:", {
-    replacedUserId: data.replacedUserId,
-    shiftId: data.shiftId,
-    startTime: data.startTime,
-    endTime: data.endTime,
-    replacement_order: 2,
-  })
-
-  try {
-    const db = neon(process.env.DATABASE_URL!)
-
-    const [replacedUser] = await db`
-      SELECT first_name, last_name FROM users WHERE id = ${data.replacedUserId}
-    `
-
-    const requesterName = replacedUser ? `${replacedUser.first_name} ${replacedUser.last_name}` : null
-
-    console.log("[v0] About to INSERT replacement request with replacement_order=2, requesterName:", requesterName)
-
-    const [newReplacement] = await db`
-      INSERT INTO replacements (
-        user_id,
-        replaced_user_id,
-        shift_date,
-        shift_type,
-        team_id,
-        status,
-        is_partial,
-        start_time,
-        end_time,
-        deadline_duration,
-        replacement_order,
-        requester_name
-      )
-      VALUES (
-        NULL,
-        ${data.replacedUserId},
-        ${data.shiftDate},
-        ${data.shiftType},
-        ${data.teamId},
-        'open',
-        true,
-        ${data.startTime},
-        ${data.endTime},
-        ${data.deadlineDuration},
-        2,
-        ${requesterName}
-      )
-      RETURNING *
-    `
-
-    console.log("[v0] Replacement request created successfully:", {
-      id: newReplacement.id,
-      status: newReplacement.status,
-      replacement_order: newReplacement.replacement_order,
-      start_time: newReplacement.start_time,
-      end_time: newReplacement.end_time,
-      requester_name: newReplacement.requester_name,
-    })
-
-    return { success: true, replacement: newReplacement }
-  } catch (error) {
-    console.error("[v0] createSecondReplacementRequest: Error", error)
-    return { success: false, error: "Échec de la création de la demande" }
   }
 }

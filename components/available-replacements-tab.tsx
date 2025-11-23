@@ -40,23 +40,28 @@ export function AvailableReplacementsTab({
     })
   })
 
-  const replacement2 = allReplacements.find((r) => r.replacement_order === 2)
-  if (replacement2) {
-    console.log("[v0] CLIENT received replacement2:", {
-      id: replacement2.id,
-      name: replacement2.name,
-      first_name: replacement2.first_name,
-      last_name: replacement2.last_name,
-      firefighter_full_name: replacement2.firefighter_full_name,
-      user_id: replacement2.user_id,
-      replaced_user_id: replacement2.replaced_user_id,
+  console.log("[v0] AvailableReplacementsTab - Total replacements:", allReplacements.length)
+  console.log("[v0] AvailableReplacementsTab - Current time:", new Date().toISOString())
+
+  allReplacements.forEach((r, index) => {
+    const isExpired = r.application_deadline && new Date(r.application_deadline) < new Date()
+    console.log(`[v0] Replacement ${index + 1}:`, {
+      id: r.id,
+      name: `${r.first_name} ${r.last_name}`,
+      shift_date: r.shift_date,
+      deadline: r.application_deadline,
+      deadline_duration: r.deadline_duration,
+      isFirstCome: r.deadline_duration === -1,
+      isExpired,
     })
-  }
+  })
 
   const filteredReplacements = allReplacements.filter((replacement) => {
     const isExpired = replacement.application_deadline && new Date(replacement.application_deadline) < new Date()
     return !isExpired
   })
+
+  console.log("[v0] AvailableReplacementsTab - Filtered replacements:", filteredReplacements.length)
 
   const sortedReplacements = [...filteredReplacements].sort((a, b) => {
     let comparison = 0
@@ -69,14 +74,8 @@ export function AvailableReplacementsTab({
         comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         break
       case "name":
-        const nameA =
-          a.replacement_order === 2 || a.user_id === null
-            ? a.name || "Sans nom"
-            : a.name || `${a.first_name || ""} ${a.last_name || ""}`.trim() || "Sans nom"
-        const nameB =
-          b.replacement_order === 2 || b.user_id === null
-            ? b.name || "Sans nom"
-            : b.name || `${b.first_name || ""} ${b.last_name || ""}`.trim() || "Sans nom"
+        const nameA = a.user_id === null ? "Pompier supplémentaire" : `${a.first_name} ${a.last_name}`
+        const nameB = b.user_id === null ? "Pompier supplémentaire" : `${b.first_name} ${b.last_name}`
         comparison = nameA.localeCompare(nameB)
         break
       case "candidates":
@@ -156,10 +155,12 @@ export function AvailableReplacementsTab({
                   </div>
 
                   <div className="flex-1 min-w-0 leading-none">
-                    {replacement.user_id === null && replacement.replacement_order !== 2 ? (
+                    {replacement.user_id === null ? (
                       <span className="text-amber-600 dark:text-amber-400 font-medium">Pompier supplémentaire</span>
                     ) : (
-                      <span className="truncate">{replacement.requester_name || replacement.name || "Sans nom"}</span>
+                      <span className="truncate">
+                        {replacement.first_name} {replacement.last_name}
+                      </span>
                     )}
                     {replacement.is_partial && (
                       <span className="text-orange-600 dark:text-orange-400 ml-1 text-xs">

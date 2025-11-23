@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { DeadlineSelect } from "@/components/deadline-select"
 import { addSecondReplacement } from "@/app/actions/direct-assignments"
-import { createSecondReplacementRequest } from "@/app/actions/replacements"
 import { toast } from "sonner"
 
 interface AddSecondReplacementDialogProps {
@@ -55,13 +54,8 @@ export function AddSecondReplacementDialog({
   const [assignmentType, setAssignmentType] = useState<"direct" | "request">("direct")
   const [deadlineSeconds, setDeadlineSeconds] = useState<number | null | Date | null>(null)
   const [selectedFirefighter, setSelectedFirefighter] = useState<number | null>(null)
-
-  const isNightShift = shift.shift_type === "night"
-  const defaultStartTime = isNightShift ? "17:00" : "07:00"
-  const defaultEndTime = isNightShift ? "07:00" : "17:00"
-
-  const [startTime, setStartTime] = useState(defaultStartTime)
-  const [endTime, setEndTime] = useState(defaultEndTime)
+  const [startTime, setStartTime] = useState("07:00")
+  const [endTime, setEndTime] = useState("17:00")
   const [isLoading, setIsLoading] = useState(false)
 
   const generateTimeOptions = () => {
@@ -76,8 +70,6 @@ export function AddSecondReplacementDialog({
   }
 
   const handleSubmit = async () => {
-    console.log("[v0] handleSubmit called with assignmentType:", assignmentType)
-
     if (assignmentType === "direct") {
       if (!selectedFirefighter) {
         toast.error("Veuillez sélectionner un pompier")
@@ -85,9 +77,7 @@ export function AddSecondReplacementDialog({
       }
     }
 
-    // For night shifts, endTime (07:00) can be less than startTime (17:00) because it's the next day
-    const isNightShiftCrossingMidnight = isNightShift && startTime > endTime
-    if (!isNightShiftCrossingMidnight && startTime >= endTime) {
+    if (startTime >= endTime) {
       toast.error("L'heure de début doit être avant l'heure de fin")
       return
     }
@@ -95,55 +85,10 @@ export function AddSecondReplacementDialog({
     setIsLoading(true)
 
     if (assignmentType === "request") {
-      if (!deadlineSeconds) {
-        toast.error("Veuillez sélectionner une date limite")
-        setIsLoading(false)
-        return
-      }
-
-      console.log("[v0] Calling createSecondReplacementRequest with:", {
-        shiftId: shift.id,
-        replacedUserId: replacedFirefighter.id,
-        shiftDate: shift.date?.toISOString().split("T")[0],
-        shiftType: shift.shift_type,
-        startTime,
-        endTime,
-        deadlineSeconds,
-      })
-
-      const result = await createSecondReplacementRequest({
-        shiftId: shift.id,
-        replacedUserId: replacedFirefighter.id,
-        shiftDate: shift.date?.toISOString().split("T")[0] || "",
-        shiftType: shift.shift_type as "day" | "night" | "full_24h",
-        teamId: 1, // Default team ID - adjust if needed
-        startTime,
-        endTime,
-        deadlineDuration: typeof deadlineSeconds === "number" ? deadlineSeconds : 0,
-      })
-
-      console.log("[v0] createSecondReplacementRequest result:", result)
-
-      if (result.error) {
-        toast.error(result.error)
-        setIsLoading(false)
-        return
-      }
-
-      toast.success("Demande de remplacement créée avec succès")
+      toast.error("Fonctionnalité en développement - Utilisez l'assignation directe")
       setIsLoading(false)
-      onOpenChange(false)
-      onSuccess()
       return
     }
-
-    console.log("[v0] Calling addSecondReplacement with:", {
-      shiftId: shift.id,
-      replacedUserId: replacedFirefighter.id,
-      assignedUserId: selectedFirefighter,
-      startTime,
-      endTime,
-    })
 
     const result = await addSecondReplacement({
       shiftId: shift.id,
@@ -152,8 +97,6 @@ export function AddSecondReplacementDialog({
       startTime,
       endTime,
     })
-
-    console.log("[v0] addSecondReplacement result:", result)
 
     if (result.error) {
       toast.error(result.error)
