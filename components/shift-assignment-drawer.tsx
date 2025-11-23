@@ -64,6 +64,7 @@ interface ShiftAssignmentDrawerProps {
     team_id: number
     date: Date
     exchanges?: Array<any> // Add exchanges to shift type
+    team_members?: Array<any> // Added for direct assignments fallback
   } | null
   teamFirefighters: Array<{
     id: number
@@ -761,6 +762,9 @@ export function ShiftAssignmentDrawer({
         groupedReplacements.set(assignment.replaced_user_id, [])
       }
       const replacedFF = allFirefighters?.find((ff) => ff.id === assignment.replaced_user_id)
+
+      const replacedFromTeam = shift?.team_members?.find((tm: any) => tm.user_id === assignment.replaced_user_id)
+
       groupedReplacements.get(assignment.replaced_user_id)!.push({
         user_id: assignment.user_id,
         first_name: assignment.first_name,
@@ -773,10 +777,9 @@ export function ShiftAssignmentDrawer({
         is_direct_assignment: true,
         is_replacement: false,
         replacement_order: assignment.replacement_order || 1,
-        // Store the real names from allFirefighters
-        replaced_first_name: replacedFF?.first_name || "Pompier",
-        replaced_last_name: replacedFF?.last_name || "Inconnu",
-        replaced_position_code: replacedFF?.position_code || "", // Store position_code for sorting
+        replaced_first_name: replacedFF?.first_name || replacedFromTeam?.first_name || "Pompier",
+        replaced_last_name: replacedFF?.last_name || replacedFromTeam?.last_name || "Inconnu",
+        replaced_position_code: replacedFF?.position_code || replacedFromTeam?.position_code || "",
       })
     }
   })

@@ -92,7 +92,7 @@ export async function addSecondReplacement(params: {
     const { shiftId, replacedUserId, assignedUserId, startTime, endTime } = params
 
     const replacement1Info = await sql`
-      SELECT start_time, end_time, is_partial 
+      SELECT id, user_id, start_time, end_time, is_partial 
       FROM shift_assignments
       WHERE shift_id = ${shiftId}
         AND replaced_user_id = ${replacedUserId}
@@ -105,6 +105,7 @@ export async function addSecondReplacement(params: {
       return { success: false, error: "Remplaçant 1 introuvable" }
     }
 
+    const r1Id = replacement1Info[0].id
     let adjustedEndTime = replacement1Info[0].end_time
     const originalStartTime = replacement1Info[0].start_time
 
@@ -186,17 +187,14 @@ export async function addSecondReplacement(params: {
     // Determine overlap type and adjust accordingly
     if (r2Start >= r1End) {
       // Case 1: No overlap - R2 starts after R1 ends (e.g., R1: 7-11, R2: 11-17)
-      // Keep R1 as is
       await sql`
         UPDATE shift_assignments
         SET is_direct_assignment = true
-        WHERE shift_id = ${shiftId}
-          AND replaced_user_id = ${replacedUserId}
-          AND replacement_order = 1
+        WHERE id = ${r1Id}
       `
       console.log("[v0] No overlap - R1 kept as is:", { r1Start, r1End })
     } else if (r2Start <= r1Start && r2End >= r1End) {
-      // Case 2: R2 covers entire R1 period - shouldn't happen, but keep R1 with no hours
+      // Case 2: R2 covers entire R1 period
       await sql`
         UPDATE shift_assignments
         SET 
@@ -204,9 +202,7 @@ export async function addSecondReplacement(params: {
           end_time = ${r1Start},
           is_partial = true,
           is_direct_assignment = true
-        WHERE shift_id = ${shiftId}
-          AND replaced_user_id = ${replacedUserId}
-          AND replacement_order = 1
+        WHERE id = ${r1Id}
       `
       console.log("[v0] R2 covers entire R1 - R1 has no hours")
     } else if (r2Start <= r1Start && r2End < r1End) {
@@ -218,16 +214,14 @@ export async function addSecondReplacement(params: {
           end_time = ${r1End},
           is_partial = true,
           is_direct_assignment = true
-        WHERE shift_id = ${shiftId}
-          AND replaced_user_id = ${replacedUserId}
-          AND replacement_order = 1
+        WHERE id = ${r1Id}
       `
       console.log("[v0] R2 covers beginning - R1 adjusted:", {
         newStart: r2End,
         newEnd: r1End,
       })
     } else if (r2Start > r1Start && r2End >= r1End) {
-      // Case 4: R2 covers end (e.g., R1: 7-17, R2: 11-17 → R1 becomes 7-11)
+      // Case 4: R2 covers end (e.g., R1: 7-15, R2: 10:30-15 → R1 becomes 7-10:30)
       await sql`
         UPDATE shift_assignments
         SET 
@@ -235,9 +229,7 @@ export async function addSecondReplacement(params: {
           end_time = ${r2Start},
           is_partial = true,
           is_direct_assignment = true
-        WHERE shift_id = ${shiftId}
-          AND replaced_user_id = ${replacedUserId}
-          AND replacement_order = 1
+        WHERE id = ${r1Id}
       `
       console.log("[v0] R2 covers end - R1 adjusted:", {
         newStart: r1Start,
@@ -245,13 +237,10 @@ export async function addSecondReplacement(params: {
       })
     } else {
       // Case 5: R2 is in the middle (e.g., R1: 7-17, R2: 9-11)
-      // Keep R1 as is - drawer will show split periods
       await sql`
         UPDATE shift_assignments
         SET is_direct_assignment = true
-        WHERE shift_id = ${shiftId}
-          AND replaced_user_id = ${replacedUserId}
-          AND replacement_order = 1
+        WHERE id = ${r1Id}
       `
       console.log("[v0] R2 in middle - R1 kept as is (drawer will show split):", {
         r1Start,
@@ -260,13 +249,11 @@ export async function addSecondReplacement(params: {
     }
 
     const verifyUpdate = await sql`
-      SELECT start_time, end_time, is_partial 
+      SELECT id, user_id, start_time, end_time, is_partial 
       FROM shift_assignments
-      WHERE shift_id = ${shiftId}
-        AND replaced_user_id = ${replacedUserId}
-        AND replacement_order = 1
+      WHERE id = ${r1Id}
     `
-    console.log("[v0] VERIFICATION - Replacement 1 after UPDATE:", verifyUpdate)
+    console.log("[v0] VERIFICATION - Replacement 1 after UPDATE (by id):", verifyUpdate)
 
     // Insert the second replacement
     const result = await sql`
