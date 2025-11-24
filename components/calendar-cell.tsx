@@ -297,10 +297,18 @@ export function CalendarCell({
               })
 
               directAssignmentsByRole.forEach((assignments, role) => {
-                const replacement1 = assignments.find((a) => a.replacementOrder === 1)
-                const replacement2 = assignments.find((a) => a.replacementOrder === 2)
+                const hasR1 = assignments.some((a) => a.replacementOrder === 1)
+                const hasR2 = assignments.some((a) => a.replacementOrder === 2)
 
-                if (replacement1 && replacement2) {
+                if (hasR1 && hasR2) {
+                  // Get unique replacements by user (R1 and R2)
+                  const r1Assignments = assignments.filter((a) => a.replacementOrder === 1)
+                  const r2Assignments = assignments.filter((a) => a.replacementOrder === 2)
+
+                  // Use the first entry for each replacement_order to get names
+                  const replacement1 = r1Assignments[0]
+                  const replacement2 = r2Assignments[0]
+
                   const replacedFirefighterIndex = firefighters.findIndex((f: any) => f.role === role && !f.isExtra)
 
                   // Create a synthetic key for this double replacement
@@ -377,9 +385,17 @@ export function CalendarCell({
               })
 
               directAssignmentsByRole.forEach((assignments, role) => {
-                if (assignments.length === 2) {
-                  const sorted = [...assignments].sort((a, b) => (a.replacementOrder || 0) - (b.replacementOrder || 0))
-                  const key = `direct|${role}|${sorted[0].firstName}|${sorted[0].lastName}`
+                const hasR1 = assignments.some((a) => a.replacementOrder === 1)
+                const hasR2 = assignments.some((a) => a.replacementOrder === 2)
+
+                if (hasR1 && hasR2) {
+                  const r1Assignments = assignments.filter((a) => a.replacementOrder === 1)
+                  const r2Assignments = assignments.filter((a) => a.replacementOrder === 2)
+
+                  const replacement1 = r1Assignments[0]
+                  const replacement2 = r2Assignments[0]
+
+                  const key = `direct|${role}|${replacement1.firstName}|${replacement1.lastName}`
 
                   // Only add if we haven't already added this as a replacement
                   const alreadyAdded = displayItems.some(

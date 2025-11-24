@@ -933,33 +933,38 @@ export function ShiftAssignmentDrawer({
                                         {replacement2 ? "Remplaçant 1" : "Remplaçant"}: {replacement1.first_name}{" "}
                                         {replacement1.last_name}
                                         {(() => {
-                                          // The server has already adjusted R1's times correctly
-                                          if (replacement2) {
-                                            // Just display what the server sent - it's already adjusted
-                                            if (replacement1.start_time && replacement1.end_time) {
-                                              return (
-                                                <span>
-                                                  {" "}
-                                                  ({replacement1.start_time.slice(0, 5)}-
-                                                  {replacement1.end_time.slice(0, 5)})
-                                                </span>
-                                              )
-                                            }
-                                            return <span> (Quart complet)</span>
+                                          const allR1Periods = replacements.filter((r) => r.replacement_order === 1)
+
+                                          if (allR1Periods.length > 1) {
+                                            // Multiple periods - R2 is in the middle
+                                            const timeRanges = allR1Periods
+                                              .map((period) => {
+                                                if (period.start_time && period.end_time) {
+                                                  return `${period.start_time.slice(0, 5)}-${period.end_time.slice(0, 5)}`
+                                                }
+                                                return null
+                                              })
+                                              .filter(Boolean)
+                                              .join(", ")
+
+                                            return timeRanges ? (
+                                              <span> ({timeRanges})</span>
+                                            ) : (
+                                              <span> (Quart complet)</span>
+                                            )
                                           }
 
-                                          if (!replacement2) {
-                                            if (replacement1.start_time && replacement1.end_time) {
-                                              return (
-                                                <span>
-                                                  {" "}
-                                                  ({replacement1.start_time.slice(0, 5)}-
-                                                  {replacement1.end_time.slice(0, 5)})
-                                                </span>
-                                              )
-                                            }
-                                            return <span> (Quart complet)</span>
+                                          // Single period - normal display
+                                          if (replacement1.start_time && replacement1.end_time) {
+                                            return (
+                                              <span>
+                                                {" "}
+                                                ({replacement1.start_time.slice(0, 5)}-
+                                                {replacement1.end_time.slice(0, 5)})
+                                              </span>
+                                            )
                                           }
+                                          return <span> (Quart complet)</span>
                                         })()}
                                       </Badge>
                                       {isAdmin && (

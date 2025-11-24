@@ -105,7 +105,7 @@ export async function addSecondReplacement(params: {
       return { success: false, error: "Remplaçant 1 introuvable" }
     }
 
-    const r1Id = replacement1Info[0].id
+    const r1UserId = replacement1Info[0].user_id
     let adjustedEndTime = replacement1Info[0].end_time
     const originalStartTime = replacement1Info[0].start_time
 
@@ -188,33 +188,78 @@ export async function addSecondReplacement(params: {
     if (r2Start >= r1End) {
       // Case 1: No overlap - R2 starts after R1 ends (e.g., R1: 7-11, R2: 11-17)
       await sql`
-        UPDATE shift_assignments
-        SET is_direct_assignment = true
-        WHERE id = ${r1Id}
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          true,
+          true,
+          ${r1Start},
+          ${r1End},
+          1
+        )
       `
       console.log("[v0] No overlap - R1 kept as is:", { r1Start, r1End })
     } else if (r2Start <= r1Start && r2End >= r1End) {
       // Case 2: R2 covers entire R1 period
       await sql`
-        UPDATE shift_assignments
-        SET 
-          start_time = ${r1Start},
-          end_time = ${r1Start},
-          is_partial = true,
-          is_direct_assignment = true
-        WHERE id = ${r1Id}
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
       `
-      console.log("[v0] R2 covers entire R1 - R1 has no hours")
+      console.log("[v0] R2 covers entire R1 - R1 deleted (no hours)")
     } else if (r2Start <= r1Start && r2End < r1End) {
       // Case 3: R2 covers beginning (e.g., R1: 7-12, R2: 7-9 → R1 becomes 9-12)
       await sql`
-        UPDATE shift_assignments
-        SET 
-          start_time = ${r2End},
-          end_time = ${r1End},
-          is_partial = true,
-          is_direct_assignment = true
-        WHERE id = ${r1Id}
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          true,
+          true,
+          ${r2End},
+          ${r1End},
+          1
+        )
       `
       console.log("[v0] R2 covers beginning - R1 adjusted:", {
         newStart: r2End,
@@ -223,37 +268,120 @@ export async function addSecondReplacement(params: {
     } else if (r2Start > r1Start && r2End >= r1End) {
       // Case 4: R2 covers end (e.g., R1: 7-15, R2: 10:30-15 → R1 becomes 7-10:30)
       await sql`
-        UPDATE shift_assignments
-        SET 
-          start_time = ${r1Start},
-          end_time = ${r2Start},
-          is_partial = true,
-          is_direct_assignment = true
-        WHERE id = ${r1Id}
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          true,
+          true,
+          ${r1Start},
+          ${r2Start},
+          1
+        )
       `
       console.log("[v0] R2 covers end - R1 adjusted:", {
         newStart: r1Start,
         newEnd: r2Start,
       })
     } else {
-      // Case 5: R2 is in the middle (e.g., R1: 7-17, R2: 9-11)
+      // Case 5: R2 in middle (e.g., R1: 7-16:30, R2: 8:30-14 → R1 becomes: 7-8:30 AND 14-16:30)
+      console.log("[v0] R2 in middle - Splitting R1 into two periods")
+
       await sql`
-        UPDATE shift_assignments
-        SET is_direct_assignment = true
-        WHERE id = ${r1Id}
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
       `
-      console.log("[v0] R2 in middle - R1 kept as is (drawer will show split):", {
-        r1Start,
-        r1End,
+
+      // Insert first period (before R2)
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          true,
+          true,
+          ${r1Start},
+          ${r2Start},
+          1
+        )
+      `
+      console.log("[v0] R1 Period 1 (before R2):", {
+        start: r1Start,
+        end: r2Start,
+      })
+
+      // Insert second period (after R2)
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          true,
+          true,
+          ${r2End},
+          ${r1End},
+          1
+        )
+      `
+      console.log("[v0] R1 Period 2 (after R2):", {
+        start: r2End,
+        end: r1End,
       })
     }
 
-    const verifyUpdate = await sql`
-      SELECT id, user_id, start_time, end_time, is_partial 
+    const verifyResult = await sql`
+      SELECT id, user_id, start_time, end_time, replacement_order 
       FROM shift_assignments
-      WHERE id = ${r1Id}
+      WHERE shift_id = ${shiftId}
+        AND replaced_user_id = ${replacedUserId}
+        AND replacement_order = 1
     `
-    console.log("[v0] VERIFICATION - Replacement 1 after UPDATE (by id):", verifyUpdate)
+    console.log("[v0] VERIFICATION - All R1 records after changes:", verifyResult)
 
     // Insert the second replacement
     const result = await sql`
