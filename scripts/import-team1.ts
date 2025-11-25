@@ -1,7 +1,10 @@
 import { neon } from "@neondatabase/serverless"
 import bcrypt from "bcryptjs"
 
-const sql = neon(process.env.DATABASE_URL!)
+const sql = neon(process.env.DATABASE_URL!, {
+  fetchConnectionCache: true,
+  disableWarningInBrowsers: true,
+})
 
 async function importTeam1() {
   console.log("[v0] Starting Team 1 import...")

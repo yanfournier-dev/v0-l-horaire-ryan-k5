@@ -1,6 +1,9 @@
 import { neon } from "@neondatabase/serverless"
 
-const sql = neon(process.env.DATABASE_URL!)
+const sql = neon(process.env.DATABASE_URL!, {
+  fetchConnectionCache: true,
+  disableWarningInBrowsers: true,
+})
 
 async function checkTeams() {
   console.log("[v0] Checking teams in database...")

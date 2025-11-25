@@ -21,6 +21,7 @@ interface CalendarViewProps {
   leaveMap: Record<string, any[]>
   noteMap: Record<string, boolean> // Add noteMap prop
   directAssignmentMap: Record<string, any[]> // Adding directAssignmentMap prop
+  actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> // Adding actingDesignationMap prop
   isAdmin: boolean
   cycleStartDate: Date
   currentYear: number
@@ -36,6 +37,7 @@ export function CalendarView({
   leaveMap: initialLeaveMap,
   noteMap: initialNoteMap,
   directAssignmentMap: initialDirectAssignmentMap, // Receiving directAssignmentMap
+  actingDesignationMap: initialActingDesignationMap, // Receiving actingDesignationMap
   isAdmin,
   cycleStartDate,
   currentYear,
@@ -48,6 +50,7 @@ export function CalendarView({
   const [leaveMap, setLeaveMap] = useState(initialLeaveMap)
   const [noteMap, setNoteMap] = useState(initialNoteMap)
   const [directAssignmentMap, setDirectAssignmentMap] = useState(initialDirectAssignmentMap) // Adding state for directAssignmentMap
+  const [actingDesignationMap, setActingDesignationMap] = useState(initialActingDesignationMap) // Adding state for actingDesignationMap
   const [loading, setLoading] = useState(false)
   const scrollAnchorRef = useRef<string | null>(null)
 
@@ -201,7 +204,7 @@ export function CalendarView({
       })
       setNoteMap(newNoteMap)
 
-      const newDirectAssignmentMap = { ...directAssignmentMap } // Building new direct assignment map
+      const newDirectAssignmentMap = { ...directAssignmentMap }
       data.directAssignments.forEach((assignment: any) => {
         const dateOnly = formatLocalDate(assignment.shift_date)
         const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
@@ -210,7 +213,20 @@ export function CalendarView({
         }
         newDirectAssignmentMap[key].push(assignment)
       })
-      setDirectAssignmentMap(newDirectAssignmentMap) // Updating state with new direct assignment map
+      setDirectAssignmentMap(newDirectAssignmentMap)
+
+      const newActingDesignationMap = { ...actingDesignationMap }
+      if (data.actingDesignations) {
+        data.actingDesignations.forEach((ad: any) => {
+          const dateOnly = formatLocalDate(ad.shift_date)
+          const key = `${dateOnly}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+          newActingDesignationMap[key] = {
+            isActingLieutenant: ad.is_acting_lieutenant,
+            isActingCaptain: ad.is_acting_captain,
+          }
+        })
+      }
+      setActingDesignationMap(newActingDesignationMap)
     }
 
     setMonths([...newMonths, ...months])
@@ -306,7 +322,7 @@ export function CalendarView({
       })
       setNoteMap(newNoteMap)
 
-      const newDirectAssignmentMap = { ...directAssignmentMap } // Building new direct assignment map
+      const newDirectAssignmentMap = { ...directAssignmentMap }
       data.directAssignments.forEach((assignment: any) => {
         const dateOnly = formatLocalDate(assignment.shift_date)
         const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
@@ -315,7 +331,20 @@ export function CalendarView({
         }
         newDirectAssignmentMap[key].push(assignment)
       })
-      setDirectAssignmentMap(newDirectAssignmentMap) // Updating state with new direct assignment map
+      setDirectAssignmentMap(newDirectAssignmentMap)
+
+      const newActingDesignationMap = { ...actingDesignationMap }
+      if (data.actingDesignations) {
+        data.actingDesignations.forEach((ad: any) => {
+          const dateOnly = formatLocalDate(ad.shift_date)
+          const key = `${dateOnly}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+          newActingDesignationMap[key] = {
+            isActingLieutenant: ad.is_acting_lieutenant,
+            isActingCaptain: ad.is_acting_captain,
+          }
+        })
+      }
+      setActingDesignationMap(newActingDesignationMap)
     }
 
     setMonths([...months, ...newMonths])
@@ -403,6 +432,8 @@ export function CalendarView({
                   return directAssignmentMap[key] || []
                 })
 
+                const actingDesignations = actingDesignationMap
+
                 const shiftsWithNotes = shifts.map((shift: any) => {
                   const noteKey = `${shift.id}_${dateStr}`
                   return {
@@ -420,10 +451,11 @@ export function CalendarView({
                     exchanges={dayExchanges}
                     leaves={leaves}
                     leaveMap={leaveMap}
-                    directAssignments={dayDirectAssignments} // Passing direct assignments
+                    directAssignments={dayDirectAssignments}
+                    actingDesignationMap={actingDesignations}
                     dateStr={dateStr}
                     isAdmin={isAdmin}
-                    onReplacementCreated={handleReplacementCreated} // Pass callback to each cell
+                    onReplacementCreated={handleReplacementCreated}
                   />
                 )
               })}

@@ -1,6 +1,9 @@
 import { neon } from "@neondatabase/serverless"
 
-const sql = neon(process.env.DATABASE_URL!)
+const sql = neon(process.env.DATABASE_URL!, {
+  fetchConnectionCache: true,
+  disableWarningInBrowsers: true,
+})
 
 async function checkPreferences() {
   console.log("Checking notification preferences...")

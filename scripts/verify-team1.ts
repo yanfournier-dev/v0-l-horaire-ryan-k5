@@ -1,6 +1,9 @@
 import { neon } from "@neondatabase/serverless"
 
-const sql = neon(process.env.DATABASE_URL!)
+const sql = neon(process.env.DATABASE_URL!, {
+  fetchConnectionCache: true,
+  disableWarningInBrowsers: true,
+})
 
 async function verifyTeam1() {
   console.log("[v0] Verifying Team 1 data...")

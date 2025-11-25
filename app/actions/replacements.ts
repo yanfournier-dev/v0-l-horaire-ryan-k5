@@ -170,7 +170,10 @@ export async function createReplacementFromShift(
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     let applicationDeadline: string
 
@@ -283,7 +286,10 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
   const applicantId = firefighterId || user.id
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const replacement = await db`
       SELECT user_id, application_deadline FROM replacements WHERE id = ${replacementId}
@@ -341,7 +347,10 @@ export async function withdrawApplication(applicationId: number) {
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     await db`
       DELETE FROM replacement_applications
@@ -369,7 +378,10 @@ export async function approveApplication(applicationId: number, replacementId: n
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const appResult = await db`
       SELECT 
@@ -513,7 +525,10 @@ export async function rejectApplication(applicationId: number) {
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const appResult = await db`
       SELECT applicant_id FROM replacement_applications WHERE id = ${applicationId}
@@ -561,7 +576,10 @@ export async function deleteReplacement(replacementId: number) {
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const replacementDetails = await db`
       SELECT r.*, u.first_name, u.last_name
@@ -641,7 +659,10 @@ export async function createExtraFirefighterReplacement(
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     let applicationDeadline: string
 
@@ -743,7 +764,10 @@ export async function updateReplacementAssignment(replacementId: number, assigne
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     if (assignedTo) {
       await db`
@@ -800,7 +824,10 @@ export async function updateReplacementAssignment(replacementId: number, assigne
 
 export async function getAvailableFirefighters(replacementId: number) {
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const replacement = await db`
       SELECT shift_date, shift_type FROM replacements WHERE id = ${replacementId}
@@ -845,7 +872,10 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const replacement = await db`
       SELECT shift_date FROM replacements WHERE id = ${replacementId}
@@ -910,7 +940,10 @@ export async function rejectReplacementRequest(replacementId: number) {
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     await db`
       UPDATE replacements
@@ -950,7 +983,10 @@ export async function requestReplacement(
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     await db`
       INSERT INTO replacements (
@@ -983,7 +1019,10 @@ export async function removeReplacementAssignment(replacementId: number) {
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const replacementDetails = await db`
       SELECT r.shift_date, r.shift_type, r.team_id, ra.applicant_id
@@ -1073,7 +1112,10 @@ export async function removeReplacementAssignment(replacementId: number) {
 
 export async function getExpiredReplacements() {
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const replacements = await db`
       SELECT 
@@ -1110,7 +1152,10 @@ export async function reactivateApplication(applicationId: number) {
   }
 
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const appResult = await db`
       SELECT r.status, ra.status as application_status
@@ -1153,7 +1198,10 @@ export async function reactivateApplication(applicationId: number) {
 
 export async function getReplacementsForShift(shiftDate: string, shiftType: string, teamId: number) {
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const replacements = await db`
       SELECT 
@@ -1198,7 +1246,10 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
 
 export async function getUserReplacementRequests(userId: number) {
   try {
-    const db = neon(process.env.DATABASE_URL!)
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
 
     const requests = await db`
       SELECT 

@@ -40,6 +40,7 @@ interface CalendarCellProps {
   leaves: Array<any>
   leaveMap: Record<string, any[]>
   directAssignments: Array<any[]> // Adding directAssignments prop
+  actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> // Adding actingDesignationMap prop
   dateStr: string
   isAdmin: boolean
   onReplacementCreated?: () => void // Adding callback prop to pass through to drawer
@@ -69,6 +70,7 @@ export function CalendarCell({
   leaves,
   leaveMap,
   directAssignments, // Receiving directAssignments
+  actingDesignationMap, // Receiving actingDesignationMap
   dateStr,
   isAdmin,
   onReplacementCreated, // Accept callback prop
@@ -196,7 +198,7 @@ export function CalendarCell({
                         replacementOrder,
                       ] = parts
 
-                      return {
+                      const firefighter = {
                         firstName,
                         lastName,
                         role,
@@ -211,6 +213,15 @@ export function CalendarCell({
                         isDirectAssignment: isDirectAssignment === "true",
                         replacementOrder: Number.parseInt(replacementOrder || "0", 10),
                       }
+
+                      const actingKey = `${shift.cycle_day}_${shift.shift_type}_${shift.team_id}_${userId}`
+                      const actingDesignation = actingDesignationMap[actingKey]
+                      if (actingDesignation) {
+                        firefighter.isActingLieutenant = actingDesignation.isActingLieutenant
+                        firefighter.isActingCaptain = actingDesignation.isActingCaptain
+                      }
+
+                      return firefighter
                     })
                   : []
 
@@ -223,6 +234,11 @@ export function CalendarCell({
 
                 if (replacedIndex !== -1) {
                   const replacedFirefighter = processedFirefighters[replacedIndex]
+
+                  // Check acting designation for replacement using cycle_day
+                  const actingKey = `${shift.cycle_day}_${shift.shift_type}_${shift.team_id}_${da.user_id}`
+                  const actingDesignation = actingDesignationMap[actingKey]
+
                   processedFirefighters[replacedIndex] = {
                     firstName: da.replacement_first_name,
                     lastName: da.replacement_last_name,
@@ -233,8 +249,9 @@ export function CalendarCell({
                     isPartial: false,
                     startTime: null,
                     endTime: null,
-                    isActingLieutenant: false,
-                    isActingCaptain: false,
+                    // Use acting designation if available, otherwise false
+                    isActingLieutenant: actingDesignation?.isActingLieutenant || false,
+                    isActingCaptain: actingDesignation?.isActingCaptain || false,
                     isDirectAssignment: true,
                     replacementOrder: 0,
                   }
@@ -253,7 +270,7 @@ export function CalendarCell({
 
               const assignmentsWithLtBadge = processedFirefighters.map((assignment: any) => {
                 const calendarIndex = processedFirefighters.findIndex(
-                  (f) => f.firstName === assignment.first_name && f.lastName === assignment.last_name,
+                  (f) => f.firstName === assignment.firstName && f.lastName === assignment.lastName,
                 )
 
                 if (calendarIndex === -1) {
@@ -268,12 +285,10 @@ export function CalendarCell({
 
                 const firefighter = processedFirefighters[calendarIndex]
                 const showsLtBadge =
-                  firefighter.isActingLieutenant === true ||
-                  (!hasActingLieutenant && firefighter.role === "lieutenant" && firefighter.isActingLieutenant !== true)
+                  firefighter.isActingLieutenant === true || (!hasActingLieutenant && firefighter.role === "lieutenant")
 
                 const showsCptBadge =
-                  firefighter.isActingCaptain === true ||
-                  (!hasActingCaptain && firefighter.role === "captain" && firefighter.isActingCaptain !== true)
+                  firefighter.isActingCaptain === true || (!hasActingCaptain && firefighter.role === "captain")
 
                 return {
                   ...assignment,
@@ -584,32 +599,28 @@ export function CalendarCell({
 
                         const showCptBadge =
                           firefighter.isActingCaptain === true ||
-                          (!hasActingCaptain &&
-                            firefighter.role === "captain" &&
-                            firefighter.isActingCaptain !== true) ||
-                          (isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain) ||
+                          (!hasActingCaptain && firefighter.role === "captain") ||
+                          (isAssignedReplacement && !hasActingCaptain && replacement?.replaced_role === "captain") ||
                           (isAssignedReplacement && replacementIsActingCaptain)
 
                         const showGreenCptBadge =
                           firefighter.isActingCaptain === true ||
-                          (isAssignedReplacement && replacement?.replaced_role === "captain" && !hasActingCaptain) ||
+                          (isAssignedReplacement && !hasActingCaptain && replacement?.replaced_role === "captain") ||
                           (isAssignedReplacement && replacementIsActingCaptain)
 
                         const showLtBadge =
                           firefighter.isActingLieutenant === true ||
-                          (!hasActingLieutenant &&
-                            firefighter.role === "lieutenant" &&
-                            firefighter.isActingLieutenant !== true) ||
+                          (!hasActingLieutenant && firefighter.role === "lieutenant") ||
                           (isAssignedReplacement &&
-                            replacement?.replaced_role === "lieutenant" &&
-                            !hasActingLieutenant) ||
+                            !hasActingLieutenant &&
+                            replacement?.replaced_role === "lieutenant") ||
                           (isAssignedReplacement && replacementIsActingLieutenant)
 
                         const showGreenLtBadge =
                           firefighter.isActingLieutenant === true ||
                           (isAssignedReplacement &&
-                            replacement?.replaced_role === "lieutenant" &&
-                            !hasActingLieutenant) ||
+                            !hasActingLieutenant &&
+                            replacement?.replaced_role === "lieutenant") ||
                           (isAssignedReplacement && replacementIsActingLieutenant)
 
                         const isDirectAssignment = firefighter.isDirectAssignment === true

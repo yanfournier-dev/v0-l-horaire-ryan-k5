@@ -3,7 +3,10 @@
 import { neon } from "@neondatabase/serverless"
 import { revalidatePath } from "next/cache"
 
-const sql = neon(process.env.DATABASE_URL!)
+const sql = neon(process.env.DATABASE_URL!, {
+  fetchConnectionCache: true,
+  disableWarningInBrowsers: true,
+})
 
 async function getShiftDate(shiftId: number): Promise<string | null> {
   const result = await sql`

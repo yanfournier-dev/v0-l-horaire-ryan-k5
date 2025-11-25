@@ -6,6 +6,7 @@ import {
   getLeavesForDateRange,
   getExchangesForDateRange,
   getDirectAssignmentsForDateRange,
+  getActingDesignationsForRange,
 } from "@/app/actions/calendar"
 import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
 import { redirect } from "next/navigation"
@@ -77,12 +78,13 @@ export default async function CalendarPage({
 
     const allShifts = await getAllShiftsWithAssignments(firstDay, lastDay)
 
-    const [replacements, leaves, exchanges, shiftNotes, directAssignments] = await Promise.all([
+    const [replacements, leaves, exchanges, shiftNotes, directAssignments, actingDesignations] = await Promise.all([
       firstDay && lastDay ? getReplacementsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
       firstDay && lastDay ? getLeavesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
       firstDay && lastDay ? getExchangesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
       firstDay && lastDay ? getShiftNotesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
       firstDay && lastDay ? getDirectAssignmentsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+      firstDay && lastDay ? getActingDesignationsForRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
     ])
 
     const replacementMap: Record<string, any[]> = {}
@@ -172,6 +174,16 @@ export default async function CalendarPage({
       directAssignmentMap[key].push(da)
     })
 
+    const actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
+    actingDesignations.forEach((ad: any) => {
+      // Use cycle_day, shift_type, team_id, and user_id as key
+      const key = `${ad.cycle_day}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+      actingDesignationMap[key] = {
+        isActingLieutenant: ad.is_acting_lieutenant,
+        isActingCaptain: ad.is_acting_captain,
+      }
+    })
+
     return (
       <div className="p-4 md:p-6">
         <ScrollToTodayOnNav />
@@ -201,6 +213,7 @@ export default async function CalendarPage({
           leaveMap={leaveMap}
           noteMap={noteMap}
           directAssignmentMap={directAssignmentMap}
+          actingDesignationMap={actingDesignationMap}
           isAdmin={user.is_admin}
           cycleStartDate={cycleStartDate}
           currentYear={selectedYear}

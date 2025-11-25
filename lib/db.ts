@@ -17,7 +17,10 @@ let sqlClient: ReturnType<typeof neon> | null = null
 
 function getSqlClient() {
   if (!sqlClient) {
-    sqlClient = neon(getConnectionString())
+    sqlClient = neon(getConnectionString(), {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
   }
   return sqlClient
 }

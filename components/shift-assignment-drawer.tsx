@@ -1002,6 +1002,73 @@ export function ShiftAssignmentDrawer({
                                     </div>
                                   )}
 
+                                  {replacement1 && isAdmin && (
+                                    <div className="mt-2 grid grid-cols-2 gap-2">
+                                      {replacement1.is_acting_lieutenant ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleRemoveLieutenant(
+                                              replacement1.user_id,
+                                              `${replacement1.first_name} ${replacement1.last_name}`,
+                                            )
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          Retirer Lt
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleSetLieutenant(
+                                              replacement1.user_id,
+                                              `${replacement1.first_name} ${replacement1.last_name}`,
+                                            )
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-cyan-600 hover:bg-cyan-50"
+                                        >
+                                          Désigner Lt
+                                        </Button>
+                                      )}
+                                      {replacement1.is_acting_captain ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleRemoveCaptain(
+                                              replacement1.user_id,
+                                              `${replacement1.first_name} ${replacement1.last_name}`,
+                                            )
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          Retirer Cpt
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleSetCaptain(
+                                              replacement1.user_id,
+                                              `${replacement1.first_name} ${replacement1.last_name}`,
+                                            )
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-cyan-600 hover:bg-cyan-50"
+                                        >
+                                          Désigner Cpt
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
+
                                   {replacement2 && (
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
@@ -1031,6 +1098,73 @@ export function ShiftAssignmentDrawer({
                                           className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                                         >
                                           <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {replacement2 && isAdmin && (
+                                    <div className="mt-2 grid grid-cols-2 gap-2">
+                                      {replacement2.is_acting_lieutenant ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleRemoveLieutenant(
+                                              replacement2.user_id,
+                                              `${replacement2.first_name} ${replacement2.last_name}`,
+                                            )
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          Retirer Lt
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleSetLieutenant(
+                                              replacement2.user_id,
+                                              `${replacement2.first_name} ${replacement2.last_name}`,
+                                            )
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-cyan-600 hover:bg-cyan-50"
+                                        >
+                                          Désigner Lt
+                                        </Button>
+                                      )}
+                                      {replacement2.is_acting_captain ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleRemoveCaptain(
+                                              replacement2.user_id,
+                                              `${replacement2.first_name} ${replacement2.last_name}`,
+                                            )
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          Retirer Cpt
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleSetCaptain(
+                                              replacement2.user_id,
+                                              `${replacement2.first_name} ${replacement2.last_name}`,
+                                            )
+                                          }
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-cyan-600 hover:bg-cyan-50"
+                                        >
+                                          Désigner Cpt
                                         </Button>
                                       )}
                                     </div>
@@ -1291,6 +1425,7 @@ export function ShiftAssignmentDrawer({
                                     )}
                                   </div>
                                 )}
+
                                 {isDirectAssignment && isAdmin && (
                                   <div className="mt-2 flex items-center gap-2 flex-wrap">
                                     <Button
@@ -1303,56 +1438,7 @@ export function ShiftAssignmentDrawer({
                                       <Trash2 className="h-3 w-3" />
                                       Retirer
                                     </Button>
-                                    {assignment.is_acting_captain ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() =>
-                                          handleRemoveCaptain(assignment.user_id || assignment.id, displayName)
-                                        }
-                                        disabled={isLoading || loadingReplacements}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      >
-                                        Retirer Cpt
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() =>
-                                          handleSetCaptain(assignment.user_id || assignment.id, displayName)
-                                        }
-                                        disabled={isLoading || loadingReplacements}
-                                        className="text-cyan-600 hover:bg-cyan-50"
-                                      >
-                                        Désigner Cpt
-                                      </Button>
-                                    )}
-                                    {assignment.is_acting_lieutenant ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() =>
-                                          handleRemoveLieutenant(assignment.user_id || assignment.id, displayName)
-                                        }
-                                        disabled={isLoading || loadingReplacements}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      >
-                                        Retirer Lt
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() =>
-                                          handleSetLieutenant(assignment.user_id || assignment.id, displayName)
-                                        }
-                                        disabled={isLoading || loadingReplacements}
-                                        className="text-cyan-600 hover:bg-cyan-50"
-                                      >
-                                        Désigner Lt
-                                      </Button>
-                                    )}
+                                    {/* Lt/Cpt buttons moved to shared section below */}
                                   </div>
                                 )}
                                 {!isReplacementFirefighter &&
@@ -1391,58 +1477,64 @@ export function ShiftAssignmentDrawer({
                                           </Button>
                                         </>
                                       )}
-                                      {assignment.is_acting_lieutenant ? (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            handleRemoveLieutenant(assignment.user_id || assignment.id, displayName)
-                                          }
-                                          disabled={isLoading || loadingReplacements}
-                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        >
-                                          Retirer Lt
-                                        </Button>
-                                      ) : (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            handleSetLieutenant(assignment.user_id || assignment.id, displayName)
-                                          }
-                                          disabled={isLoading || loadingReplacements}
-                                          className="text-cyan-600 hover:bg-cyan-50"
-                                        >
-                                          Désigner Lt
-                                        </Button>
-                                      )}
-                                      {assignment.is_acting_captain ? (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            handleRemoveCaptain(assignment.user_id || assignment.id, displayName)
-                                          }
-                                          disabled={isLoading || loadingReplacements}
-                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        >
-                                          Retirer Cpt
-                                        </Button>
-                                      ) : (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            handleSetCaptain(assignment.user_id || assignment.id, displayName)
-                                          }
-                                          disabled={isLoading || loadingReplacements}
-                                          className="text-cyan-600 hover:bg-cyan-50"
-                                        >
-                                          Désigner Cpt
-                                        </Button>
-                                      )}
+                                      {/* Lt/Cpt buttons moved to shared section below */}
                                     </div>
                                   )}
+                                {/* Lt/Cpt buttons for ALL firefighters (including replacements and direct assignments) */}
+                                {isAdmin && !isExtraRequest && (
+                                  <div className="mt-2 grid grid-cols-2 gap-2">
+                                    {assignment.is_acting_lieutenant ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          handleRemoveLieutenant(assignment.user_id || assignment.id, displayName)
+                                        }
+                                        disabled={isLoading || loadingReplacements}
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      >
+                                        Retirer Lt
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          handleSetLieutenant(assignment.user_id || assignment.id, displayName)
+                                        }
+                                        disabled={isLoading || loadingReplacements}
+                                        className="text-cyan-600 hover:bg-cyan-50"
+                                      >
+                                        Désigner Lt
+                                      </Button>
+                                    )}
+                                    {assignment.is_acting_captain ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          handleRemoveCaptain(assignment.user_id || assignment.id, displayName)
+                                        }
+                                        disabled={isLoading || loadingReplacements}
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      >
+                                        Retirer Cpt
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          handleSetCaptain(assignment.user_id || assignment.id, displayName)
+                                        }
+                                        disabled={isLoading || loadingReplacements}
+                                        className="text-cyan-600 hover:bg-cyan-50"
+                                      >
+                                        Désigner Cpt
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge className={getRoleBadgeColor(assignment.role)}>

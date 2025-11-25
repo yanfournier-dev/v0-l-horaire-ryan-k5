@@ -216,7 +216,7 @@ export async function getAllShiftsWithAssignments(startDate: Date, endDate: Date
   return shiftsData
 }
 
-export async function getDirectAssignmentsForRange(startDate: Date, endDate: Date) {
+export async function getDirectAssignmentsForRange(startDate: string, endDate: string) {
   try {
     const result = await sql`
       SELECT 
@@ -236,13 +236,48 @@ export async function getDirectAssignmentsForRange(startDate: Date, endDate: Dat
       JOIN users u ON sa.user_id = u.id
       JOIN shifts s ON sa.shift_id = s.id
       WHERE sa.is_direct_assignment = true
-        AND sa.shift_date >= ${startDate.toISOString().split("T")[0]}
-        AND sa.shift_date <= ${endDate.toISOString().split("T")[0]}
+        AND sa.shift_date >= ${startDate}::date
+        AND sa.shift_date <= ${endDate}::date
     `
 
     return result
   } catch (error: any) {
     console.error("[v0] getDirectAssignmentsForRange: Query failed", error.message)
+    return []
+  }
+}
+
+export async function getActingDesignationsForRange(startDate: string, endDate: string) {
+  try {
+    // Simply get all acting designations - we'll filter by date in the frontend
+    const designations = await sql`
+      SELECT 
+        sa.shift_id,
+        sa.user_id,
+        sa.is_acting_lieutenant,
+        sa.is_acting_captain,
+        s.shift_type,
+        s.team_id,
+        s.cycle_day,
+        u.first_name,
+        u.last_name
+      FROM shift_assignments sa
+      JOIN shifts s ON sa.shift_id = s.id
+      JOIN users u ON sa.user_id = u.id
+      WHERE (sa.is_acting_lieutenant = true OR sa.is_acting_captain = true)
+    `
+
+    return designations.map((row: any) => ({
+      user_id: row.user_id,
+      shift_id: row.shift_id,
+      is_acting_lieutenant: row.is_acting_lieutenant,
+      is_acting_captain: row.is_acting_captain,
+      shift_type: row.shift_type,
+      team_id: row.team_id,
+      cycle_day: row.cycle_day,
+    }))
+  } catch (error: any) {
+    console.error("[v0] getActingDesignationsForRange: Query failed", error.message)
     return []
   }
 }
@@ -966,7 +1001,7 @@ export async function getDirectAssignmentsForDateRange(startDate: Date, endDate:
       WHERE sa.is_direct_assignment = true
         AND sa.shift_date >= ${startDateStr}::date
         AND sa.shift_date <= ${endDateStr}::date
-      ORDER BY sa.shift_date, s.cycle_day
+      ORDER BY sa.shift_date
     `
 
     return result
