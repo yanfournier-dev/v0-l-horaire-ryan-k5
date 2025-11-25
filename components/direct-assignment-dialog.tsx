@@ -90,6 +90,9 @@ export function DirectAssignmentDialog({
     setIsLoading(true)
 
     try {
+      const shiftDateStr = `${shift.date.getFullYear()}-${String(shift.date.getMonth() + 1).padStart(2, "0")}-${String(shift.date.getDate()).padStart(2, "0")}`
+      console.log("[v0] DirectAssignmentDialog - shift.date:", shift.date, "converted to:", shiftDateStr)
+
       const result = await createDirectAssignment({
         shiftId: shift.id,
         replacedUserId: preSelectedFirefighter.id,
@@ -97,6 +100,7 @@ export function DirectAssignmentDialog({
         isPartial,
         startTime: isPartial ? startTime : undefined,
         endTime: isPartial ? endTime : undefined,
+        shiftDate: shiftDateStr,
       })
 
       if (result.error) {

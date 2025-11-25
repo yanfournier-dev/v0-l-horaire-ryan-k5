@@ -61,7 +61,11 @@ export default async function DiagnosticPage() {
 
   // Test 4: Get all shifts
   try {
-    const allShifts = await getAllShiftsWithAssignments()
+    const today = new Date()
+    const startDate = new Date(today.getFullYear(), today.getMonth(), 1)
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 3, 0)
+
+    const allShifts = await getAllShiftsWithAssignments(startDate, endDate)
     results.push({
       step: "4. Get All Shifts",
       success: true,

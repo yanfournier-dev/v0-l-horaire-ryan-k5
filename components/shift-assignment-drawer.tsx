@@ -836,7 +836,9 @@ export function ShiftAssignmentDrawer({
                   Jour {shift.cycle_day} • {shift.date.toLocaleDateString("fr-CA")}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {shift.start_time.slice(0, 5)} - {shift.end_time.slice(0, 5)}
+                  {shift.start_time && shift.end_time
+                    ? `${shift.start_time.slice(0, 5)} - ${shift.end_time.slice(0, 5)}`
+                    : "Horaire non défini"}
                 </div>
                 <div className="text-sm font-medium text-muted-foreground">
                   {(teamFirefighters || []).length} pompiers
@@ -1209,8 +1211,8 @@ export function ShiftAssignmentDrawer({
                                 {hasPartialLeave && (
                                   <div className="mt-2">
                                     <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
-                                      Congé partiel: {firefighterLeave.start_time.slice(0, 5)} -{" "}
-                                      {firefighterLeave.end_time.slice(0, 5)}
+                                      Congé partiel: {firefighterLeave.start_time?.slice(0, 5) || "N/A"} -{" "}
+                                      {firefighterLeave.end_time?.slice(0, 5) || "N/A"}
                                     </Badge>
                                   </div>
                                 )}

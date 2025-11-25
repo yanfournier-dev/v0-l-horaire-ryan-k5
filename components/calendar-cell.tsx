@@ -12,6 +12,7 @@ import { ShiftNoteDialog } from "@/components/shift-note-dialog"
 import { getShiftWithAssignments } from "@/app/actions/calendar"
 import { getShiftNote } from "@/app/actions/shift-notes"
 import { FileText } from "lucide-react"
+import { format } from "date-fns"
 
 interface CalendarCellProps {
   day: {
@@ -38,6 +39,7 @@ interface CalendarCellProps {
   exchanges: Array<any[]> // Add exchanges prop
   leaves: Array<any>
   leaveMap: Record<string, any[]>
+  directAssignments: Array<any[]> // Adding directAssignments prop
   dateStr: string
   isAdmin: boolean
   onReplacementCreated?: () => void // Adding callback prop to pass through to drawer
@@ -66,6 +68,7 @@ export function CalendarCell({
   exchanges,
   leaves,
   leaveMap,
+  directAssignments, // Receiving directAssignments
   dateStr,
   isAdmin,
   onReplacementCreated, // Accept callback prop
@@ -88,7 +91,7 @@ export function CalendarCell({
     }
 
     try {
-      const shiftDetails = await getShiftWithAssignments(shift.id)
+      const shiftDetails = await getShiftWithAssignments(shift.id, day.date)
 
       const shiftIndex = shifts.findIndex((s) => s.id === shift.id)
       const shiftExchanges = exchanges[shiftIndex] || []
@@ -170,78 +173,86 @@ export function CalendarCell({
             shifts.map((shift, shiftIndex) => {
               const shiftReplacements = replacements[shiftIndex] || []
               const shiftExchanges = exchanges[shiftIndex] || []
+              const shiftDirectAssignments = directAssignments[shiftIndex] || [] // Getting direct assignments for this specific shift
 
-              const firefighters = shift.assigned_firefighters
-                ? shift.assigned_firefighters.split(";").map((entry: string) => {
-                    const [
-                      firstName,
-                      lastName,
-                      role,
-                      isExtra,
-                      isPartial,
-                      startTime,
-                      endTime,
-                      isActingLieutenant,
-                      isActingCaptain,
-                      isDirectAssignment,
-                      replacementOrder,
-                    ] = entry.trim().split("|")
+              const firefighters =
+                shift.assigned_firefighters && shift.assigned_firefighters.trim() !== ""
+                  ? shift.assigned_firefighters.split(";").map((ff) => {
+                      const parts = ff.split("|")
 
-                    const firefighterData = {
-                      firstName,
-                      lastName,
-                      role,
-                      isExtra: isExtra === "true",
-                      isPartial: isPartial === "true",
-                      startTime: startTime || null,
-                      endTime: endTime || null,
-                      isActingLieutenant:
-                        isActingLieutenant === "true" ? true : isActingLieutenant === "false" ? false : null,
-                      isActingCaptain: isActingCaptain === "true" ? true : isActingCaptain === "false" ? false : null,
-                      isDirectAssignment: isDirectAssignment === "true",
-                      replacementOrder: replacementOrder ? Number.parseInt(replacementOrder) : null,
-                    }
+                      const [
+                        firstName,
+                        lastName,
+                        role,
+                        userId,
+                        teamRank,
+                        isExtra,
+                        isPartial,
+                        startTime,
+                        endTime,
+                        isActingLieutenant,
+                        isActingCaptain,
+                        isDirectAssignment,
+                        replacementOrder,
+                      ] = parts
 
-                    // Log direct assignments with partial times for debugging
-                    if (firefighterData.isDirectAssignment && firefighterData.isPartial) {
-                      console.log("[v0] Parsed direct assignment:", {
-                        name: `${firstName} ${lastName}`,
-                        isPartial: firefighterData.isPartial,
-                        startTime: firefighterData.startTime,
-                        endTime: firefighterData.endTime,
-                        replacementOrder: firefighterData.replacementOrder,
-                        rawEntry: entry,
-                      })
-                    }
+                      return {
+                        firstName,
+                        lastName,
+                        role,
+                        userId,
+                        teamRank: Number.parseInt(teamRank || "999", 10),
+                        isExtra: isExtra === "true",
+                        isPartial: isPartial === "true",
+                        startTime: startTime || null,
+                        endTime: endTime || null,
+                        isActingLieutenant: isActingLieutenant === "true",
+                        isActingCaptain: isActingCaptain === "true",
+                        isDirectAssignment: isDirectAssignment === "true",
+                        replacementOrder: Number.parseInt(replacementOrder || "0", 10),
+                      }
+                    })
+                  : []
 
-                    return firefighterData
-                  })
-                : []
+              const processedFirefighters = [...firefighters]
 
-              const roleOrder: Record<string, number> = {
-                captain: 1,
-                lieutenant: 2,
-                pp1: 3,
-                pp2: 4,
-                pp3: 5,
-                pp4: 6,
-                pp5: 7,
-                pp6: 8,
-              }
-              firefighters.sort((a, b) => {
+              const dateStrFormatted = format(day.date, "yyyy-MM-dd")
+
+              shiftDirectAssignments.forEach((da: any) => {
+                const replacedIndex = processedFirefighters.findIndex((ff) => ff.userId === String(da.replaced_user_id))
+
+                if (replacedIndex !== -1) {
+                  const replacedFirefighter = processedFirefighters[replacedIndex]
+                  processedFirefighters[replacedIndex] = {
+                    firstName: da.replacement_first_name,
+                    lastName: da.replacement_last_name,
+                    role: da.replacement_role,
+                    userId: String(da.user_id),
+                    teamRank: replacedFirefighter.teamRank,
+                    isExtra: false,
+                    isPartial: false,
+                    startTime: null,
+                    endTime: null,
+                    isActingLieutenant: false,
+                    isActingCaptain: false,
+                    isDirectAssignment: true,
+                    replacementOrder: 0,
+                  }
+                }
+              })
+
+              processedFirefighters.sort((a, b) => {
                 if (a.isExtra !== b.isExtra) {
                   return a.isExtra ? 1 : -1
                 }
-                const orderA = roleOrder[a.role] || 9
-                const orderB = roleOrder[b.role] || 9
-                return orderA - orderB
+                return a.teamRank - b.teamRank
               })
 
-              const hasActingLieutenant = firefighters.some((f) => f.isActingLieutenant === true)
-              const hasActingCaptain = firefighters.some((f) => f.isActingCaptain === true)
+              const hasActingLieutenant = processedFirefighters.some((f) => f.isActingLieutenant === true)
+              const hasActingCaptain = processedFirefighters.some((f) => f.isActingCaptain === true)
 
-              const assignmentsWithLtBadge = firefighters.map((assignment: any) => {
-                const calendarIndex = firefighters.findIndex(
+              const assignmentsWithLtBadge = processedFirefighters.map((assignment: any) => {
+                const calendarIndex = processedFirefighters.findIndex(
                   (f) => f.firstName === assignment.first_name && f.lastName === assignment.last_name,
                 )
 
@@ -255,7 +266,7 @@ export function CalendarCell({
                   }
                 }
 
-                const firefighter = firefighters[calendarIndex]
+                const firefighter = processedFirefighters[calendarIndex]
                 const showsLtBadge =
                   firefighter.isActingLieutenant === true ||
                   (!hasActingLieutenant && firefighter.role === "lieutenant" && firefighter.isActingLieutenant !== true)
@@ -275,7 +286,6 @@ export function CalendarCell({
 
               const replacementsByReplacedFirefighter = new Map<string, any[]>()
 
-              // First, group traditional replacements from shiftReplacements
               shiftReplacements.forEach((r: any) => {
                 if (r.status === "assigned" && r.replacement_first_name) {
                   const key = `${r.replaced_first_name}|${r.replaced_last_name}|${r.replaced_role}`
@@ -287,7 +297,7 @@ export function CalendarCell({
               })
 
               const directAssignmentsByRole = new Map<string, any[]>()
-              firefighters.forEach((f: any) => {
+              processedFirefighters.forEach((f: any) => {
                 if (f.isDirectAssignment && f.replacementOrder) {
                   if (!directAssignmentsByRole.has(f.role)) {
                     directAssignmentsByRole.set(f.role, [])
@@ -301,17 +311,16 @@ export function CalendarCell({
                 const hasR2 = assignments.some((a) => a.replacementOrder === 2)
 
                 if (hasR1 && hasR2) {
-                  // Get unique replacements by user (R1 and R2)
                   const r1Assignments = assignments.filter((a) => a.replacementOrder === 1)
                   const r2Assignments = assignments.filter((a) => a.replacementOrder === 2)
 
-                  // Use the first entry for each replacement_order to get names
                   const replacement1 = r1Assignments[0]
                   const replacement2 = r2Assignments[0]
 
-                  const replacedFirefighterIndex = firefighters.findIndex((f: any) => f.role === role && !f.isExtra)
+                  const replacedFirefighterIndex = processedFirefighters.findIndex(
+                    (f: any) => f.role === role && !f.isExtra,
+                  )
 
-                  // Create a synthetic key for this double replacement
                   const key = `direct|${role}|${replacement1.firstName}|${replacement1.lastName}`
 
                   replacementsByReplacedFirefighter.set(key, [
@@ -338,7 +347,6 @@ export function CalendarCell({
               const firefightersToHide = new Set<string>()
               replacementsByReplacedFirefighter.forEach((replacements, key) => {
                 if (replacements.length === 2) {
-                  // This is a double replacement, hide both individual replacement firefighters
                   replacements.forEach((r: any) => {
                     const firefighterKey = `${r.replacement_first_name}|${r.replacement_last_name}`
                     firefightersToHide.add(firefighterKey)
@@ -353,8 +361,7 @@ export function CalendarCell({
                 index: number
               }> = []
 
-              // Add all firefighters from the main list
-              firefighters.forEach((firefighter, index) => {
+              processedFirefighters.forEach((firefighter, index) => {
                 const firefighterKey = `${firefighter.firstName}|${firefighter.lastName}`
                 const replacedKey = `${firefighter.firstName}|${firefighter.lastName}|${firefighter.role}`
 
@@ -397,13 +404,14 @@ export function CalendarCell({
 
                   const key = `direct|${role}|${replacement1.firstName}|${replacement1.lastName}`
 
-                  // Only add if we haven't already added this as a replacement
                   const alreadyAdded = displayItems.some(
                     (item) => item.type === "double-replacement" && item.data.key === key,
                   )
 
                   if (!alreadyAdded) {
-                    const replacedFirefighterIndex = firefighters.findIndex((f: any) => f.role === role && !f.isExtra)
+                    const replacedFirefighterIndex = processedFirefighters.findIndex(
+                      (f: any) => f.role === role && !f.isExtra,
+                    )
 
                     const originalIndex = replacedFirefighterIndex !== -1 ? replacedFirefighterIndex : 999
 
@@ -460,13 +468,12 @@ export function CalendarCell({
                       {getShiftTypeLabel(shift.shift_type).split(" ")[0]}
                     </Badge>
                   </div>
-                  {firefighters.length > 0 || displayItems.length > 0 ? (
+                  {processedFirefighters.length > 0 || displayItems.length > 0 ? (
                     <div className="text-[7px] md:text-xs leading-snug md:leading-relaxed text-foreground/80 space-y-0">
                       {displayItems.map((item, displayIndex) => {
                         if (item.type === "double-replacement") {
                           const { key, replacements } = item.data
 
-                          // Sort replacements by start time
                           const sortedReplacements = [...replacements].sort((a: any, b: any) => {
                             if (a.start_time && b.start_time) {
                               return a.start_time.localeCompare(b.start_time)
@@ -497,8 +504,7 @@ export function CalendarCell({
                           return null
                         }
 
-                        // type === 'firefighter'
-                        const firefighter = item.data
+                        const firefighter = processedFirefighters[item.index]
                         const index = item.index
 
                         const replacement = shiftReplacements.find(

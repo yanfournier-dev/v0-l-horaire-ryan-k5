@@ -20,6 +20,7 @@ interface CalendarViewProps {
   leaves: any[]
   leaveMap: Record<string, any[]>
   noteMap: Record<string, boolean> // Add noteMap prop
+  directAssignmentMap: Record<string, any[]> // Adding directAssignmentMap prop
   isAdmin: boolean
   cycleStartDate: Date
   currentYear: number
@@ -34,6 +35,7 @@ export function CalendarView({
   leaves: initialLeaves,
   leaveMap: initialLeaveMap,
   noteMap: initialNoteMap,
+  directAssignmentMap: initialDirectAssignmentMap, // Receiving directAssignmentMap
   isAdmin,
   cycleStartDate,
   currentYear,
@@ -45,6 +47,7 @@ export function CalendarView({
   const [leaves, setLeaves] = useState(initialLeaves)
   const [leaveMap, setLeaveMap] = useState(initialLeaveMap)
   const [noteMap, setNoteMap] = useState(initialNoteMap)
+  const [directAssignmentMap, setDirectAssignmentMap] = useState(initialDirectAssignmentMap) // Adding state for directAssignmentMap
   const [loading, setLoading] = useState(false)
   const scrollAnchorRef = useRef<string | null>(null)
 
@@ -197,6 +200,17 @@ export function CalendarView({
         newNoteMap[key] = true
       })
       setNoteMap(newNoteMap)
+
+      const newDirectAssignmentMap = { ...directAssignmentMap } // Building new direct assignment map
+      data.directAssignments.forEach((assignment: any) => {
+        const dateOnly = formatLocalDate(assignment.shift_date)
+        const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
+        if (!newDirectAssignmentMap[key]) {
+          newDirectAssignmentMap[key] = []
+        }
+        newDirectAssignmentMap[key].push(assignment)
+      })
+      setDirectAssignmentMap(newDirectAssignmentMap) // Updating state with new direct assignment map
     }
 
     setMonths([...newMonths, ...months])
@@ -291,6 +305,17 @@ export function CalendarView({
         newNoteMap[key] = true
       })
       setNoteMap(newNoteMap)
+
+      const newDirectAssignmentMap = { ...directAssignmentMap } // Building new direct assignment map
+      data.directAssignments.forEach((assignment: any) => {
+        const dateOnly = formatLocalDate(assignment.shift_date)
+        const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
+        if (!newDirectAssignmentMap[key]) {
+          newDirectAssignmentMap[key] = []
+        }
+        newDirectAssignmentMap[key].push(assignment)
+      })
+      setDirectAssignmentMap(newDirectAssignmentMap) // Updating state with new direct assignment map
     }
 
     setMonths([...months, ...newMonths])
@@ -372,6 +397,12 @@ export function CalendarView({
                   return exchangeMap[key] || []
                 })
 
+                const dayDirectAssignments = shifts.map((shift: any) => {
+                  // Getting direct assignments for this date+shift
+                  const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+                  return directAssignmentMap[key] || []
+                })
+
                 const shiftsWithNotes = shifts.map((shift: any) => {
                   const noteKey = `${shift.id}_${dateStr}`
                   return {
@@ -389,6 +420,7 @@ export function CalendarView({
                     exchanges={dayExchanges}
                     leaves={leaves}
                     leaveMap={leaveMap}
+                    directAssignments={dayDirectAssignments} // Passing direct assignments
                     dateStr={dateStr}
                     isAdmin={isAdmin}
                     onReplacementCreated={handleReplacementCreated} // Pass callback to each cell

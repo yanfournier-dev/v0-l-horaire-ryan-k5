@@ -5,6 +5,20 @@ import { revalidatePath } from "next/cache"
 
 const sql = neon(process.env.DATABASE_URL!)
 
+async function getShiftDate(shiftId: number): Promise<string | null> {
+  const result = await sql`
+    SELECT 
+      TO_CHAR(
+        (SELECT start_date FROM cycle_config WHERE is_active = true LIMIT 1) + 
+        (s.cycle_day - 1) * INTERVAL '1 day',
+        'YYYY-MM-DD'
+      ) as shift_date
+    FROM shifts s
+    WHERE s.id = ${shiftId}
+  `
+  return result.length > 0 ? result[0].shift_date : null
+}
+
 export async function createDirectAssignment(params: {
   shiftId: number
   replacedUserId: number
@@ -13,9 +27,13 @@ export async function createDirectAssignment(params: {
   startTime?: string
   endTime?: string
   replacementOrder?: number
+  shiftDate?: string
 }) {
   try {
-    const { shiftId, replacedUserId, assignedUserId, isPartial, startTime, endTime, replacementOrder } = params
+    const { shiftId, replacedUserId, assignedUserId, isPartial, startTime, endTime, replacementOrder, shiftDate } =
+      params
+
+    const finalShiftDate = shiftDate || null
 
     const existing = await sql`
       SELECT id FROM shift_assignments
@@ -32,7 +50,8 @@ export async function createDirectAssignment(params: {
           is_partial = ${isPartial || false},
           start_time = ${startTime || null},
           end_time = ${endTime || null},
-          replacement_order = ${replacementOrder || 1}
+          replacement_order = ${replacementOrder || 1},
+          shift_date = ${finalShiftDate}
         WHERE id = ${existing[0].id}
       `
     } else {
@@ -46,7 +65,8 @@ export async function createDirectAssignment(params: {
           is_partial,
           start_time,
           end_time,
-          replacement_order
+          replacement_order,
+          shift_date
         )
         VALUES (
           ${shiftId}, 
@@ -57,7 +77,8 @@ export async function createDirectAssignment(params: {
           ${isPartial || false},
           ${startTime || null},
           ${endTime || null},
-          ${replacementOrder || 1}
+          ${replacementOrder || 1},
+          ${finalShiftDate}
         )
       `
     }
@@ -85,11 +106,16 @@ export async function addSecondReplacement(params: {
   assignedUserId: number
   startTime: string
   endTime: string
+  shiftDate?: string
 }) {
   try {
     console.log("[v0] addSecondReplacement called with:", params)
 
-    const { shiftId, replacedUserId, assignedUserId, startTime, endTime } = params
+    const { shiftId, replacedUserId, assignedUserId, startTime, endTime, shiftDate } = params
+
+    const finalShiftDate = shiftDate || null
+
+    const shiftDateFromShifts = await getShiftDate(shiftId)
 
     const replacement1Info = await sql`
       SELECT id, user_id, start_time, end_time, is_partial 
@@ -204,7 +230,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
-          replacement_order
+          replacement_order,
+          shift_date
         )
         VALUES (
           ${shiftId}, 
@@ -215,7 +242,8 @@ export async function addSecondReplacement(params: {
           true,
           ${r1Start},
           ${r1End},
-          1
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
         )
       `
       console.log("[v0] No overlap - R1 kept as is:", { r1Start, r1End })
@@ -247,7 +275,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
-          replacement_order
+          replacement_order,
+          shift_date
         )
         VALUES (
           ${shiftId}, 
@@ -258,7 +287,8 @@ export async function addSecondReplacement(params: {
           true,
           ${r2End},
           ${r1End},
-          1
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
         )
       `
       console.log("[v0] R2 covers beginning - R1 adjusted:", {
@@ -284,7 +314,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
-          replacement_order
+          replacement_order,
+          shift_date
         )
         VALUES (
           ${shiftId}, 
@@ -295,7 +326,8 @@ export async function addSecondReplacement(params: {
           true,
           ${r1Start},
           ${r2Start},
-          1
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
         )
       `
       console.log("[v0] R2 covers end - R1 adjusted:", {
@@ -324,7 +356,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
-          replacement_order
+          replacement_order,
+          shift_date
         )
         VALUES (
           ${shiftId}, 
@@ -335,7 +368,8 @@ export async function addSecondReplacement(params: {
           true,
           ${r1Start},
           ${r2Start},
-          1
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
         )
       `
       console.log("[v0] R1 Period 1 (before R2):", {
@@ -354,7 +388,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
-          replacement_order
+          replacement_order,
+          shift_date
         )
         VALUES (
           ${shiftId}, 
@@ -365,7 +400,8 @@ export async function addSecondReplacement(params: {
           true,
           ${r2End},
           ${r1End},
-          1
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
         )
       `
       console.log("[v0] R1 Period 2 (after R2):", {
@@ -394,7 +430,8 @@ export async function addSecondReplacement(params: {
         is_partial,
         start_time,
         end_time,
-        replacement_order
+        replacement_order,
+        shift_date
       )
       VALUES (
         ${shiftId}, 
@@ -405,7 +442,8 @@ export async function addSecondReplacement(params: {
         true,
         ${startTime},
         ${endTime},
-        2
+        2,
+        ${finalShiftDate || shiftDateFromShifts}
       )
       RETURNING *
     `

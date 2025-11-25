@@ -12,8 +12,6 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { DeadlineSelect } from "@/components/deadline-select"
 import { addSecondReplacement } from "@/app/actions/direct-assignments"
 import { toast } from "sonner"
 
@@ -51,8 +49,6 @@ export function AddSecondReplacementDialog({
   allFirefighters,
   onSuccess,
 }: AddSecondReplacementDialogProps) {
-  const [assignmentType, setAssignmentType] = useState<"direct" | "request">("direct")
-  const [deadlineSeconds, setDeadlineSeconds] = useState<number | null | Date | null>(null)
   const [selectedFirefighter, setSelectedFirefighter] = useState<number | null>(null)
   const [startTime, setStartTime] = useState("07:00")
   const [endTime, setEndTime] = useState("17:00")
@@ -70,11 +66,9 @@ export function AddSecondReplacementDialog({
   }
 
   const handleSubmit = async () => {
-    if (assignmentType === "direct") {
-      if (!selectedFirefighter) {
-        toast.error("Veuillez sélectionner un pompier")
-        return
-      }
+    if (!selectedFirefighter) {
+      toast.error("Veuillez sélectionner un pompier")
+      return
     }
 
     if (startTime >= endTime) {
@@ -84,18 +78,18 @@ export function AddSecondReplacementDialog({
 
     setIsLoading(true)
 
-    if (assignmentType === "request") {
-      toast.error("Fonctionnalité en développement - Utilisez l'assignation directe")
-      setIsLoading(false)
-      return
-    }
+    const shiftDateStr = shift.date
+      ? `${shift.date.getFullYear()}-${String(shift.date.getMonth() + 1).padStart(2, "0")}-${String(shift.date.getDate()).padStart(2, "0")}`
+      : undefined
+    console.log("[v0] AddSecondReplacementDialog - shift.date:", shift.date, "converted to:", shiftDateStr)
 
     const result = await addSecondReplacement({
       shiftId: shift.id,
       replacedUserId: replacedFirefighter.id,
-      assignedUserId: selectedFirefighter!,
+      assignedUserId: selectedFirefighter,
       startTime,
       endTime,
+      shiftDate: shiftDateStr,
     })
 
     if (result.error) {
@@ -130,56 +124,24 @@ export function AddSecondReplacementDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="space-y-3">
-            <Label>Type d'assignation</Label>
-            <RadioGroup value={assignmentType} onValueChange={(v) => setAssignmentType(v as "direct" | "request")}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="direct" id="direct" />
-                <Label htmlFor="direct" className="font-normal cursor-pointer">
-                  Assignation directe (choisir un pompier)
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="request" id="request" />
-                <Label htmlFor="request" className="font-normal cursor-pointer">
-                  Demande de remplacement (les pompiers pourront postuler)
-                </Label>
-              </div>
-            </RadioGroup>
+          <div className="space-y-2">
+            <Label>Sélectionner le pompier</Label>
+            <Select
+              value={selectedFirefighter?.toString() || ""}
+              onValueChange={(value) => setSelectedFirefighter(Number.parseInt(value))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choisir un pompier" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableFirefighters.map((ff) => (
+                  <SelectItem key={ff.id} value={ff.id.toString()}>
+                    {ff.first_name} {ff.last_name} - {ff.role}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-
-          {assignmentType === "direct" && (
-            <div className="space-y-2">
-              <Label>Sélectionner le pompier</Label>
-              <Select
-                value={selectedFirefighter?.toString() || ""}
-                onValueChange={(value) => setSelectedFirefighter(Number.parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un pompier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableFirefighters.map((ff) => (
-                    <SelectItem key={ff.id} value={ff.id.toString()}>
-                      {ff.first_name} {ff.last_name} - {ff.role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {assignmentType === "request" && (
-            <DeadlineSelect
-              value={deadlineSeconds}
-              onValueChange={setDeadlineSeconds}
-              shiftDate={shift.date}
-              shiftEndTime={endTime}
-              isPartial={true}
-              partialEndTime={endTime}
-              shift={shift}
-            />
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="start-time">Heure de début</Label>

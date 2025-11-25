@@ -5,9 +5,10 @@ import {
   getReplacementsForDateRange,
   getLeavesForDateRange,
   getExchangesForDateRange,
+  getDirectAssignmentsForDateRange,
 } from "@/app/actions/calendar"
 import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
-import { redirect } from 'next/navigation'
+import { redirect } from "next/navigation"
 import { generateMonthView, getCycleDay, parseLocalDate } from "@/lib/calendar"
 import { formatDateForDB, getTodayInLocalTimezone } from "@/lib/date-utils"
 import { Card, CardContent } from "@/components/ui/card"
@@ -74,13 +75,14 @@ export default async function CalendarPage({
     const lastMonthDays = allMonthsDays[allMonthsDays.length - 1].days
     const lastDay = lastMonthDays[lastMonthDays.length - 1]?.date
 
-    const allShifts = await getAllShiftsWithAssignments()
+    const allShifts = await getAllShiftsWithAssignments(firstDay, lastDay)
 
-    const [replacements, leaves, exchanges, shiftNotes] = await Promise.all([
+    const [replacements, leaves, exchanges, shiftNotes, directAssignments] = await Promise.all([
       firstDay && lastDay ? getReplacementsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
       firstDay && lastDay ? getLeavesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
       firstDay && lastDay ? getExchangesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
       firstDay && lastDay ? getShiftNotesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+      firstDay && lastDay ? getDirectAssignmentsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
     ])
 
     const replacementMap: Record<string, any[]> = {}
@@ -160,6 +162,16 @@ export default async function CalendarPage({
       })
     })
 
+    const directAssignmentMap: Record<string, any[]> = {}
+    directAssignments.forEach((da: any) => {
+      const dateOnly = formatDateForDB(new Date(da.shift_date))
+      const key = `${dateOnly}_${da.shift_type}_${da.team_id}`
+      if (!directAssignmentMap[key]) {
+        directAssignmentMap[key] = []
+      }
+      directAssignmentMap[key].push(da)
+    })
+
     return (
       <div className="p-4 md:p-6">
         <ScrollToTodayOnNav />
@@ -188,6 +200,7 @@ export default async function CalendarPage({
           leaves={leaves}
           leaveMap={leaveMap}
           noteMap={noteMap}
+          directAssignmentMap={directAssignmentMap}
           isAdmin={user.is_admin}
           cycleStartDate={cycleStartDate}
           currentYear={selectedYear}
