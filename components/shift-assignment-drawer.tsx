@@ -36,7 +36,7 @@ import {
 } from "@/app/actions/direct-assignments"
 import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
-import { UserPlus, Trash2, Users } from "lucide-react"
+import { UserPlus, Trash2, Users, Zap } from "lucide-react" // Added Zap icon
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -48,7 +48,7 @@ import { DeadlineSelect } from "@/components/deadline-select"
 import { formatDateForDB } from "@/lib/date-utils"
 import { calculateAutoDeadline } from "@/lib/date-utils"
 import { DirectAssignmentDialog } from "@/components/direct-assignment-dialog"
-import { AddSecondReplacementDialog } from "@/components/add-second-replacement-dialog" // Added import
+import { AddSecondReplacementDialog } from "@/components/add-second-replacement-dialog" // Added
 
 interface ShiftAssignmentDrawerProps {
   open: boolean
@@ -994,6 +994,13 @@ export function ShiftAssignmentDrawer({
                                           return <span> (Quart complet)</span>
                                         })()}
                                       </Badge>
+
+                                      {replacement1.is_direct_assignment && (
+                                        <span className="text-orange-500 text-lg" title="Assignation directe">
+                                          ⚡
+                                        </span>
+                                      )}
+
                                       {isAdmin && (
                                         <Button
                                           size="sm"
@@ -1106,6 +1113,12 @@ export function ShiftAssignmentDrawer({
                                           </span>
                                         )}
                                       </Badge>
+
+                                      {replacement2.is_direct_assignment && (
+                                        <span className="text-orange-500 text-lg" title="Assignation directe">
+                                          ⚡
+                                        </span>
+                                      )}
 
                                       {isAdmin && (
                                         <Button
@@ -1334,7 +1347,7 @@ export function ShiftAssignmentDrawer({
                                   )}
                                   {isDirectAssignment && (
                                     <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
-                                      Assignation directe
+                                      <Zap className="h-3 w-3 mr-1" /> Assignation directe {/* Zap icon added */}
                                     </Badge>
                                   )}
                                   {isDirectAssignment &&

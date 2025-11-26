@@ -1281,3 +1281,50 @@ export async function getUserReplacementRequests(userId: number) {
     return []
   }
 }
+
+export async function getDirectAssignments() {
+  try {
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
+
+    const assignments = await db`
+      SELECT 
+        sa.id,
+        sa.shift_id,
+        sa.user_id,
+        sa.replaced_user_id,
+        sa.is_partial,
+        sa.start_time,
+        sa.end_time,
+        sa.replacement_order,
+        sa.shift_date,
+        sa.assigned_at,
+        sa.is_acting_lieutenant,
+        sa.is_acting_captain,
+        s.shift_type,
+        s.cycle_day,
+        s.team_id,
+        t.name as team_name,
+        t.color as team_color,
+        assigned_user.first_name as assigned_first_name,
+        assigned_user.last_name as assigned_last_name,
+        replaced_user.first_name as replaced_first_name,
+        replaced_user.last_name as replaced_last_name
+      FROM shift_assignments sa
+      JOIN shifts s ON sa.shift_id = s.id
+      LEFT JOIN teams t ON s.team_id = t.id
+      LEFT JOIN users assigned_user ON sa.user_id = assigned_user.id
+      LEFT JOIN users replaced_user ON sa.replaced_user_id = replaced_user.id
+      WHERE sa.is_direct_assignment = true
+        AND sa.shift_date >= CURRENT_DATE
+      ORDER BY sa.shift_date ASC, s.shift_type
+    `
+
+    return assignments
+  } catch (error) {
+    console.error("getDirectAssignments: Error", error instanceof Error ? error.message : String(error))
+    return []
+  }
+}

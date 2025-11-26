@@ -77,7 +77,7 @@ export default async function ReplacementDetailPage({
       u.id as user_id,
       reviewer.first_name as reviewer_first_name,
       reviewer.last_name as reviewer_last_name,
-      team_info.name as team_name,
+      COALESCE(team_info.name, 'Aucune équipe') as team_name,
       team_info.type as team_type,
       team_info.team_rank,
       team_info.team_number,
@@ -132,6 +132,26 @@ export default async function ReplacementDetailPage({
         WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
              AND team_info.type = 'permanent'
              AND team_info.team_id = ${replacement.team_id}
+             AND team_info.name LIKE '%1%'
+        THEN 0 + ((${partTimeTeam} - 1 + 3) % 4) * 0.01
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND team_info.type = 'permanent'
+             AND team_info.team_id = ${replacement.team_id}
+             AND team_info.name LIKE '%2%'
+        THEN 0 + ((${partTimeTeam} - 2 + 3) % 4) * 0.01
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND team_info.type = 'permanent'
+             AND team_info.team_id = ${replacement.team_id}
+             AND team_info.name LIKE '%3%'
+        THEN 0 + ((${partTimeTeam} - 3 + 3) % 4) * 0.01
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND team_info.type = 'permanent'
+             AND team_info.team_id = ${replacement.team_id}
+             AND team_info.name LIKE '%4%'
+        THEN 0 + ((${partTimeTeam} - 4 + 3) % 4) * 0.01
+        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
+             AND team_info.type = 'permanent'
+             AND team_info.team_id = ${replacement.team_id}
         THEN 0.5
         WHEN team_info.type = 'part_time' AND team_info.name LIKE '%1%' THEN ((${partTimeTeam} - 1 + 3) % 4) + 1
         WHEN team_info.type = 'part_time' AND team_info.name LIKE '%2%' THEN ((${partTimeTeam} - 2 + 3) % 4) + 1
@@ -140,13 +160,15 @@ export default async function ReplacementDetailPage({
         WHEN team_info.type = 'part_time' THEN 5
         WHEN team_info.type = 'temporary' THEN 10
         WHEN team_info.type = 'permanent' THEN 20
+        WHEN team_info.type IS NULL THEN 100
         ELSE 99
       END as sort_priority
     FROM replacement_applications ra
     JOIN users u ON ra.applicant_id = u.id
     LEFT JOIN users reviewer ON ra.reviewed_by = reviewer.id
-    LEFT JOIN LATERAL (
+    LEFT JOIN (
       SELECT 
+        tm.user_id,
         CASE 
           WHEN t.type = 'permanent' THEN 'Pompiers réguliers'
           ELSE t.name
@@ -160,15 +182,16 @@ export default async function ReplacementDetailPage({
           WHEN t.name LIKE '%3%' THEN 3
           WHEN t.name LIKE '%4%' THEN 4
           ELSE 0
-        END as team_number
+        END as team_number,
+        ROW_NUMBER() OVER (
+          PARTITION BY tm.user_id 
+          ORDER BY 
+            CASE WHEN t.name = 'Pompiers réguliers' THEN 0 ELSE 1 END,
+            t.id
+        ) as rn
       FROM team_members tm
       JOIN teams t ON tm.team_id = t.id
-      WHERE tm.user_id = u.id
-      ORDER BY 
-        CASE WHEN t.name = 'Pompiers réguliers' THEN 0 ELSE 1 END,
-        t.id
-      LIMIT 1
-    ) team_info ON true
+    ) team_info ON team_info.user_id = u.id AND team_info.rn = 1
     WHERE ra.replacement_id = ${replacementId}
     ORDER BY 
       sort_priority ASC, 
@@ -286,20 +309,16 @@ export default async function ReplacementDetailPage({
       u.email,
       team_info.name as team_name
     FROM users u
-    LEFT JOIN LATERAL (
+    LEFT JOIN (
       SELECT 
+        tm.user_id,
         CASE 
           WHEN t.type = 'permanent' THEN 'Pompiers réguliers'
           ELSE t.name
         END as name
-      FROM team_members tm2
-      JOIN teams t ON tm2.team_id = t.id
-      WHERE tm2.user_id = u.id
-      ORDER BY 
-        CASE WHEN t.name = 'Pompiers réguliers' THEN 0 ELSE 1 END,
-        t.id
-      LIMIT 1
-    ) team_info ON true
+      FROM team_members tm
+      JOIN teams t ON tm.team_id = t.id
+    ) team_info ON team_info.user_id = u.id
     WHERE u.id != ${replacement.leave_user_id || replacement.user_id}
     ORDER BY u.last_name, u.first_name
   `
@@ -309,6 +328,7 @@ export default async function ReplacementDetailPage({
   const partTimeCandidates = regularCandidates.filter((app: any) => app.team_type === "part_time")
   const temporaryCandidates = regularCandidates.filter((app: any) => app.team_type === "temporary")
   const permanentCandidates = regularCandidates.filter((app: any) => app.team_type === "permanent")
+  const noTeamCandidates = regularCandidates.filter((app: any) => !app.team_type)
 
   // Group part-time candidates by team number
   const partTimeByTeam = {
@@ -522,6 +542,13 @@ export default async function ReplacementDetailPage({
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-foreground">Pompiers réguliers</h3>
                 <div className="space-y-2">{permanentCandidates.map(renderApplicationCard)}</div>
+              </div>
+            )}
+
+            {noTeamCandidates.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-foreground">Sans équipe</h3>
+                <div className="space-y-2">{noTeamCandidates.map((candidate) => renderApplicationCard(candidate))}</div>
               </div>
             )}
           </div>

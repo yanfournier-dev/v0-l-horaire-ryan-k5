@@ -6,6 +6,7 @@ import {
   getPendingReplacementRequests,
   getUserReplacementRequests,
   getExpiredReplacements,
+  getDirectAssignments, // Added import for direct assignments
 } from "@/app/actions/replacements"
 import { getAllFirefighters } from "@/app/actions/teams"
 import { redirect } from "next/navigation"
@@ -29,9 +30,10 @@ export default async function ReplacementsPage({
   ])
 
   // Batch 2: Medium priority queries (needed for main display)
-  const [allReplacements, userRequests] = await Promise.all([
+  const [allReplacements, userRequests, directAssignments] = await Promise.all([
     user.is_admin ? getAllReplacements() : Promise.resolve([]),
     getUserReplacementRequests(user.id),
+    getDirectAssignments(), // Added direct assignments to batch 2
   ])
 
   // Batch 3: Low priority queries (admin-only features)
@@ -60,6 +62,7 @@ export default async function ReplacementsPage({
         pendingRequests={pendingRequests}
         userRequests={userRequests}
         expiredReplacements={expiredReplacements}
+        directAssignments={directAssignments} // Passed direct assignments to tabs
         isAdmin={user.is_admin}
         userId={user.id}
         initialTab={initialTab}

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Eye, EyeOff, Plus } from "lucide-react"
 import { AvailableReplacementsTab } from "@/components/available-replacements-tab"
 import { AssignedReplacementsTab } from "@/components/assigned-replacements-tab"
+import { DirectAssignmentsTab } from "@/components/direct-assignments-tab" // Added import for new tab
 import { PendingRequestsTab } from "@/components/pending-requests-tab"
 import { UserRequestsTab } from "@/components/user-requests-tab"
 import { WithdrawApplicationButton } from "@/components/withdraw-application-button"
@@ -26,6 +27,7 @@ interface ReplacementsTabsProps {
   pendingRequests: any[]
   userRequests: any[]
   expiredReplacements: any[]
+  directAssignments: any[] // Added prop for direct assignments
   isAdmin: boolean
   userId: number
   initialTab?: string
@@ -39,6 +41,7 @@ export function ReplacementsTabs({
   pendingRequests,
   userRequests,
   expiredReplacements,
+  directAssignments, // Destructured new prop
   isAdmin,
   userId,
   initialTab = "available",
@@ -130,6 +133,7 @@ export function ReplacementsTabs({
           </TabsTrigger>
         )}
         <TabsTrigger value="assigned">Assignés ({assignedReplacements.length})</TabsTrigger>
+        <TabsTrigger value="direct-assignments">Assignation directe ({directAssignments.length})</TabsTrigger>
         <TabsTrigger value="my-applications">Mes candidatures ({pendingApplications.length})</TabsTrigger>
         <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
         {isAdmin && (
@@ -158,6 +162,10 @@ export function ReplacementsTabs({
 
       <TabsContent value="assigned">
         <AssignedReplacementsTab allReplacements={assignedReplacements} isAdmin={isAdmin} />
+      </TabsContent>
+
+      <TabsContent value="direct-assignments">
+        <DirectAssignmentsTab directAssignments={directAssignments} isAdmin={isAdmin} />
       </TabsContent>
 
       <TabsContent value="my-applications" className="space-y-0.5">

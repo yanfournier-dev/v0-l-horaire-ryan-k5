@@ -558,7 +558,7 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
     const shiftType = shift.shift_type
     const teamId = shift.team_id
 
-    const allExtraRequests = await db`
+    const allExtraRequests = await sql`
       SELECT 
         r.id,
         r.user_id,
@@ -801,6 +801,9 @@ export async function getDirectAssignmentsForDateRange(startDate: Date, endDate:
         sa.user_id as replacement_user_id,
         sa.replaced_user_id,
         sa.replacement_order,
+        sa.is_partial,
+        sa.start_time,
+        sa.end_time,
         u.first_name as replacement_first_name,
         u.last_name as replacement_last_name,
         u.role as replacement_role,
