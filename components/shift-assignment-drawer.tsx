@@ -158,10 +158,23 @@ export function ShiftAssignmentDrawer({
 
   useEffect(() => {
     if (open && shift) {
-      // console.log("[v0] ShiftAssignmentDrawer opened")
-      // console.log("[v0] teamFirefighters:", teamFirefighters)
-      // console.log("[v0] currentAssignments:", currentAssignments)
-      // console.log("[v0] shift:", shift)
+      console.log("[v0] ShiftAssignmentDrawer opened")
+      console.log("[v0] teamFirefighters:", teamFirefighters)
+      console.log("[v0] currentAssignments:", currentAssignments)
+
+      // Log direct assignments with acting flags
+      const directAssignments = currentAssignments.filter((a) => a.is_direct_assignment)
+      console.log(
+        "[v0] Direct assignments:",
+        directAssignments.map((da) => ({
+          name: `${da.first_name} ${da.last_name}`,
+          user_id: da.user_id,
+          is_acting_lt: da.is_acting_lieutenant,
+          is_acting_cpt: da.is_acting_captain,
+        })),
+      )
+
+      console.log("[v0] shift:", shift)
     }
   }, [open, shift, teamFirefighters, currentAssignments])
 
@@ -758,6 +771,16 @@ export function ShiftAssignmentDrawer({
 
   currentAssignments.forEach((assignment) => {
     if (assignment.is_direct_assignment && assignment.replaced_user_id) {
+      if (assignment.user_id === 50) {
+        // Thomas Fréchette
+        console.log("[v0] Direct assignment Fréchette:", {
+          userId: assignment.user_id,
+          name: `${assignment.first_name} ${assignment.last_name}`,
+          is_acting_lieutenant: assignment.is_acting_lieutenant,
+          is_acting_captain: assignment.is_acting_captain,
+        })
+      }
+
       if (!groupedReplacements.has(assignment.replaced_user_id)) {
         groupedReplacements.set(assignment.replaced_user_id, [])
       }
@@ -777,6 +800,8 @@ export function ShiftAssignmentDrawer({
         is_direct_assignment: true,
         is_replacement: false,
         replacement_order: assignment.replacement_order || 1,
+        is_acting_lieutenant: assignment.is_acting_lieutenant || false,
+        is_acting_captain: assignment.is_acting_captain || false,
         replaced_first_name: replacedFF?.first_name || replacedFromTeam?.first_name || "Pompier",
         replaced_last_name: replacedFF?.last_name || replacedFromTeam?.last_name || "Inconnu",
         replaced_position_code: replacedFF?.position_code || replacedFromTeam?.position_code || "",

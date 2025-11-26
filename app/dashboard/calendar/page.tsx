@@ -174,6 +174,8 @@ export default async function CalendarPage({
       directAssignmentMap[key].push(da)
     })
 
+    console.log("[v0] Sample directAssignment for Nov 26:", directAssignmentMap["2025-11-26_day_2"]?.[0])
+
     const actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
     actingDesignations.forEach((ad: any) => {
       // Use cycle_day, shift_type, team_id, and user_id as key

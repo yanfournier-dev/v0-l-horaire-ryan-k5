@@ -4,7 +4,8 @@ import { sql, invalidateCache } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
 import { revalidatePath } from "next/cache"
-import { format } from "date-fns"
+import { formatISO } from "date-fns"
+import { neon } from "@neondatabase/serverless"
 import type { Shift } from "@/types/shift"
 
 // Placeholder for getCycleInfo, as it's used in updates but not defined in existing code
@@ -267,6 +268,13 @@ export async function getActingDesignationsForRange(startDate: string, endDate: 
       WHERE (sa.is_acting_lieutenant = true OR sa.is_acting_captain = true)
     `
 
+    console.log("[v0] getActingDesignationsForRange - Found designations:", designations.length)
+    designations.forEach((d: any) => {
+      console.log(
+        `[v0]   - ${d.first_name} ${d.last_name} (userId: ${d.user_id}) on shift ${d.shift_id} (cycle_day: ${d.cycle_day}, team: ${d.team_id}) - Cpt: ${d.is_acting_captain}, Lt: ${d.is_acting_lieutenant}`,
+      )
+    })
+
     return designations.map((row: any) => ({
       user_id: row.user_id,
       shift_id: row.shift_id,
@@ -282,514 +290,322 @@ export async function getActingDesignationsForRange(startDate: string, endDate: 
   }
 }
 
-export async function getShiftWithAssignments(shiftId: number, shiftDate?: Date) {
+export async function getShiftWithAssignments(shiftId: number, shiftDate: string | Date) {
+  const db = neon(process.env.DATABASE_URL!, { fetchConnectionCache: true, disableWarningInBrowsers: true })
+
+  const shiftDateStr = typeof shiftDate === "string" ? shiftDate : formatISO(shiftDate, { representation: "date" })
+
+  let result
   try {
-    const shiftDateStr = shiftDate ? shiftDate.toISOString().split("T")[0] : null
-
-    const result = shiftDateStr
-      ? sql`
-      WITH shift_info AS (
-        SELECT 
-          s.id,
-          s.team_id,
-          s.cycle_day,
-          s.shift_type,
-          s.start_time,
-          s.end_time,
-          t.name as team_name,
-          t.type as team_type,
-          t.color as team_color
-        FROM shifts s
-        JOIN teams t ON s.team_id = t.id
-        WHERE s.id = ${shiftId}
-      ),
-      team_members_data AS (
-        SELECT 
-          tm.id::integer,
-          tm.user_id as original_user_id,
-          sa_direct.user_id as direct_assignment_user_id,
-          COALESCE(sa_direct.user_id, tm.user_id) as user_id,
-          false as is_extra,
-          COALESCE(sa_direct.is_partial, false) as is_partial,
-          sa_direct.start_time::text as start_time,
-          sa_direct.end_time::text as end_time,
-          NULL::integer as replacement_id,
-          NULL::text as replacement_status,
-          u.first_name as original_first_name,
-          u.last_name as original_last_name,
-          u_direct.first_name as direct_first_name,
-          u_direct.last_name as direct_last_name,
-          COALESCE(u_direct.first_name, u.first_name) as first_name,
-          COALESCE(u_direct.last_name, u.last_name) as last_name,
-          u.role,
-          COALESCE(u_direct.email, u.email) as email,
-          COALESCE(sa.is_acting_lieutenant, sa_direct.is_acting_lieutenant, false) as showsLtBadge,
-          COALESCE(sa.is_acting_captain, sa_direct.is_acting_captain, false) as showsCptBadge,
-          COALESCE(sa.is_acting_lieutenant, sa_direct.is_acting_lieutenant, false) as is_acting_lieutenant,
-          COALESCE(sa.is_acting_captain, sa_direct.is_acting_captain, false) as is_acting_captain,
-          COALESCE(sa_direct.is_direct_assignment, false) as is_direct_assignment,
-          sa_direct.replaced_user_id::integer,
-          CASE 
-            WHEN sa_direct.user_id IS NOT NULL THEN u.first_name || ' ' || u.last_name
-            ELSE NULL
-          END::text as replaced_name,
-          sa_direct.replacement_order::integer,
-          sa_direct.shift_date::text as direct_assignment_shift_date,
-          1 as source_order
-        FROM team_members tm
-        JOIN users u ON tm.user_id = u.id
-        JOIN shift_info si ON tm.team_id = si.team_id
-        LEFT JOIN shift_assignments sa ON sa.shift_id = si.id AND sa.user_id = tm.user_id AND sa.is_extra = false AND (sa.is_direct_assignment = false OR sa.is_direct_assignment IS NULL)
-        LEFT JOIN shift_assignments sa_direct ON sa_direct.shift_id = si.id 
-          AND sa_direct.replaced_user_id = tm.user_id 
-          AND sa_direct.is_direct_assignment = true
-          AND sa_direct.shift_date::date = ${shiftDateStr}::date
-        LEFT JOIN users u_direct ON sa_direct.user_id = u_direct.id
-        ORDER BY 
-          CASE u.role 
-            WHEN 'captain' THEN 1 
-            WHEN 'lieutenant' THEN 2 
-            WHEN 'pp1' THEN 3 
-            WHEN 'pp2' THEN 4 
-            WHEN 'pp3' THEN 5 
-            WHEN 'pp4' THEN 6 
-            WHEN 'pp5' THEN 7 
-            WHEN 'pp6' THEN 8 
-            ELSE 9 
-          END,
-          u.last_name
-      ),
-      extra_firefighters_data AS (
-        SELECT 
-          sa.id::integer,
-          NULL::integer as original_user_id,
-          NULL::integer as direct_assignment_user_id,
-          sa.user_id,
-          sa.is_extra,
-          COALESCE(sa.is_partial, false) as is_partial,
-          sa.start_time::text as start_time,
-          sa.end_time::text as end_time,
-          NULL::integer as replacement_id,
-          NULL::text as replacement_status,
-          NULL::text as original_first_name,
-          NULL::text as original_last_name,
-          NULL::text as direct_first_name,
-          NULL::text as direct_last_name,
-          u.first_name,
-          u.last_name,
-          u.role,
-          u.email,
-          COALESCE(sa.is_acting_lieutenant, false) as showsLtBadge,
-          COALESCE(sa.is_acting_captain, false) as showsCptBadge,
-          COALESCE(sa.is_acting_lieutenant, false) as is_acting_lieutenant,
-          COALESCE(sa.is_acting_captain, false) as is_acting_captain,
-          false as is_direct_assignment,
-          NULL::integer as replaced_user_id,
-          NULL::text as replaced_name,
-          NULL::integer as replacement_order,
-          NULL::text as direct_assignment_shift_date,
-          2 as source_order
-        FROM shift_assignments sa
-        JOIN users u ON sa.user_id = u.id
-        WHERE sa.shift_id = ${shiftId} AND sa.is_extra = true
-        ORDER BY 
-          CASE u.role 
-            WHEN 'captain' THEN 1 
-            WHEN 'lieutenant' THEN 2 
-            WHEN 'pp1' THEN 3 
-            WHEN 'pp2' THEN 4 
-            WHEN 'pp3' THEN 5 
-            WHEN 'pp4' THEN 6 
-            WHEN 'pp5' THEN 7 
-            WHEN 'pp6' THEN 8 
-            ELSE 9 
-          END,
-          u.last_name
-      ),
-      cycle_config_data AS (
-        SELECT start_date, cycle_length_days
-        FROM cycle_config
-        WHERE is_active = true
-        LIMIT 1
-      )
+    result = await db`
+    WITH shift_info AS (
       SELECT 
-        json_build_object(
-          'id', si.id,
-          'team_id', si.team_id,
-          'cycle_day', si.cycle_day,
-          'shift_type', si.shift_type,
-          'start_time', si.start_time,
-          'end_time', si.end_time,
-          'team_name', si.team_name,
-          'team_type', si.team_type,
-          'team_color', si.team_color,
-          'cycle_start_date', cc.start_date,
-          'cycle_length_days', cc.cycle_length_days
-        ) as shift_data,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', tm.id,
-              'original_user_id', tm.original_user_id,
-              'direct_assignment_user_id', tm.direct_assignment_user_id,
-              'user_id', tm.user_id,
-              'is_extra', tm.is_extra,
-              'is_partial', tm.is_partial,
-              'start_time', tm.start_time,
-              'end_time', tm.end_time,
-              'replacement_id', tm.replacement_id,
-              'replacement_status', tm.replacement_status,
-              'original_first_name', tm.original_first_name,
-              'original_last_name', tm.original_last_name,
-              'direct_first_name', tm.direct_first_name,
-              'direct_last_name', tm.direct_last_name,
-              'first_name', tm.first_name,
-              'last_name', tm.last_name,
-              'role', tm.role,
-              'email', tm.email,
-              'showsLtBadge', tm.showsLtBadge,
-              'showsCptBadge', tm.showsCptBadge,
-              'is_acting_lieutenant', tm.is_acting_lieutenant,
-              'is_acting_captain', tm.is_acting_captain,
-              'is_direct_assignment', tm.is_direct_assignment,
-              'replaced_user_id', tm.replaced_user_id,
-              'replaced_name', tm.replaced_name,
-              'replacement_order', tm.replacement_order,
-              'direct_assignment_shift_date', tm.direct_assignment_shift_date
-            ) ORDER BY tm.source_order, 
-              CASE tm.role 
-                WHEN 'captain' THEN 1 
-                WHEN 'lieutenant' THEN 2 
-                WHEN 'pp1' THEN 3 
-                WHEN 'pp2' THEN 4 
-                WHEN 'pp3' THEN 5 
-                WHEN 'pp4' THEN 6 
-                WHEN 'pp5' THEN 7 
-                WHEN 'pp6' THEN 8 
-                ELSE 9 
-              END,
-              tm.last_name
-          ) FILTER (WHERE tm.id IS NOT NULL),
-          '[]'::json
-        ) as assignments_data
-      FROM shift_info si
-      CROSS JOIN cycle_config_data cc
-      LEFT JOIN (
-        SELECT * FROM team_members_data
-        UNION ALL
-        SELECT * FROM extra_firefighters_data
-      ) tm ON true
-      GROUP BY si.id, si.team_id, si.cycle_day, si.shift_type, si.start_time, si.end_time, 
-               si.team_name, si.team_type, si.team_color, cc.start_date, cc.cycle_length_days
-    `
-      : sql`
-      WITH shift_info AS (
-        SELECT 
-          s.id,
-          s.team_id,
-          s.cycle_day,
-          s.shift_type,
-          s.start_time,
-          s.end_time,
-          t.name as team_name,
-          t.type as team_type,
-          t.color as team_color
-        FROM shifts s
-        JOIN teams t ON s.team_id = t.id
-        WHERE s.id = ${shiftId}
-      ),
-      team_members_data AS (
-        SELECT 
-          tm.id::integer,
-          tm.user_id as original_user_id,
-          sa_direct.user_id as direct_assignment_user_id,
-          COALESCE(sa_direct.user_id, tm.user_id) as user_id,
-          false as is_extra,
-          COALESCE(sa_direct.is_partial, false) as is_partial,
-          sa_direct.start_time::text as start_time,
-          sa_direct.end_time::text as end_time,
-          NULL::integer as replacement_id,
-          NULL::text as replacement_status,
-          u.first_name as original_first_name,
-          u.last_name as original_last_name,
-          u_direct.first_name as direct_first_name,
-          u_direct.last_name as direct_last_name,
-          COALESCE(u_direct.first_name, u.first_name) as first_name,
-          COALESCE(u_direct.last_name, u.last_name) as last_name,
-          u.role,
-          COALESCE(u_direct.email, u.email) as email,
-          COALESCE(sa.is_acting_lieutenant, sa_direct.is_acting_lieutenant, false) as showsLtBadge,
-          COALESCE(sa.is_acting_captain, sa_direct.is_acting_captain, false) as showsCptBadge,
-          COALESCE(sa.is_acting_lieutenant, sa_direct.is_acting_lieutenant, false) as is_acting_lieutenant,
-          COALESCE(sa.is_acting_captain, sa_direct.is_acting_captain, false) as is_acting_captain,
-          COALESCE(sa_direct.is_direct_assignment, false) as is_direct_assignment,
-          sa_direct.replaced_user_id::integer,
-          CASE 
-            WHEN sa_direct.user_id IS NOT NULL THEN u.first_name || ' ' || u.last_name
-            ELSE NULL
-          END::text as replaced_name,
-          sa_direct.replacement_order::integer,
-          sa_direct.shift_date::text as direct_assignment_shift_date,
-          1 as source_order
-        FROM team_members tm
-        JOIN users u ON tm.user_id = u.id
-        JOIN shift_info si ON tm.team_id = si.team_id
-        LEFT JOIN shift_assignments sa ON sa.shift_id = si.id AND sa.user_id = tm.user_id AND sa.is_extra = false AND (sa.is_direct_assignment = false OR sa.is_direct_assignment IS NULL)
-        LEFT JOIN shift_assignments sa_direct ON sa_direct.shift_id = si.id 
-          AND sa_direct.replaced_user_id = tm.user_id 
-          AND sa_direct.is_direct_assignment = true
-        LEFT JOIN users u_direct ON sa_direct.user_id = u_direct.id
-        ORDER BY 
-          CASE u.role 
-            WHEN 'captain' THEN 1 
-            WHEN 'lieutenant' THEN 2 
-            WHEN 'pp1' THEN 3 
-            WHEN 'pp2' THEN 4 
-            WHEN 'pp3' THEN 5 
-            WHEN 'pp4' THEN 6 
-            WHEN 'pp5' THEN 7 
-            WHEN 'pp6' THEN 8 
-            ELSE 9 
-          END,
-          u.last_name
-      ),
-      extra_firefighters_data AS (
-        SELECT 
-          sa.id::integer,
-          NULL::integer as original_user_id,
-          NULL::integer as direct_assignment_user_id,
-          sa.user_id,
-          sa.is_extra,
-          COALESCE(sa.is_partial, false) as is_partial,
-          sa.start_time::text as start_time,
-          sa.end_time::text as end_time,
-          NULL::integer as replacement_id,
-          NULL::text as replacement_status,
-          NULL::text as original_first_name,
-          NULL::text as original_last_name,
-          NULL::text as direct_first_name,
-          NULL::text as direct_last_name,
-          u.first_name,
-          u.last_name,
-          u.role,
-          u.email,
-          COALESCE(sa.is_acting_lieutenant, false) as showsLtBadge,
-          COALESCE(sa.is_acting_captain, false) as showsCptBadge,
-          COALESCE(sa.is_acting_lieutenant, false) as is_acting_lieutenant,
-          COALESCE(sa.is_acting_captain, false) as is_acting_captain,
-          false as is_direct_assignment,
-          NULL::integer as replaced_user_id,
-          NULL::text as replaced_name,
-          NULL::integer as replacement_order,
-          NULL::text as direct_assignment_shift_date,
-          2 as source_order
-        FROM shift_assignments sa
-        JOIN users u ON sa.user_id = u.id
-        WHERE sa.shift_id = ${shiftId} AND sa.is_extra = true
-        ORDER BY 
-          CASE u.role 
-            WHEN 'captain' THEN 1 
-            WHEN 'lieutenant' THEN 2 
-            WHEN 'pp1' THEN 3 
-            WHEN 'pp2' THEN 4 
-            WHEN 'pp3' THEN 5 
-            WHEN 'pp4' THEN 6 
-            WHEN 'pp5' THEN 7 
-            WHEN 'pp6' THEN 8 
-            ELSE 9 
-          END,
-          u.last_name
-      ),
-      cycle_config_data AS (
-        SELECT start_date, cycle_length_days
-        FROM cycle_config
-        WHERE is_active = true
-        LIMIT 1
-      )
+        s.id,
+        s.team_id,
+        s.cycle_day,
+        s.shift_type,
+        s.start_time,
+        s.end_time,
+        t.name as team_name,
+        t.type as team_type,
+        t.color as team_color
+      FROM shifts s
+      JOIN teams t ON s.team_id = t.id
+      WHERE s.id = ${shiftId}
+    ),
+    team_members_data AS (
       SELECT 
-        json_build_object(
-          'id', si.id,
-          'team_id', si.team_id,
-          'cycle_day', si.cycle_day,
-          'shift_type', si.shift_type,
-          'start_time', si.start_time,
-          'end_time', si.end_time,
-          'team_name', si.team_name,
-          'team_type', si.team_type,
-          'team_color', si.team_color,
-          'cycle_start_date', cc.start_date,
-          'cycle_length_days', cc.cycle_length_days
-        ) as shift_data,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', tm.id,
-              'original_user_id', tm.original_user_id,
-              'direct_assignment_user_id', tm.direct_assignment_user_id,
-              'user_id', tm.user_id,
-              'is_extra', tm.is_extra,
-              'is_partial', tm.is_partial,
-              'start_time', tm.start_time,
-              'end_time', tm.end_time,
-              'replacement_id', tm.replacement_id,
-              'replacement_status', tm.replacement_status,
-              'original_first_name', tm.original_first_name,
-              'original_last_name', tm.original_last_name,
-              'direct_first_name', tm.direct_first_name,
-              'direct_last_name', tm.direct_last_name,
-              'first_name', tm.first_name,
-              'last_name', tm.last_name,
-              'role', tm.role,
-              'email', tm.email,
-              'showsLtBadge', tm.showsLtBadge,
-              'showsCptBadge', tm.showsCptBadge,
-              'is_acting_lieutenant', tm.is_acting_lieutenant,
-              'is_acting_captain', tm.is_acting_captain,
-              'is_direct_assignment', tm.is_direct_assignment,
-              'replaced_user_id', tm.replaced_user_id,
-              'replaced_name', tm.replaced_name,
-              'replacement_order', tm.replacement_order,
-              'direct_assignment_shift_date', tm.direct_assignment_shift_date
-            ) ORDER BY tm.source_order, 
-              CASE tm.role 
-                WHEN 'captain' THEN 1 
-                WHEN 'lieutenant' THEN 2 
-                WHEN 'pp1' THEN 3 
-                WHEN 'pp2' THEN 4 
-                WHEN 'pp3' THEN 5 
-                WHEN 'pp4' THEN 6 
-                WHEN 'pp5' THEN 7 
-                WHEN 'pp6' THEN 8 
-                ELSE 9 
-              END,
-              tm.last_name
-          ) FILTER (WHERE tm.id IS NOT NULL),
-          '[]'::json
-        ) as assignments_data
-      FROM shift_info si
-      CROSS JOIN cycle_config_data cc
-      LEFT JOIN (
-        SELECT * FROM team_members_data
-        UNION ALL
-        SELECT * FROM extra_firefighters_data
-      ) tm ON true
-      GROUP BY si.id, si.team_id, si.cycle_day, si.shift_type, si.start_time, si.end_time, 
-               si.team_name, si.team_type, si.team_color, cc.start_date, cc.cycle_length_days
-    `
-
-    const resultData = await result.catch((err: any) => {
-      const errorMessage = err?.message || String(err)
-      if (errorMessage.includes("Too Many")) {
-        console.error("[v0] getShiftWithAssignments: Rate limit exceeded, please wait a moment and try again")
-      } else {
-        console.error("[v0] getShiftWithAssignments: Combined query failed", errorMessage)
-      }
-      throw err
-    })
-
-    if (!Array.isArray(resultData) || resultData.length === 0) {
-      return null
-    }
-
-    const { shift_data, assignments_data } = resultData[0]
-    const shift = shift_data
-    let assignments = assignments_data || []
-
-    if (shift.cycle_start_date && shift.cycle_length_days) {
-      const cycleStartDate = new Date(shift.cycle_start_date)
-      const cycleLength = shift.cycle_length_days
-
-      assignments = assignments.filter((assignment: any) => {
-        if (!assignment.is_direct_assignment) {
-          return true
-        }
-
-        if (!assignment.direct_assignment_shift_date) {
-          return true
-        }
-
-        const assignmentDateStr = assignment.direct_assignment_shift_date.substring(0, 10)
-
-        if (shiftDate) {
-          const shiftDateStr = shiftDate.toISOString().substring(0, 10)
-          const matches = assignmentDateStr === shiftDateStr
-
-          return matches
-        }
-
-        return true
-      })
-    }
-
-    if (!shift || !shift.team_name) {
-      console.error("[v0] getShiftWithAssignments: Invalid shift data returned")
-      return null
-    }
-
-    let extraReplacementRequests: any[] = []
-    if (shift.cycle_start_date && shift.cycle_length_days) {
-      const startDate = new Date(shift.cycle_start_date)
-      const cycleDay = shift.cycle_day
-      const shiftType = shift.shift_type
-      const teamId = shift.team_id
-
-      const allExtraRequests = await sql`
-        SELECT 
-          r.id,
-          r.user_id,
-          r.shift_date,
-          r.shift_type,
-          r.team_id,
-          r.status,
-          r.is_partial,
-          r.start_time,
-          r.end_time
-        FROM replacements r
-        WHERE r.user_id IS NULL
-          AND r.status = 'open'
-      `.catch((err) => {
-        console.error("[v0] getShiftWithAssignments: Extra requests query failed", err?.message || err)
-        return []
-      })
-
-      if (Array.isArray(allExtraRequests)) {
-        extraReplacementRequests = allExtraRequests
-          .filter((req: any) => {
-            const reqDate = new Date(req.shift_date)
-            const daysSinceStart = Math.floor((reqDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-            const reqCycleDay = (daysSinceStart % shift.cycle_length_days) + 1
-
-            return reqCycleDay === cycleDay && req.shift_type === shiftType && req.team_id === teamId
-          })
-          .map((req: any) => ({
-            id: req.id,
-            user_id: null,
-            is_extra: true,
-            is_partial: req.is_partial || false,
-            start_time: req.start_time,
-            end_time: req.end_time,
-            replacement_id: req.id,
-            replacement_status: req.status,
-            first_name: "Pompier",
-            last_name: "supplémentaire",
-            role: "firefighter",
-            email: null,
-          }))
-      }
-    }
-
-    return {
-      ...shift,
-      assignments: [...assignments, ...extraReplacementRequests],
-    }
-  } catch (error: any) {
-    const errorMessage = error?.message || String(error)
+        tm.id::integer,
+        tm.user_id as original_user_id,
+        sa_direct.user_id as direct_assignment_user_id,
+        COALESCE(sa_direct.user_id, tm.user_id) as user_id,
+        false as is_extra,
+        COALESCE(sa_direct.is_partial, false) as is_partial,
+        sa_direct.start_time::text as start_time,
+        sa_direct.end_time::text as end_time,
+        NULL::integer as replacement_id,
+        NULL::text as replacement_status,
+        u.first_name as original_first_name,
+        u.last_name as original_last_name,
+        u_direct.first_name as direct_first_name,
+        u_direct.last_name as direct_last_name,
+        COALESCE(u_direct.first_name, u.first_name) as first_name,
+        COALESCE(u_direct.last_name, u.last_name) as last_name,
+        u.role,
+        COALESCE(u_direct.email, u.email) as email,
+        COALESCE(sa_replacement.is_acting_lieutenant, sa.is_acting_lieutenant, false) as showsLtBadge,
+        COALESCE(sa_replacement.is_acting_captain, sa.is_acting_captain, false) as showsCptBadge,
+        COALESCE(sa_replacement.is_acting_lieutenant, sa.is_acting_lieutenant, false) as is_acting_lieutenant,
+        COALESCE(sa_replacement.is_acting_captain, sa.is_acting_captain, false) as is_acting_captain,
+        COALESCE(sa_direct.is_direct_assignment, false) as is_direct_assignment,
+        sa_direct.replaced_user_id::integer,
+        CASE 
+          WHEN sa_direct.user_id IS NOT NULL THEN u.first_name || ' ' || u.last_name
+          ELSE NULL
+        END::text as replaced_name,
+        sa_direct.replacement_order::integer,
+        sa_direct.shift_date::text as direct_assignment_shift_date,
+        1 as source_order
+      FROM team_members tm
+      JOIN users u ON tm.user_id = u.id
+      JOIN shift_info si ON tm.team_id = si.team_id
+      LEFT JOIN shift_assignments sa ON sa.shift_id = si.id AND sa.user_id = tm.user_id AND sa.is_extra = false AND (sa.is_direct_assignment = false OR sa.is_direct_assignment IS NULL)
+      LEFT JOIN shift_assignments sa_direct ON sa_direct.shift_id = si.id 
+        AND sa_direct.replaced_user_id = tm.user_id 
+        AND sa_direct.is_direct_assignment = true
+        AND sa_direct.shift_date::date = ${shiftDateStr}::date
+      LEFT JOIN users u_direct ON sa_direct.user_id = u_direct.id
+      LEFT JOIN shift_assignments sa_replacement ON sa_replacement.shift_id = si.id
+        AND sa_replacement.user_id = sa_direct.user_id
+        AND sa_replacement.is_direct_assignment = true
+      ORDER BY 
+        CASE u.role 
+          WHEN 'captain' THEN 1 
+          WHEN 'lieutenant' THEN 2 
+          WHEN 'pp1' THEN 3 
+          WHEN 'pp2' THEN 4 
+          WHEN 'pp3' THEN 5 
+          WHEN 'pp4' THEN 6 
+          WHEN 'pp5' THEN 7 
+          WHEN 'pp6' THEN 8 
+          WHEN 'firefighter' THEN 9 
+          ELSE 10 
+        END,
+        u.first_name,
+        u.last_name
+    ),
+    extra_firefighters_data AS (
+      SELECT 
+        sa.id::integer,
+        NULL::integer as original_user_id,
+        NULL::integer as direct_assignment_user_id,
+        sa.user_id,
+        sa.is_extra,
+        COALESCE(sa.is_partial, false) as is_partial,
+        sa.start_time::text as start_time,
+        sa.end_time::text as end_time,
+        NULL::integer as replacement_id,
+        NULL::text as replacement_status,
+        NULL::text as original_first_name,
+        NULL::text as original_last_name,
+        NULL::text as direct_first_name,
+        NULL::text as direct_last_name,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.email,
+        COALESCE(sa.is_acting_lieutenant, false) as showsLtBadge,
+        COALESCE(sa.is_acting_captain, false) as showsCptBadge,
+        COALESCE(sa.is_acting_lieutenant, false) as is_acting_lieutenant,
+        COALESCE(sa.is_acting_captain, false) as is_acting_captain,
+        false as is_direct_assignment,
+        NULL::integer as replaced_user_id,
+        NULL::text as replaced_name,
+        NULL::integer as replacement_order,
+        NULL::text as direct_assignment_shift_date,
+        2 as source_order
+      FROM shift_assignments sa
+      JOIN users u ON sa.user_id = u.id
+      WHERE sa.shift_id = ${shiftId} AND sa.is_extra = true
+      ORDER BY 
+        CASE u.role 
+          WHEN 'captain' THEN 1 
+          WHEN 'lieutenant' THEN 2 
+          WHEN 'pp1' THEN 3 
+          WHEN 'pp2' THEN 4 
+          WHEN 'pp3' THEN 5 
+          WHEN 'pp4' THEN 6 
+          WHEN 'pp5' THEN 7 
+          WHEN 'pp6' THEN 8 
+          WHEN 'firefighter' THEN 9 
+          ELSE 10 
+        END,
+        u.first_name,
+        u.last_name
+    ),
+    cycle_config_data AS (
+      SELECT start_date, cycle_length_days
+      FROM cycle_config
+      WHERE is_active = true
+      LIMIT 1
+    )
+    SELECT 
+      json_build_object(
+        'id', si.id,
+        'team_id', si.team_id,
+        'cycle_day', si.cycle_day,
+        'shift_type', si.shift_type,
+        'start_time', si.start_time,
+        'end_time', si.end_time,
+        'team_name', si.team_name,
+        'team_type', si.team_type,
+        'team_color', si.team_color,
+        'cycle_start_date', cc.start_date,
+        'cycle_length_days', cc.cycle_length_days
+      ) as shift_data,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', tm.id,
+            'original_user_id', tm.original_user_id,
+            'direct_assignment_user_id', tm.direct_assignment_user_id,
+            'user_id', tm.user_id,
+            'is_extra', tm.is_extra,
+            'is_partial', tm.is_partial,
+            'start_time', tm.start_time,
+            'end_time', tm.end_time,
+            'replacement_id', tm.replacement_id,
+            'replacement_status', tm.replacement_status,
+            'original_first_name', tm.original_first_name,
+            'original_last_name', tm.original_last_name,
+            'direct_first_name', tm.direct_first_name,
+            'direct_last_name', tm.direct_last_name,
+            'first_name', tm.first_name,
+            'last_name', tm.last_name,
+            'role', tm.role,
+            'email', tm.email,
+            'showsLtBadge', tm.showsLtBadge,
+            'showsCptBadge', tm.showsCptBadge,
+            'is_acting_lieutenant', tm.is_acting_lieutenant,
+            'is_acting_captain', tm.is_acting_captain,
+            'is_direct_assignment', tm.is_direct_assignment,
+            'replaced_user_id', tm.replaced_user_id,
+            'replaced_name', tm.replaced_name,
+            'replacement_order', tm.replacement_order,
+            'direct_assignment_shift_date', tm.direct_assignment_shift_date
+          ) ORDER BY tm.source_order, 
+            CASE tm.role 
+              WHEN 'captain' THEN 1 
+              WHEN 'lieutenant' THEN 2 
+              WHEN 'pp1' THEN 3 
+              WHEN 'pp2' THEN 4 
+              WHEN 'pp3' THEN 5 
+              WHEN 'pp4' THEN 6 
+              WHEN 'pp5' THEN 7 
+              WHEN 'pp6' THEN 8 
+              WHEN 'firefighter' THEN 9 
+              ELSE 10 
+            END,
+            tm.first_name,
+            tm.last_name
+        ) FILTER (WHERE tm.id IS NOT NULL),
+        '[]'::json
+      ) as assignments_data
+    FROM shift_info si
+    CROSS JOIN cycle_config_data cc
+    LEFT JOIN (
+      SELECT * FROM team_members_data
+      UNION ALL
+      SELECT * FROM extra_firefighters_data
+    ) tm ON true
+    GROUP BY si.id, si.team_id, si.cycle_day, si.shift_type, si.start_time, si.end_time, 
+             si.team_name, si.team_type, si.team_color, cc.start_date, cc.cycle_length_days
+  `
+  } catch (err: any) {
+    const errorMessage = err?.message || String(err)
     if (errorMessage.includes("Too Many")) {
       console.error("[v0] getShiftWithAssignments: Rate limit exceeded, please wait a moment and try again")
     } else {
-      console.error("[v0] getShiftWithAssignments: Query failed", errorMessage)
+      console.error("[v0] getShiftWithAssignments: Combined query failed", errorMessage)
     }
+    throw err
+  }
+
+  if (!Array.isArray(result) || result.length === 0) {
     return null
+  }
+
+  const { shift_data, assignments_data } = result[0]
+  const shift = shift_data
+  let assignments = assignments_data || []
+
+  if (shift.cycle_start_date && shift.cycle_length_days) {
+    const cycleStartDate = new Date(shift.cycle_start_date)
+    const cycleLength = shift.cycle_length_days
+
+    assignments = assignments.filter((assignment: any) => {
+      if (!assignment.is_direct_assignment) {
+        return true
+      }
+
+      if (!assignment.direct_assignment_shift_date) {
+        return true
+      }
+
+      const assignmentDateStr = assignment.direct_assignment_shift_date.substring(0, 10)
+
+      if (shiftDate) {
+        const shiftDateStr =
+          typeof shiftDate === "string" ? shiftDate : formatISO(shiftDate, { representation: "date" })
+        const matches = assignmentDateStr === shiftDateStr
+
+        return matches
+      }
+
+      return true
+    })
+  }
+
+  if (!shift || !shift.team_name) {
+    console.error("[v0] getShiftWithAssignments: Invalid shift data returned")
+    return null
+  }
+
+  let extraReplacementRequests: any[] = []
+  if (shift.cycle_start_date && shift.cycle_length_days) {
+    const startDate = new Date(shift.cycle_start_date)
+    const cycleDay = shift.cycle_day
+    const shiftType = shift.shift_type
+    const teamId = shift.team_id
+
+    const allExtraRequests = await db`
+      SELECT 
+        r.id,
+        r.user_id,
+        r.shift_date,
+        r.shift_type,
+        r.team_id,
+        r.status,
+        r.is_partial,
+        r.start_time,
+        r.end_time
+      FROM replacements r
+      WHERE r.user_id IS NULL
+        AND r.status = 'open'
+    `.catch((err) => {
+      console.error("[v0] getShiftWithAssignments: Extra requests query failed", err?.message || err)
+      return []
+    })
+
+    if (Array.isArray(allExtraRequests)) {
+      extraReplacementRequests = allExtraRequests
+        .filter((req: any) => {
+          const reqDate = new Date(req.shift_date)
+          const daysSinceStart = Math.floor((reqDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+          const reqCycleDay = (daysSinceStart % shift.cycle_length_days) + 1
+
+          return reqCycleDay === cycleDay && req.shift_type === shiftType && req.team_id === teamId
+        })
+        .map((req: any) => ({
+          id: req.id,
+          user_id: null,
+          is_extra: true,
+          is_partial: req.is_partial || false,
+          start_time: req.start_time,
+          end_time: req.end_time,
+          replacement_id: req.id,
+          replacement_status: req.status,
+          first_name: "Pompier",
+          last_name: "supplémentaire",
+          role: "firefighter",
+          email: null,
+        }))
+    }
+  }
+
+  return {
+    ...shift,
+    assignments: [...assignments, ...extraReplacementRequests],
   }
 }
 
@@ -973,8 +789,8 @@ export async function revalidateCalendar() {
 }
 
 export async function getDirectAssignmentsForDateRange(startDate: Date, endDate: Date) {
-  const startDateStr = format(startDate, "yyyy-MM-dd")
-  const endDateStr = format(endDate, "yyyy-MM-dd")
+  const startDateStr = formatISO(startDate, { representation: "date" })
+  const endDateStr = formatISO(endDate, { representation: "date" })
 
   try {
     const result = await sql`
