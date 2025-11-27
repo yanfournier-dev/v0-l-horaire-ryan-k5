@@ -120,6 +120,22 @@ export async function addSecondReplacement(params: {
 
     const shiftDateFromShifts = await getShiftDate(shiftId)
 
+    const existingAssignment = await sql`
+      SELECT id, user_id, replaced_user_id, replacement_order 
+      FROM shift_assignments
+      WHERE shift_id = ${shiftId}
+        AND user_id = ${assignedUserId}
+        AND shift_date = ${finalShiftDate || shiftDateFromShifts}
+    `
+
+    if (existingAssignment.length > 0) {
+      const existing = existingAssignment[0]
+      return {
+        success: false,
+        error: `Ce pompier est déjà assigné sur ce quart (ordre de remplacement: ${existing.replacement_order || "N/A"})`,
+      }
+    }
+
     const replacement1Info = await sql`
       SELECT id, user_id, start_time, end_time, is_partial, is_direct_assignment 
       FROM shift_assignments
@@ -131,7 +147,58 @@ export async function addSecondReplacement(params: {
     console.log("[v0] Replacement 1 info from database:", replacement1Info)
 
     if (replacement1Info.length === 0) {
-      return { success: false, error: "Remplaçant 1 introuvable" }
+      console.log("[v0] No R1 found - Creating R2 as first replacement with replacement_order = 2")
+
+      // Check if there's already a second replacement
+      const existingSecond = await sql`
+        SELECT id FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 2
+      `
+
+      if (existingSecond.length > 0) {
+        return {
+          success: false,
+          error: "Un deuxième remplaçant existe déjà pour ce quart",
+        }
+      }
+
+      // Insert the second replacement directly
+      const result = await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order,
+          shift_date
+        )
+        VALUES (
+          ${shiftId}, 
+          ${assignedUserId}, 
+          ${replacedUserId},
+          false, 
+          true,
+          true,
+          ${startTime},
+          ${endTime},
+          2,
+          ${finalShiftDate || shiftDateFromShifts}
+        )
+        RETURNING *
+      `
+
+      console.log("[v0] Insert result (R2 without R1):", result)
+
+      revalidatePath("/dashboard")
+      revalidatePath("/calendar")
+
+      return { success: true }
     }
 
     const r1UserId = replacement1Info[0].user_id
@@ -202,10 +269,16 @@ export async function addSecondReplacement(params: {
       }
     }
 
-    const r1Start = originalStartTime || "07:00:00"
-    const r1End = adjustedEndTime || "17:00:00"
-    const r2Start = startTime
-    const r2End = endTime
+    const normalizeTime = (time: string): string => {
+      if (!time) return time
+      // If time doesn't have seconds (HH:MM), add :00
+      return time.length === 5 ? `${time}:00` : time
+    }
+
+    const r1Start = normalizeTime(originalStartTime || "07:00:00")
+    const r1End = normalizeTime(adjustedEndTime || "17:00:00")
+    const r2Start = normalizeTime(startTime)
+    const r2End = normalizeTime(endTime)
 
     console.log("[v0] Analyzing overlap:", {
       r1Start,

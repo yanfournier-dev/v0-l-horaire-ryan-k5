@@ -769,6 +769,13 @@ export function ShiftAssignmentDrawer({
 
   const groupedReplacements = new Map<number, Array<any>>()
 
+  const existingReplacementKeys = new Set<string>()
+  currentAssignments.forEach((assignment) => {
+    if (assignment.replacement_order && assignment.replaced_user_id) {
+      existingReplacementKeys.add(`${assignment.user_id}_${assignment.replaced_user_id}`)
+    }
+  })
+
   currentAssignments.forEach((assignment) => {
     // Group by replacement_order (includes both direct assignments and approved replacements)
     if (assignment.replacement_order && assignment.replaced_user_id) {
@@ -802,6 +809,13 @@ export function ShiftAssignmentDrawer({
 
   assignedReplacements.forEach((r: any) => {
     const approvedApp = r.applications.find((app: any) => app.status === "approved")
+    const replacementKey = `${approvedApp.applicant_id}_${r.user_id}`
+
+    // Skip if this replacement already exists in currentAssignments
+    if (existingReplacementKeys.has(replacementKey)) {
+      return
+    }
+
     if (!groupedReplacements.has(r.user_id)) {
       groupedReplacements.set(r.user_id, [])
     }

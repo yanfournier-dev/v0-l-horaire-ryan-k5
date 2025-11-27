@@ -1303,6 +1303,7 @@ export async function getDirectAssignments() {
         sa.assigned_at,
         sa.is_acting_lieutenant,
         sa.is_acting_captain,
+        sa.is_direct_assignment,
         s.shift_type,
         s.cycle_day,
         s.team_id,
@@ -1317,8 +1318,7 @@ export async function getDirectAssignments() {
       LEFT JOIN teams t ON s.team_id = t.id
       LEFT JOIN users assigned_user ON sa.user_id = assigned_user.id
       LEFT JOIN users replaced_user ON sa.replaced_user_id = replaced_user.id
-      WHERE sa.is_direct_assignment = true
-        AND sa.shift_date >= CURRENT_DATE
+      WHERE (sa.is_direct_assignment = true OR sa.replacement_order = 2)
       ORDER BY sa.shift_date ASC, s.shift_type
     `
 

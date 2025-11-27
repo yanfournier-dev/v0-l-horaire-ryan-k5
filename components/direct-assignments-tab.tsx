@@ -13,6 +13,7 @@ import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
 import { removeDirectAssignment } from "@/app/actions/direct-assignments"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,12 +33,39 @@ interface DirectAssignmentsTabProps {
 export function DirectAssignmentsTab({ directAssignments, isAdmin }: DirectAssignmentsTabProps) {
   const [sortBy, setSortBy] = useState<"date" | "created_at" | "replaced" | "assigned">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [showPastAssignments, setShowPastAssignments] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [assignmentToDelete, setAssignmentToDelete] = useState<any>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
 
-  const sortedAssignments = [...directAssignments].sort((a, b) => {
+  console.log("[v0] DirectAssignmentsTab - Total directAssignments:", directAssignments.length)
+  console.log("[v0] DirectAssignmentsTab - First 3 assignments:", directAssignments.slice(0, 3))
+  console.log("[v0] DirectAssignmentsTab - showPastAssignments:", showPastAssignments)
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  console.log("[v0] DirectAssignmentsTab - Today date:", today)
+
+  const filteredAssignments = directAssignments.filter((assignment) => {
+    if (showPastAssignments) return true
+    const assignmentDate = parseLocalDate(assignment.shift_date)
+    console.log(
+      "[v0] Comparing:",
+      assignment.shift_date,
+      "parsed:",
+      assignmentDate,
+      "vs today:",
+      today,
+      "isPast:",
+      assignmentDate < today,
+    )
+    return assignmentDate >= today
+  })
+
+  console.log("[v0] DirectAssignmentsTab - Filtered assignments:", filteredAssignments.length)
+
+  const sortedAssignments = [...filteredAssignments].sort((a, b) => {
     let comparison = 0
 
     switch (sortBy) {
@@ -118,6 +146,15 @@ export function DirectAssignmentsTab({ directAssignments, isAdmin }: DirectAssig
             >
               {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
             </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="show-past" checked={showPastAssignments} onCheckedChange={setShowPastAssignments} />
+            <label
+              htmlFor="show-past"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              Afficher les remplacements passés
+            </label>
           </div>
         </div>
 
