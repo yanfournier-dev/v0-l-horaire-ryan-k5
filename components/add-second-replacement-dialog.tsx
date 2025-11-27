@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { addSecondReplacement } from "@/app/actions/direct-assignments"
 import { toast } from "sonner"
+import { AlertTriangle } from "lucide-react"
 
 interface AddSecondReplacementDialogProps {
   open: boolean
@@ -53,6 +54,8 @@ export function AddSecondReplacementDialog({
   const [startTime, setStartTime] = useState("07:00")
   const [endTime, setEndTime] = useState("17:00")
   const [isLoading, setIsLoading] = useState(false)
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
 
   const generateTimeOptions = () => {
     const times = []
@@ -95,9 +98,11 @@ export function AddSecondReplacementDialog({
     console.log("[v0] addSecondReplacement result:", result)
 
     if (!result.success || result.error) {
-      toast.error(result.error || "Une erreur est survenue", {
-        duration: 8000, // Show error for 8 seconds
-      })
+      const errorMsg = result.error || "Une erreur est survenue"
+      console.error("[v0] Error adding second replacement:", errorMsg)
+
+      setErrorMessage(errorMsg)
+      setErrorDialogOpen(true)
       setIsLoading(false)
       return
     }
@@ -117,78 +122,101 @@ export function AddSecondReplacementDialog({
     })
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Ajouter un Remplaçant 2</DialogTitle>
-          <DialogDescription>
-            Ajouter un deuxième remplaçant pour {replacedFirefighter.first_name} {replacedFirefighter.last_name} sur ce
-            quart.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajouter un Remplaçant 2</DialogTitle>
+            <DialogDescription>
+              Ajouter un deuxième remplaçant pour {replacedFirefighter.first_name} {replacedFirefighter.last_name} sur
+              ce quart.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Sélectionner le pompier</Label>
-            <Select
-              value={selectedFirefighter?.toString() || ""}
-              onValueChange={(value) => setSelectedFirefighter(Number.parseInt(value))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choisir un pompier" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableFirefighters.map((ff) => (
-                  <SelectItem key={ff.id} value={ff.id.toString()}>
-                    {ff.first_name} {ff.last_name} - {ff.role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Sélectionner le pompier</Label>
+              <Select
+                value={selectedFirefighter?.toString() || ""}
+                onValueChange={(value) => setSelectedFirefighter(Number.parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir un pompier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableFirefighters.map((ff) => (
+                    <SelectItem key={ff.id} value={ff.id.toString()}>
+                      {ff.first_name} {ff.last_name} - {ff.role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="start-time">Heure de début</Label>
+              <Select value={startTime} onValueChange={setStartTime}>
+                <SelectTrigger id="start-time">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {generateTimeOptions().map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="end-time">Heure de fin</Label>
+              <Select value={endTime} onValueChange={setEndTime}>
+                <SelectTrigger id="end-time">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {generateTimeOptions().map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="start-time">Heure de début</Label>
-            <Select value={startTime} onValueChange={setStartTime}>
-              <SelectTrigger id="start-time">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {generateTimeOptions().map((time) => (
-                  <SelectItem key={time} value={time}>
-                    {time}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+              Annuler
+            </Button>
+            <Button onClick={handleSubmit} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+              {isLoading ? "Ajout..." : "Ajouter"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <div className="space-y-2">
-            <Label htmlFor="end-time">Heure de fin</Label>
-            <Select value={endTime} onValueChange={setEndTime}>
-              <SelectTrigger id="end-time">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {generateTimeOptions().map((time) => (
-                  <SelectItem key={time} value={time}>
-                    {time}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <DialogTitle className="text-red-900">Configuration non supportée</DialogTitle>
+            </div>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-700 leading-relaxed">{errorMessage}</p>
           </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-            Annuler
-          </Button>
-          <Button onClick={handleSubmit} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-            {isLoading ? "Ajout..." : "Ajouter"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button onClick={() => setErrorDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700 w-full">
+              J'ai compris
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
