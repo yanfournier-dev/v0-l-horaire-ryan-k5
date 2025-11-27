@@ -92,8 +92,12 @@ export function AddSecondReplacementDialog({
       shiftDate: shiftDateStr,
     })
 
-    if (result.error) {
-      toast.error(result.error)
+    console.log("[v0] addSecondReplacement result:", result)
+
+    if (!result.success || result.error) {
+      toast.error(result.error || "Une erreur est survenue", {
+        duration: 8000, // Show error for 8 seconds
+      })
       setIsLoading(false)
       return
     }

@@ -121,7 +121,7 @@ export async function addSecondReplacement(params: {
     const shiftDateFromShifts = await getShiftDate(shiftId)
 
     const replacement1Info = await sql`
-      SELECT id, user_id, start_time, end_time, is_partial 
+      SELECT id, user_id, start_time, end_time, is_partial, is_direct_assignment 
       FROM shift_assignments
       WHERE shift_id = ${shiftId}
         AND replaced_user_id = ${replacedUserId}
@@ -135,6 +135,7 @@ export async function addSecondReplacement(params: {
     }
 
     const r1UserId = replacement1Info[0].user_id
+    const r1IsDirectAssignment = replacement1Info[0].is_direct_assignment
     let adjustedEndTime = replacement1Info[0].end_time
     const originalStartTime = replacement1Info[0].start_time
 
@@ -213,6 +214,15 @@ export async function addSecondReplacement(params: {
       r2End,
     })
 
+    if (r2Start > r1Start && r2End < r1End) {
+      console.log("[v0] ERROR: R2 would be in middle - not supported")
+      return {
+        success: false,
+        error:
+          "Le remplaçant 2 doit couvrir soit le début, soit la fin du remplacement, mais pas le milieu. Veuillez ajuster les heures pour que le remplaçant 2 commence au début ou se termine à la fin.",
+      }
+    }
+
     // Determine overlap type and adjust accordingly
     if (r2Start >= r1End) {
       // Case 1: No overlap - R2 starts after R1 ends (e.g., R1: 7-11, R2: 11-17)
@@ -241,7 +251,7 @@ export async function addSecondReplacement(params: {
           ${r1UserId}, 
           ${replacedUserId},
           false, 
-          true,
+          ${r1IsDirectAssignment},
           true,
           ${r1Start},
           ${r1End},
@@ -286,7 +296,7 @@ export async function addSecondReplacement(params: {
           ${r1UserId}, 
           ${replacedUserId},
           false, 
-          true,
+          ${r1IsDirectAssignment},
           true,
           ${r2End},
           ${r1End},
@@ -325,7 +335,7 @@ export async function addSecondReplacement(params: {
           ${r1UserId}, 
           ${replacedUserId},
           false, 
-          true,
+          ${r1IsDirectAssignment},
           true,
           ${r1Start},
           ${r2Start},
@@ -367,7 +377,7 @@ export async function addSecondReplacement(params: {
           ${r1UserId}, 
           ${replacedUserId},
           false, 
-          true,
+          ${r1IsDirectAssignment},
           true,
           ${r1Start},
           ${r2Start},
@@ -399,7 +409,7 @@ export async function addSecondReplacement(params: {
           ${r1UserId}, 
           ${replacedUserId},
           false, 
-          true,
+          ${r1IsDirectAssignment},
           true,
           ${r2End},
           ${r1End},

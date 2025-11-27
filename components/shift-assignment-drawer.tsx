@@ -770,17 +770,8 @@ export function ShiftAssignmentDrawer({
   const groupedReplacements = new Map<number, Array<any>>()
 
   currentAssignments.forEach((assignment) => {
-    if (assignment.is_direct_assignment && assignment.replaced_user_id) {
-      if (assignment.user_id === 50) {
-        // Thomas Fréchette
-        console.log("[v0] Direct assignment Fréchette:", {
-          userId: assignment.user_id,
-          name: `${assignment.first_name} ${assignment.last_name}`,
-          is_acting_lieutenant: assignment.is_acting_lieutenant,
-          is_acting_captain: assignment.is_acting_captain,
-        })
-      }
-
+    // Group by replacement_order (includes both direct assignments and approved replacements)
+    if (assignment.replacement_order && assignment.replaced_user_id) {
       if (!groupedReplacements.has(assignment.replaced_user_id)) {
         groupedReplacements.set(assignment.replaced_user_id, [])
       }
@@ -797,7 +788,7 @@ export function ShiftAssignmentDrawer({
         start_time: assignment.start_time,
         end_time: assignment.end_time,
         is_partial: assignment.is_partial,
-        is_direct_assignment: true,
+        is_direct_assignment: assignment.is_direct_assignment || false,
         is_replacement: false,
         replacement_order: assignment.replacement_order || 1,
         is_acting_lieutenant: assignment.is_acting_lieutenant || false,

@@ -132,26 +132,6 @@ export default async function ReplacementDetailPage({
         WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
              AND team_info.type = 'permanent'
              AND team_info.team_id = ${replacement.team_id}
-             AND team_info.name LIKE '%1%'
-        THEN 0 + ((${partTimeTeam} - 1 + 3) % 4) * 0.01
-        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
-             AND team_info.type = 'permanent'
-             AND team_info.team_id = ${replacement.team_id}
-             AND team_info.name LIKE '%2%'
-        THEN 0 + ((${partTimeTeam} - 2 + 3) % 4) * 0.01
-        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
-             AND team_info.type = 'permanent'
-             AND team_info.team_id = ${replacement.team_id}
-             AND team_info.name LIKE '%3%'
-        THEN 0 + ((${partTimeTeam} - 3 + 3) % 4) * 0.01
-        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
-             AND team_info.type = 'permanent'
-             AND team_info.team_id = ${replacement.team_id}
-             AND team_info.name LIKE '%4%'
-        THEN 0 + ((${partTimeTeam} - 4 + 3) % 4) * 0.01
-        WHEN ${replacement.replaced_role} IN ('captain', 'lieutenant')
-             AND team_info.type = 'permanent'
-             AND team_info.team_id = ${replacement.team_id}
         THEN 0.5
         WHEN team_info.type = 'part_time' AND team_info.name LIKE '%1%' THEN ((${partTimeTeam} - 1 + 3) % 4) + 1
         WHEN team_info.type = 'part_time' AND team_info.name LIKE '%2%' THEN ((${partTimeTeam} - 2 + 3) % 4) + 1
@@ -159,8 +139,8 @@ export default async function ReplacementDetailPage({
         WHEN team_info.type = 'part_time' AND team_info.name LIKE '%4%' THEN ((${partTimeTeam} - 4 + 3) % 4) + 1
         WHEN team_info.type = 'part_time' THEN 5
         WHEN team_info.type = 'temporary' THEN 10
+        WHEN team_info.type IS NULL THEN 15
         WHEN team_info.type = 'permanent' THEN 20
-        WHEN team_info.type IS NULL THEN 100
         ELSE 99
       END as sort_priority
     FROM replacement_applications ra
@@ -548,7 +528,7 @@ export default async function ReplacementDetailPage({
             {noTeamCandidates.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-foreground">Sans équipe</h3>
-                <div className="space-y-2">{noTeamCandidates.map((candidate) => renderApplicationCard(candidate))}</div>
+                <div className="space-y-2">{noTeamCandidates.map(renderApplicationCard)}</div>
               </div>
             )}
           </div>

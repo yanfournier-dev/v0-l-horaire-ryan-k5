@@ -317,47 +317,36 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
       SELECT 
         tm.id::integer,
         tm.user_id as original_user_id,
-        sa_direct.user_id as direct_assignment_user_id,
-        COALESCE(sa_direct.user_id, tm.user_id) as user_id,
+        NULL::integer as direct_assignment_user_id,
+        tm.user_id as user_id,
         false as is_extra,
-        COALESCE(sa_direct.is_partial, false) as is_partial,
-        sa_direct.start_time::text as start_time,
-        sa_direct.end_time::text as end_time,
+        false as is_partial,
+        NULL::text as start_time,
+        NULL::text as end_time,
         NULL::integer as replacement_id,
         NULL::text as replacement_status,
         u.first_name as original_first_name,
         u.last_name as original_last_name,
-        u_direct.first_name as direct_first_name,
-        u_direct.last_name as direct_last_name,
-        COALESCE(u_direct.first_name, u.first_name) as first_name,
-        COALESCE(u_direct.last_name, u.last_name) as last_name,
+        NULL::text as direct_first_name,
+        NULL::text as direct_last_name,
+        u.first_name as first_name,
+        u.last_name as last_name,
         u.role,
-        COALESCE(u_direct.email, u.email) as email,
-        COALESCE(sa_replacement.is_acting_lieutenant, sa.is_acting_lieutenant, false) as showsLtBadge,
-        COALESCE(sa_replacement.is_acting_captain, sa.is_acting_captain, false) as showsCptBadge,
-        COALESCE(sa_replacement.is_acting_lieutenant, sa.is_acting_lieutenant, false) as is_acting_lieutenant,
-        COALESCE(sa_replacement.is_acting_captain, sa.is_acting_captain, false) as is_acting_captain,
-        COALESCE(sa_direct.is_direct_assignment, false) as is_direct_assignment,
-        sa_direct.replaced_user_id::integer,
-        CASE 
-          WHEN sa_direct.user_id IS NOT NULL THEN u.first_name || ' ' || u.last_name
-          ELSE NULL
-        END::text as replaced_name,
-        sa_direct.replacement_order::integer,
-        sa_direct.shift_date::text as direct_assignment_shift_date,
+        u.email,
+        COALESCE(sa.is_acting_lieutenant, false) as showsLtBadge,
+        COALESCE(sa.is_acting_captain, false) as showsCptBadge,
+        COALESCE(sa.is_acting_lieutenant, false) as is_acting_lieutenant,
+        COALESCE(sa.is_acting_captain, false) as is_acting_captain,
+        false as is_direct_assignment,
+        NULL::integer as replaced_user_id,
+        NULL::text as replaced_name,
+        NULL::integer as replacement_order,
+        NULL::text as direct_assignment_shift_date,
         1 as source_order
       FROM team_members tm
       JOIN users u ON tm.user_id = u.id
       JOIN shift_info si ON tm.team_id = si.team_id
       LEFT JOIN shift_assignments sa ON sa.shift_id = si.id AND sa.user_id = tm.user_id AND sa.is_extra = false AND (sa.is_direct_assignment = false OR sa.is_direct_assignment IS NULL)
-      LEFT JOIN shift_assignments sa_direct ON sa_direct.shift_id = si.id 
-        AND sa_direct.replaced_user_id = tm.user_id 
-        AND sa_direct.is_direct_assignment = true
-        AND sa_direct.shift_date::date = ${shiftDateStr}::date
-      LEFT JOIN users u_direct ON sa_direct.user_id = u_direct.id
-      LEFT JOIN shift_assignments sa_replacement ON sa_replacement.shift_id = si.id
-        AND sa_replacement.user_id = sa_direct.user_id
-        AND sa_replacement.is_direct_assignment = true
       ORDER BY 
         CASE u.role 
           WHEN 'captain' THEN 1 
@@ -373,6 +362,44 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
         END,
         u.first_name,
         u.last_name
+    ),
+    direct_assignments_data AS (
+      SELECT 
+        sa.id::integer,
+        NULL::integer as original_user_id,
+        sa.user_id as direct_assignment_user_id,
+        sa.user_id as user_id,
+        false as is_extra,
+        COALESCE(sa.is_partial, false) as is_partial,
+        sa.start_time::text as start_time,
+        sa.end_time::text as end_time,
+        NULL::integer as replacement_id,
+        NULL::text as replacement_status,
+        NULL::text as original_first_name,
+        NULL::text as original_last_name,
+        u.first_name as direct_first_name,
+        u.last_name as direct_last_name,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.email,
+        COALESCE(sa.is_acting_lieutenant, false) as showsLtBadge,
+        COALESCE(sa.is_acting_captain, false) as showsCptBadge,
+        COALESCE(sa.is_acting_lieutenant, false) as is_acting_lieutenant,
+        COALESCE(sa.is_acting_captain, false) as is_acting_captain,
+        COALESCE(sa.is_direct_assignment, false) as is_direct_assignment,
+        sa.replaced_user_id::integer,
+        u_replaced.first_name || ' ' || u_replaced.last_name as replaced_name,
+        sa.replacement_order::integer,
+        sa.shift_date::text as direct_assignment_shift_date,
+        2 as source_order
+      FROM shift_assignments sa
+      JOIN users u ON sa.user_id = u.id
+      JOIN users u_replaced ON sa.replaced_user_id = u_replaced.id
+      WHERE sa.shift_id = ${shiftId}
+        AND sa.replacement_order IS NOT NULL
+        AND sa.shift_date::date = ${shiftDateStr}::date
+      ORDER BY sa.replacement_order
     ),
     extra_firefighters_data AS (
       SELECT 
@@ -403,7 +430,7 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
         NULL::text as replaced_name,
         NULL::integer as replacement_order,
         NULL::text as direct_assignment_shift_date,
-        2 as source_order
+        3 as source_order
       FROM shift_assignments sa
       JOIN users u ON sa.user_id = u.id
       WHERE sa.shift_id = ${shiftId} AND sa.is_extra = true
@@ -486,6 +513,7 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
               WHEN 'firefighter' THEN 9 
               ELSE 10 
             END,
+            tm.replacement_order,
             tm.first_name,
             tm.last_name
         ) FILTER (WHERE tm.id IS NOT NULL),
@@ -495,6 +523,8 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
     CROSS JOIN cycle_config_data cc
     LEFT JOIN (
       SELECT * FROM team_members_data
+      UNION ALL
+      SELECT * FROM direct_assignments_data
       UNION ALL
       SELECT * FROM extra_firefighters_data
     ) tm ON true
@@ -804,6 +834,7 @@ export async function getDirectAssignmentsForDateRange(startDate: Date, endDate:
         sa.is_partial,
         sa.start_time,
         sa.end_time,
+        sa.is_direct_assignment,
         u.first_name as replacement_first_name,
         u.last_name as replacement_last_name,
         u.role as replacement_role,
@@ -817,10 +848,10 @@ export async function getDirectAssignmentsForDateRange(startDate: Date, endDate:
       JOIN users u ON sa.user_id = u.id
       JOIN users replaced_user ON sa.replaced_user_id = replaced_user.id
       JOIN shifts s ON sa.shift_id = s.id
-      WHERE sa.is_direct_assignment = true
+      WHERE sa.replacement_order IS NOT NULL
         AND sa.shift_date >= ${startDateStr}::date
         AND sa.shift_date <= ${endDateStr}::date
-      ORDER BY sa.shift_date
+      ORDER BY sa.shift_date, sa.replacement_order
     `
 
     return result
