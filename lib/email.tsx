@@ -109,23 +109,12 @@ export async function sendBatchEmails(
       }
     }
 
-    if (errors.length > 0) {
-      console.error(`[v0] PRODUCTION ERROR: ${errors.length}/${emails.length} emails failed`)
-      return {
-        success: false,
-        error: {
-          message: `${errors.length} emails failed to send`,
-          errors,
-        },
-        sent: results.length,
-      }
-    }
-
-    console.log("[v0] PRODUCTION: All emails sent successfully!", results.length, "emails")
     return {
-      success: true,
+      success: errors.length === 0,
       sent: results.length,
-      data: results,
+      failed: errors.length,
+      results,
+      errors,
     }
   } catch (error: any) {
     console.error("[v0] PRODUCTION ERROR: Batch email exception:", error)

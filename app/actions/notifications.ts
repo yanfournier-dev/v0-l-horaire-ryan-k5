@@ -604,7 +604,7 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
   // Only send emails in production
   if (process.env.VERCEL_ENV !== "production") {
     console.log("[v0] V0 PREVIEW: Skipping batch emails in preview environment")
-    return { success: true, skipped: true }
+    return { success: true, skipped: true, sent: 0, failed: 0, recipients: [] }
   }
 
   console.log("[v0] PRODUCTION: sendBatchReplacementEmails called for replacement", replacementId)
@@ -624,7 +624,7 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
 
     if (replacement.length === 0) {
       console.error("[v0] PRODUCTION ERROR: Replacement not found for batch emails")
-      return { success: false, error: "Replacement not found" }
+      return { success: false, error: "Replacement not found", sent: 0, failed: 0, recipients: [] }
     }
 
     const r = replacement[0]
@@ -657,7 +657,7 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
 
     if (eligibleUsers.length === 0) {
       console.log("[v0] PRODUCTION: No eligible users, skipping emails")
-      return { success: true, sent: 0 }
+      return { success: true, sent: 0, failed: 0, recipients: [] }
     }
 
     console.log("[v0] PRODUCTION: Generating email contents...")
@@ -693,13 +693,14 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
           to: user.email,
           subject: emailContent.subject,
           html: emailContent.html,
+          userId: user.id,
+          name: fullName,
         }
       }),
     )
 
     console.log("[v0] PRODUCTION: Email contents generated, calling sendBatchEmails...")
 
-    // Send all emails in one batch request
     const result = await sendBatchEmails(emails)
 
     console.log("[v0] PRODUCTION: sendBatchEmails returned:", result)
@@ -711,81 +712,40 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
         SELECT id FROM users WHERE is_admin = true
       `
 
-      const errorMessage = result.error instanceof Error ? result.error.message : JSON.stringify(result.error)
-
-      const shiftDate = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-      const shiftTypeText = r.shift_type === "day" ? "Jour" : "Nuit"
-
       for (const admin of admins) {
         await sql`
           INSERT INTO notifications (user_id, title, message, type)
           VALUES (
             ${admin.id}, 
-            ${"⚠️ Échec d'envoi d'emails"}, 
-            ${"L'envoi de " + emails.length + " emails pour un nouveau remplacement a échoué. Erreur: " + errorMessage + ". Les notifications in-app ont été créées avec succès." + "\n\nRemplacement: " + firefighterToReplaceName + " - " + shiftDate + " (" + shiftTypeText + ")" + (r.is_partial ? " [Partiel: " + partialHours + "]" : "")},
-            ${"system_error"}
+            ${"Échec d'envoi d'emails"}, 
+            ${"Les emails de notification pour le remplacement #" + replacementId + " ont échoué."},
+            ${"system"}
           )
         `
       }
-
-      console.log("[v0] PRODUCTION: Admin notifications created for email failure")
-    } else {
-      console.log("[v0] PRODUCTION SUCCESS: Batch emails sent successfully to", result.sent || emails.length, "users")
     }
 
-    return result
+    return {
+      success: result.success,
+      sent: result.sent || 0,
+      failed: result.failed || 0,
+      recipients: emails.map((email, index) => ({
+        userId: email.userId,
+        name: email.name,
+        email: email.to,
+        success: result.results?.[index]?.success ?? false,
+        error: result.results?.[index]?.error,
+      })),
+    }
   } catch (error) {
-    console.error("[v0] PRODUCTION EXCEPTION: sendBatchReplacementEmails error:", error)
-    console.error("[v0] Exception type:", error instanceof Error ? error.constructor.name : typeof error)
-    console.error("[v0] Exception message:", error instanceof Error ? error.message : String(error))
+    console.error("[v0] PRODUCTION: sendBatchReplacementEmails error:", error)
 
-    try {
-      const admins = await sql`
-        SELECT id FROM users WHERE is_admin = true
-      `
-
-      const errorMessage = error instanceof Error ? error.message : String(error)
-
-      const replacement = await sql`
-        SELECT shift_date, shift_type, is_partial, start_time, end_time FROM replacements WHERE id = ${replacementId}
-      `
-
-      let replacementDetails = ""
-      if (replacement.length > 0) {
-        const r = replacement[0]
-        const shiftDate = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-        const shiftTypeText = r.shift_type === "day" ? "Jour" : "Nuit"
-        const partialText =
-          r.is_partial && r.start_time && r.end_time
-            ? ` [Partiel: ${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}]`
-            : ""
-        replacementDetails =
-          "\n\nRemplacement: " + firefighterToReplaceName + " - " + shiftDate + " (" + shiftTypeText + ")" + partialText
-      }
-
-      for (const admin of admins) {
-        await sql`
-          INSERT INTO notifications (user_id, title, message, type)
-          VALUES (
-            ${admin.id}, 
-            ${"🚨 Erreur critique d'emails"}, 
-            ${"Une erreur s'est produite lors de l'envoi des emails pour un nouveau remplacement: " + errorMessage + replacementDetails},
-            ${"system_error"}
-          )
-        `
-      }
-    } catch (notifyError) {
-      console.error("[v0] PRODUCTION: Failed to notify admins:", notifyError)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      sent: 0,
+      failed: 0,
+      recipients: [],
     }
-
-    return { success: false, error }
   }
 }

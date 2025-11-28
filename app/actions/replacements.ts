@@ -239,7 +239,6 @@ export async function createReplacementFromShift(
         )
     `
 
-    // Create in-app notifications for all eligible users
     if (eligibleUsers.length > 0) {
       const userIds = eligibleUsers.map((u) => u.id)
       createBatchNotificationsInApp(
@@ -254,10 +253,20 @@ export async function createReplacementFromShift(
       })
     }
 
+    let emailResults
     if (process.env.VERCEL_ENV === "production") {
-      sendBatchReplacementEmails(replacementId, firefighterToReplaceName).catch((error) => {
-        console.error("PRODUCTION: Batch email sending failed:", error)
-      })
+      emailResults = await sendBatchReplacementEmails(replacementId, firefighterToReplaceName)
+    } else {
+      // In preview, simulate email sending
+      emailResults = {
+        success: true,
+        sent: eligibleUsers.length,
+        failed: 0,
+        recipients: eligibleUsers.map((u: any) => ({
+          userId: u.id,
+          success: true,
+        })),
+      }
     }
 
     await createAuditLog({
@@ -275,7 +284,7 @@ export async function createReplacementFromShift(
       console.error("Error invalidating cache:", cacheError)
     }
 
-    return { success: true, id: replacementId }
+    return { success: true, id: replacementId, emailResults }
   } catch (error) {
     console.error("createReplacementFromShift: Error", error)
     return { error: "Erreur lors de la création du remplacement" }
@@ -772,7 +781,6 @@ export async function createExtraFirefighterReplacement(
         )
     `
 
-    // Create in-app notifications for all eligible users
     if (eligibleUsers.length > 0) {
       const userIds = eligibleUsers.map((u) => u.id)
       createBatchNotificationsInApp(
