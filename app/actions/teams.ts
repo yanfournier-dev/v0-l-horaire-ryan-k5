@@ -3,6 +3,7 @@
 import { sql } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
+import { createAuditLog } from "./audit"
 
 export async function getTeams() {
   const teams = await sql`
@@ -93,10 +94,29 @@ export async function addMemberToTeam(teamId: number, userId: number) {
   }
 
   try {
+    const userDetails = await sql`
+      SELECT first_name, last_name FROM users WHERE id = ${userId}
+    `
+    const teamDetails = await sql`
+      SELECT name FROM teams WHERE id = ${teamId}
+    `
+
     await sql`
       INSERT INTO team_members (team_id, user_id)
       VALUES (${teamId}, ${userId})
     `
+
+    if (userDetails.length > 0 && teamDetails.length > 0) {
+      await createAuditLog({
+        userId: user.id,
+        actionType: "TEAM_MEMBER_ADDED",
+        tableName: "team_members",
+        recordId: teamId,
+        description: `${userDetails[0].first_name} ${userDetails[0].last_name} ajouté à ${teamDetails[0].name}`,
+        newValues: { teamId, userId },
+      })
+    }
+
     revalidatePath("/dashboard/teams")
     return { success: true }
   } catch (error) {
@@ -111,10 +131,29 @@ export async function removeMemberFromTeam(teamId: number, userId: number) {
   }
 
   try {
+    const userDetails = await sql`
+      SELECT first_name, last_name FROM users WHERE id = ${userId}
+    `
+    const teamDetails = await sql`
+      SELECT name FROM teams WHERE id = ${teamId}
+    `
+
     await sql`
       DELETE FROM team_members
       WHERE team_id = ${teamId} AND user_id = ${userId}
     `
+
+    if (userDetails.length > 0 && teamDetails.length > 0) {
+      await createAuditLog({
+        userId: user.id,
+        actionType: "TEAM_MEMBER_REMOVED",
+        tableName: "team_members",
+        recordId: teamId,
+        description: `${userDetails[0].first_name} ${userDetails[0].last_name} retiré de ${teamDetails[0].name}`,
+        oldValues: { teamId, userId },
+      })
+    }
+
     revalidatePath("/dashboard/teams")
     return { success: true }
   } catch (error) {
@@ -275,10 +314,20 @@ export async function createTeam(data: {
 
     const capacity = data.capacity === null ? 999 : data.capacity
 
-    await sql`
+    const result = await sql`
       INSERT INTO teams (name, type, capacity, color)
       VALUES (${data.name}, ${data.type}, ${capacity}, ${data.color})
+      RETURNING id
     `
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "TEAM_CREATED",
+      tableName: "teams",
+      recordId: result[0].id,
+      description: `Équipe créée: ${data.name} (${data.type})`,
+      newValues: data,
+    })
 
     revalidatePath("/dashboard/teams")
     return { success: true, message: "Équipe créée avec succès" }
@@ -291,7 +340,6 @@ export async function createTeam(data: {
   }
 }
 
-// New actions to reorder team members
 export async function reorderTeamMembers(teamId: number, userIds: number[]) {
   const user = await getSession()
   if (!user?.is_admin) {
@@ -299,6 +347,10 @@ export async function reorderTeamMembers(teamId: number, userIds: number[]) {
   }
 
   try {
+    const teamDetails = await sql`
+      SELECT name FROM teams WHERE id = ${teamId}
+    `
+
     // Update ranks based on the new order
     for (let i = 0; i < userIds.length; i++) {
       await sql`
@@ -306,6 +358,17 @@ export async function reorderTeamMembers(teamId: number, userIds: number[]) {
         SET team_rank = ${i + 1}
         WHERE team_id = ${teamId} AND user_id = ${userIds[i]}
       `
+    }
+
+    if (teamDetails.length > 0) {
+      await createAuditLog({
+        userId: user.id,
+        actionType: "TEAM_MEMBERS_REORDERED",
+        tableName: "team_members",
+        recordId: teamId,
+        description: `Ordre des membres réorganisé pour ${teamDetails[0].name}`,
+        newValues: { newOrder: userIds },
+      })
     }
 
     revalidatePath(`/dashboard/teams/${teamId}`)

@@ -6,6 +6,7 @@ import { createNotification, sendBatchReplacementEmails, createBatchNotification
 import { calculateAutoDeadline, formatLocalDate, calculateEndOfShiftDeadline } from "@/lib/date-utils"
 import { revalidatePath } from "next/cache"
 import { neon } from "@neondatabase/serverless"
+import { createAuditLog } from "./audit"
 
 export async function getUserApplications(userId: number) {
   try {
@@ -259,6 +260,14 @@ export async function createReplacementFromShift(
       })
     }
 
+    await createAuditLog({
+      userId: user.id,
+      actionType: "REPLACEMENT_CREATED",
+      tableName: "replacements",
+      recordId: replacementId,
+      description: `Demande de remplacement créée pour ${firefighterToReplaceName} le ${formatLocalDate(shiftDate)} (${shiftType === "day" ? "Jour" : "Nuit"})${isPartial && startTime && endTime ? ` (${startTime.slice(0, 5)}-${endTime.slice(0, 5)})` : ""}`,
+    })
+
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
@@ -444,6 +453,13 @@ export async function approveApplication(applicationId: number, replacementId: n
 
     const shiftId = shiftResult[0].id
 
+    const users = await db`
+      SELECT id, first_name, last_name FROM users
+      WHERE id IN (${applicantId}, ${replacedUserId})
+    `
+    const applicant = users.find((u: any) => u.id === applicantId)
+    const replaced = users.find((u: any) => u.id === replacedUserId)
+
     await db`
       UPDATE replacement_applications
       SET status = 'approved', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
@@ -504,6 +520,14 @@ export async function approveApplication(applicationId: number, replacementId: n
       "replacement",
     )
 
+    await createAuditLog({
+      userId: user.id,
+      actionType: "REPLACEMENT_APPROVED",
+      tableName: "replacement_applications",
+      recordId: applicationId,
+      description: `Demande de remplacement approuvée: ${applicant?.first_name} ${applicant?.last_name} remplace ${replaced?.first_name} ${replaced?.last_name} le ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"})`,
+    })
+
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
@@ -540,11 +564,25 @@ export async function rejectApplication(applicationId: number) {
 
     const applicantId = appResult[0].applicant_id
 
+    const applicantInfo = await db`
+      SELECT first_name, last_name FROM users WHERE id = ${applicantId}
+    `
+
     await db`
       UPDATE replacement_applications
       SET status = 'rejected', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
       WHERE id = ${applicationId}
     `
+
+    if (applicantInfo.length > 0) {
+      await createAuditLog({
+        userId: user.id,
+        actionType: "REPLACEMENT_REJECTED",
+        tableName: "replacement_applications",
+        recordId: applicationId,
+        description: `Candidature rejetée: ${applicantInfo[0].first_name} ${applicantInfo[0].last_name}`,
+      })
+    }
 
     await createNotification(
       applicantId,
@@ -627,6 +665,18 @@ export async function deleteReplacement(replacementId: number) {
     await db`
       DELETE FROM replacements WHERE id = ${replacementId}
     `
+
+    if (replacementDetails.length > 0) {
+      const replacement = replacementDetails[0]
+      await createAuditLog({
+        userId: user.id,
+        actionType: "REPLACEMENT_DELETED",
+        tableName: "replacements",
+        recordId: replacementId,
+        description: `Demande de remplacement supprimée pour ${replacement.first_name || ""} ${replacement.last_name || ""} le ${new Date(replacement.shift_date).toLocaleDateString("fr-CA")} (${replacement.shift_type === "day" ? "Jour" : "Nuit"})`,
+        oldValues: replacement,
+      })
+    }
 
     try {
       invalidateCache()
@@ -1025,9 +1075,13 @@ export async function removeReplacementAssignment(replacementId: number) {
     })
 
     const replacementDetails = await db`
-      SELECT r.shift_date, r.shift_type, r.team_id, ra.applicant_id
+      SELECT r.shift_date, r.shift_type, r.team_id, ra.applicant_id, 
+             req_user.first_name as requester_first_name, req_user.last_name as requester_last_name,
+             app_user.first_name as applicant_first_name, app_user.last_name as applicant_last_name
       FROM replacements r
+      LEFT JOIN users req_user ON r.user_id = req_user.id
       LEFT JOIN replacement_applications ra ON r.id = ra.replacement_id AND ra.status = 'approved'
+      LEFT JOIN users app_user ON ra.applicant_id = app_user.id
       WHERE r.id = ${replacementId}
     `
 
@@ -1076,6 +1130,15 @@ export async function removeReplacementAssignment(replacementId: number) {
           "replacement",
         )
       }
+
+      const detail = replacementDetails[0]
+      await createAuditLog({
+        userId: user.id,
+        actionType: "CANDIDATE_REMOVED",
+        tableName: "shift_assignments",
+        recordId: replacementId,
+        description: `Candidat assigné retiré: ${detail.applicant_first_name || ""} ${detail.applicant_last_name || ""} pour ${detail.requester_first_name || ""} ${detail.requester_last_name || ""} le ${new Date(shift_date).toLocaleDateString("fr-CA")} (${shift_type === "day" ? "Jour" : "Nuit"})`,
+      })
     }
 
     await db`

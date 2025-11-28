@@ -2,6 +2,8 @@
 
 import { neon } from "@neondatabase/serverless"
 import { revalidatePath } from "next/cache"
+import { createAuditLog } from "./audit"
+import { getSession } from "./auth"
 
 const sql = neon(process.env.DATABASE_URL!, {
   fetchConnectionCache: true,
@@ -33,6 +35,11 @@ export async function createDirectAssignment(params: {
   shiftDate?: string
 }) {
   try {
+    const user = await getSession()
+    if (!user) {
+      return { success: false, error: "Non autorisé" }
+    }
+
     const { shiftId, replacedUserId, assignedUserId, isPartial, startTime, endTime, replacementOrder, shiftDate } =
       params
 
@@ -44,6 +51,13 @@ export async function createDirectAssignment(params: {
         AND user_id = ${assignedUserId}
     `
 
+    const users = await sql`
+      SELECT id, first_name, last_name FROM users
+      WHERE id IN (${assignedUserId}, ${replacedUserId})
+    `
+    const assignedUser = users.find((u: any) => u.id === assignedUserId)
+    const replacedUser = users.find((u: any) => u.id === replacedUserId)
+
     if (existing.length > 0) {
       await sql`
         UPDATE shift_assignments
@@ -54,11 +68,21 @@ export async function createDirectAssignment(params: {
           start_time = ${startTime || null},
           end_time = ${endTime || null},
           replacement_order = ${replacementOrder || 1},
-          shift_date = ${finalShiftDate}
+          shift_date = ${finalShiftDate},
+          updated_by = ${user.id},
+          updated_at_audit = CURRENT_TIMESTAMP
         WHERE id = ${existing[0].id}
       `
+
+      await createAuditLog({
+        userId: user.id,
+        actionType: "ASSIGNMENT_CREATED",
+        tableName: "shift_assignments",
+        recordId: existing[0].id,
+        description: `Assignation directe mise à jour: ${assignedUser?.first_name} ${assignedUser?.last_name} remplace ${replacedUser?.first_name} ${replacedUser?.last_name}${isPartial && startTime && endTime ? ` (${startTime.slice(0, 5)}-${endTime.slice(0, 5)})` : ""}`,
+      })
     } else {
-      await sql`
+      const result = await sql`
         INSERT INTO shift_assignments (
           shift_id, 
           user_id, 
@@ -69,7 +93,9 @@ export async function createDirectAssignment(params: {
           start_time,
           end_time,
           replacement_order,
-          shift_date
+          shift_date,
+          created_by,
+          created_at_audit
         )
         VALUES (
           ${shiftId}, 
@@ -81,9 +107,20 @@ export async function createDirectAssignment(params: {
           ${startTime || null},
           ${endTime || null},
           ${replacementOrder || 1},
-          ${finalShiftDate}
+          ${finalShiftDate},
+          ${user.id},
+          CURRENT_TIMESTAMP
         )
+        RETURNING id
       `
+
+      await createAuditLog({
+        userId: user.id,
+        actionType: "ASSIGNMENT_CREATED",
+        tableName: "shift_assignments",
+        recordId: result[0].id,
+        description: `Assignation directe créée: ${assignedUser?.first_name} ${assignedUser?.last_name} remplace ${replacedUser?.first_name} ${replacedUser?.last_name}${isPartial && startTime && endTime ? ` (${startTime.slice(0, 5)}-${endTime.slice(0, 5)})` : ""}`,
+      })
     }
 
     revalidatePath("/dashboard")
@@ -113,6 +150,11 @@ export async function addSecondReplacement(params: {
 }) {
   try {
     console.log("[v0] addSecondReplacement called with:", params)
+
+    const user = await getSession()
+    if (!user) {
+      return { success: false, error: "Non autorisé" }
+    }
 
     const { shiftId, replacedUserId, assignedUserId, startTime, endTime, shiftDate } = params
 
@@ -149,7 +191,6 @@ export async function addSecondReplacement(params: {
     if (replacement1Info.length === 0) {
       console.log("[v0] No R1 found - Creating R2 as first replacement with replacement_order = 2")
 
-      // Check if there's already a second replacement
       const existingSecond = await sql`
         SELECT id FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -164,7 +205,6 @@ export async function addSecondReplacement(params: {
         }
       }
 
-      // Insert the second replacement directly
       const result = await sql`
         INSERT INTO shift_assignments (
           shift_id, 
@@ -209,7 +249,6 @@ export async function addSecondReplacement(params: {
     console.log("[v0] Replacement 1 original hours:", { startTime: originalStartTime, endTime: adjustedEndTime })
 
     if (!adjustedEndTime) {
-      // First try to get it from the replacement record (table replacements)
       const replacementInfo = await sql`
         SELECT end_time, is_partial
         FROM replacements
@@ -235,7 +274,6 @@ export async function addSecondReplacement(params: {
       if (replacementInfo.length > 0 && replacementInfo[0].end_time) {
         adjustedEndTime = replacementInfo[0].end_time
       } else {
-        // Last resort: get shift end_time
         const shiftInfo = await sql`
           SELECT end_time FROM shifts WHERE id = ${shiftId}
         `
@@ -252,7 +290,6 @@ export async function addSecondReplacement(params: {
 
     console.log("[v0] Final adjustedEndTime:", adjustedEndTime)
 
-    // Check if there's already a second replacement
     const existingSecond = await sql`
       SELECT id FROM shift_assignments
       WHERE shift_id = ${shiftId}
@@ -271,14 +308,13 @@ export async function addSecondReplacement(params: {
 
     const normalizeTime = (time: string): string => {
       if (!time) return time
-      // If time doesn't have seconds (HH:MM), add :00
       return time.length === 5 ? `${time}:00` : time
     }
 
     const r1Start = normalizeTime(originalStartTime || "07:00:00")
     const r1End = normalizeTime(adjustedEndTime || "17:00:00")
-    const r2Start = normalizeTime(startTime)
-    const r2End = normalizeTime(endTime)
+    const r2Start = normalizeTime(params.startTime)
+    const r2End = normalizeTime(params.endTime)
 
     console.log("[v0] Analyzing overlap:", {
       r1Start,
@@ -296,9 +332,7 @@ export async function addSecondReplacement(params: {
       }
     }
 
-    // Determine overlap type and adjust accordingly
     if (r2Start >= r1End) {
-      // Case 1: No overlap - R2 starts after R1 ends (e.g., R1: 7-11, R2: 11-17)
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -334,7 +368,6 @@ export async function addSecondReplacement(params: {
       `
       console.log("[v0] No overlap - R1 kept as is:", { r1Start, r1End })
     } else if (r2Start <= r1Start && r2End >= r1End) {
-      // Case 2: R2 covers entire R1 period
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -343,7 +376,6 @@ export async function addSecondReplacement(params: {
       `
       console.log("[v0] R2 covers entire R1 - R1 deleted (no hours)")
     } else if (r2Start <= r1Start && r2End < r1End) {
-      // Case 3: R2 covers beginning (e.g., R1: 7-12, R2: 7-9 → R1 becomes 9-12)
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -382,7 +414,6 @@ export async function addSecondReplacement(params: {
         newEnd: r1End,
       })
     } else if (r2Start > r1Start && r2End >= r1End) {
-      // Case 4: R2 covers end (e.g., R1: 7-15, R2: 10:30-15 → R1 becomes 7-10:30)
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -421,7 +452,6 @@ export async function addSecondReplacement(params: {
         newEnd: r2Start,
       })
     } else {
-      // Case 5: R2 in middle (e.g., R1: 7-16:30, R2: 8:30-14 → R1 becomes: 7-8:30 AND 14-16:30)
       console.log("[v0] R2 in middle - Splitting R1 into two periods")
 
       await sql`
@@ -431,7 +461,6 @@ export async function addSecondReplacement(params: {
           AND replacement_order = 1
       `
 
-      // Insert first period (before R2)
       await sql`
         INSERT INTO shift_assignments (
           shift_id, 
@@ -463,7 +492,6 @@ export async function addSecondReplacement(params: {
         end: r2Start,
       })
 
-      // Insert second period (after R2)
       await sql`
         INSERT INTO shift_assignments (
           shift_id, 
@@ -505,7 +533,6 @@ export async function addSecondReplacement(params: {
     `
     console.log("[v0] VERIFICATION - All R1 records after changes:", verifyResult)
 
-    // Insert the second replacement
     const result = await sql`
       INSERT INTO shift_assignments (
         shift_id, 
@@ -538,6 +565,14 @@ export async function addSecondReplacement(params: {
 
     revalidatePath("/dashboard")
     revalidatePath("/calendar")
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "SECOND_REPLACEMENT_ADDED",
+      tableName: "shift_assignments",
+      recordId: result[0].id,
+      description: `Remplaçant 2 ajouté: ${assignedUserId} remplace ${replacedUserId} (${startTime.slice(0, 5)}-${endTime.slice(0, 5)})`,
+    })
 
     return { success: true }
   } catch (error) {
@@ -584,7 +619,6 @@ export async function updateReplacementHours(params: {
 
 export async function removeReplacement(shiftId: number, userId: number, replacementOrder: number) {
   try {
-    // If removing replacement 1, promote replacement 2 to replacement 1
     if (replacementOrder === 1) {
       const secondReplacement = await sql`
         SELECT user_id FROM shift_assignments
@@ -593,7 +627,6 @@ export async function removeReplacement(shiftId: number, userId: number, replace
       `
 
       if (secondReplacement.length > 0) {
-        // Promote replacement 2 to replacement 1
         await sql`
           UPDATE shift_assignments
           SET replacement_order = 1
@@ -603,7 +636,6 @@ export async function removeReplacement(shiftId: number, userId: number, replace
       }
     }
 
-    // Delete the specified replacement
     await sql`
       DELETE FROM shift_assignments
       WHERE shift_id = ${shiftId}
@@ -626,12 +658,38 @@ export async function removeReplacement(shiftId: number, userId: number, replace
 
 export async function removeDirectAssignment(shiftId: number, userId: number) {
   try {
+    const user = await getSession()
+    if (!user) {
+      return { success: false, error: "Non autorisé" }
+    }
+
+    const assignmentDetails = await sql`
+      SELECT sa.*, u.first_name, u.last_name, replaced.first_name as replaced_first_name, replaced.last_name as replaced_last_name
+      FROM shift_assignments sa
+      LEFT JOIN users u ON sa.user_id = u.id
+      LEFT JOIN users replaced ON sa.replaced_user_id = replaced.id
+      WHERE sa.shift_id = ${shiftId}
+        AND sa.user_id = ${userId}
+        AND sa.is_direct_assignment = true
+    `
+
     await sql`
       DELETE FROM shift_assignments
       WHERE shift_id = ${shiftId}
         AND user_id = ${userId}
         AND is_direct_assignment = true
     `
+
+    if (assignmentDetails.length > 0) {
+      const assignment = assignmentDetails[0]
+      await createAuditLog({
+        userId: user.id,
+        actionType: "ASSIGNMENT_DELETED",
+        tableName: "shift_assignments",
+        recordId: assignment.id,
+        description: `Assignation directe supprimée: ${assignment.first_name} ${assignment.last_name}${assignment.replaced_first_name ? ` remplaçait ${assignment.replaced_first_name} ${assignment.replaced_last_name}` : ""}`,
+      })
+    }
 
     revalidatePath("/dashboard")
     revalidatePath("/calendar")

@@ -5,6 +5,7 @@ import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 import { createNotification } from "@/app/actions/notifications"
 import { parseLocalDate } from "@/lib/calendar"
+import { createAuditLog } from "./audit"
 
 export async function checkExchangeTablesExist() {
   try {
@@ -290,6 +291,15 @@ export async function createExchangeRequest(data: {
           day: "numeric",
         })
 
+        await createAuditLog({
+          userId: user.id,
+          actionType: "EXCHANGE_CREATED",
+          tableName: "shift_exchanges",
+          recordId: exchangeId,
+          description: `Échange créé: ${user.first_name} ${user.last_name} propose à ${targetUser[0].first_name} ${targetUser[0].last_name} (${data.requesterShiftDate} ↔ ${data.targetShiftDate})`,
+          newValues: data,
+        })
+
         await createNotification(
           data.targetId,
           "Nouvelle demande d'échange de quart",
@@ -544,6 +554,24 @@ export async function approveExchange(exchangeId: number) {
 
       console.log("[v0] Exchange approved successfully:", exchangeId)
 
+      const users = await sql`
+        SELECT id, email, first_name, last_name
+        FROM users
+        WHERE id IN (${exchange.requester_id}, ${exchange.target_id})
+      `
+
+      const requesterUser = users.find((u: any) => u.id === exchange.requester_id)
+      const targetUser = users.find((u: any) => u.id === exchange.target_id)
+
+      await createAuditLog({
+        userId: user.id,
+        actionType: "EXCHANGE_APPROVED",
+        tableName: "shift_exchanges",
+        recordId: exchangeId,
+        description: `Échange approuvé: ${requesterUser?.first_name} ${requesterUser?.last_name} ↔ ${targetUser?.first_name} ${targetUser?.last_name} (${exchange.requester_shift_date} ↔ ${exchange.target_shift_date})`,
+      })
+
+      // Send notifications
       try {
         const users = await sql`
           SELECT id, email, first_name, last_name
@@ -560,8 +588,8 @@ export async function approveExchange(exchangeId: number) {
             : ""
 
         const targetPartialHours =
-          exchange.is_partial && exchange.target_start_time && exchange.target_end_time
-            ? `${exchange.target_start_time.slice(0, 5)} - ${exchange.target_end_time.slice(0, 5)}`
+          exchange.is_partial && exchange.target_start_time && exchange.targetEndTime
+            ? `${exchange.target_start_time.slice(0, 5)} - ${exchange.targetEndTime.slice(0, 5)}`
             : ""
 
         const requesterShiftDate = new Date(exchange.requester_shift_date).toLocaleDateString("fr-CA", {
@@ -657,6 +685,24 @@ export async function rejectExchange(exchangeId: number, reason?: string) {
 
     console.log("[v0] Exchange rejected:", exchangeId)
 
+    const users = await sql`
+      SELECT id, email, first_name, last_name
+      FROM users
+      WHERE id IN (${exchange.requester_id}, ${exchange.target_id})
+    `
+
+    const requesterUser = users.find((u: any) => u.id === exchange.requester_id)
+    const targetUser = users.find((u: any) => u.id === exchange.target_id)
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "EXCHANGE_REJECTED",
+      tableName: "shift_exchanges",
+      recordId: exchangeId,
+      description: `Échange rejeté: ${requesterUser?.first_name} ${requesterUser?.last_name} ↔ ${targetUser?.first_name} ${targetUser?.last_name}${reason ? ` - Raison: ${reason}` : ""}`,
+    })
+
+    // Send notifications
     try {
       const users = await sql`
         SELECT id, email, first_name, last_name
@@ -750,6 +796,15 @@ export async function cancelExchangeRequest(exchangeId: number) {
 
     const exchange = exchanges[0]
 
+    const users = await sql`
+      SELECT id, first_name, last_name
+      FROM users
+      WHERE id IN (${exchange.requester_id}, ${exchange.target_id})
+    `
+
+    const requester = users.find((u: any) => u.id === exchange.requester_id)
+    const target = users.find((u: any) => u.id === exchange.target_id)
+
     if (!user.is_admin) {
       if (exchange.requester_id !== user.id) {
         return { error: "Vous n'êtes pas autorisé à annuler cette demande" }
@@ -829,6 +884,16 @@ export async function cancelExchangeRequest(exchangeId: number) {
 
         await sql`COMMIT`
         console.log("[v0] Approved exchange deleted and reverted:", exchangeId, "by admin:", user.id)
+
+        await createAuditLog({
+          userId: user.id,
+          actionType: "EXCHANGE_APPROVED_CANCELLED",
+          tableName: "shift_exchanges",
+          recordId: exchangeId,
+          description: `Échange approuvé annulé: ${requester?.first_name} ${requester?.last_name} ↔ ${target?.first_name} ${target?.last_name} (${new Date(exchange.requester_shift_date).toLocaleDateString("fr-CA")})`,
+          oldValues: { status: "approved" },
+          newValues: { status: "cancelled" },
+        })
       } catch (error) {
         await sql`ROLLBACK`
         console.error("[v0] Error reverting approved exchange:", error)
@@ -844,6 +909,16 @@ export async function cancelExchangeRequest(exchangeId: number) {
       `
 
       console.log("[v0] Exchange request cancelled:", exchangeId, "by user:", user.id)
+
+      await createAuditLog({
+        userId: user.id,
+        actionType: "EXCHANGE_CANCELLED",
+        tableName: "shift_exchanges",
+        recordId: exchangeId,
+        description: `Demande d'échange annulée: ${requester?.first_name} ${requester?.last_name} ↔ ${target?.first_name} ${target?.last_name} (${new Date(exchange.requester_shift_date).toLocaleDateString("fr-CA")})`,
+        oldValues: { status: exchange.status },
+        newValues: { status: "cancelled" },
+      })
     }
 
     // Optionally notify the users
@@ -1128,7 +1203,7 @@ export async function createExchangeAsAdmin(data: {
 
         if (targetUser?.email) {
           await createNotification(
-            targetUser.id,
+            data.targetId,
             "✅ Échange de quart approuvé",
             `Votre échange de quart avec ${requesterUser.first_name} ${requesterUser.last_name} a été approuvé: ${targetShiftDate} (${data.targetShiftType}) contre ${requesterShiftDate} (${data.requesterShiftType})${data.isPartial ? ` - Partiel: ${targetPartialHours} / ${requesterPartialHours}` : ""}`,
             "exchange_approved",

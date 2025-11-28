@@ -1,0 +1,16 @@
+-- Add new audit action types for more comprehensive tracking
+-- These types cover: cancellations, user management, team management, and replacement modifications
+
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'EXCHANGE_CANCELLED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'EXCHANGE_APPROVED_CANCELLED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'USER_CREATED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'USER_UPDATED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'USER_DELETED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'USER_ROLE_UPDATED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'TEAM_CREATED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'TEAM_MEMBER_ADDED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'TEAM_MEMBER_REMOVED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'TEAM_MEMBERS_REORDERED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'REPLACEMENT_HOURS_MODIFIED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'EXTRA_REPLACEMENT_ADDED';
+ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'REPLACEMENT_REMOVED';

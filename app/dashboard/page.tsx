@@ -1,8 +1,7 @@
 import { getSession } from "@/app/actions/auth"
-import { redirect } from 'next/navigation'
+import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { getUserLeaves } from "@/app/actions/leaves"
 import { getUserApplications } from "@/app/actions/replacements"
 import { getUnreadCount } from "@/app/actions/notifications"
 import { Badge } from "@/components/ui/badge"
@@ -17,8 +16,6 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const leaves = await getUserLeaves(user.id)
-  const pendingLeaves = leaves.filter((l: any) => l.status === "pending")
   const applications = await getUserApplications(user.id)
   const pendingApplications = applications.filter((a: any) => a.status === "pending")
   const unreadNotifications = await getUnreadCount(user.id)
@@ -48,27 +45,6 @@ export default async function DashboardPage() {
           </Card>
         </Link>
 
-        <Link href="/dashboard/leaves">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg md:text-xl">Demandes de congé</CardTitle>
-                  <CardDescription className="text-sm">Gérez vos congés et absences</CardDescription>
-                </div>
-                {pendingLeaves.length > 0 && (
-                  <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                    {pendingLeaves.length}
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl md:text-4xl">🏖️</div>
-            </CardContent>
-          </Card>
-        </Link>
-
         <Link href="/dashboard/replacements">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
             <CardHeader>
@@ -90,6 +66,18 @@ export default async function DashboardPage() {
           </Card>
         </Link>
 
+        <Link href="/dashboard/exchanges">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle className="text-lg md:text-xl">Échanges</CardTitle>
+              <CardDescription className="text-sm">Proposez et gérez vos échanges de quarts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl md:text-4xl">🔁</div>
+            </CardContent>
+          </Card>
+        </Link>
+
         <Link href="/dashboard/notifications">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
             <CardHeader>
@@ -107,26 +95,14 @@ export default async function DashboardPage() {
           </Card>
         </Link>
 
-        <Link href="/dashboard/teams">
+        <Link href="/dashboard/settings">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Équipes</CardTitle>
-              <CardDescription className="text-sm">Consultez les équipes</CardDescription>
+              <CardTitle className="text-lg md:text-xl">Paramètres</CardTitle>
+              <CardDescription className="text-sm">Gérez vos préférences et paramètres</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl md:text-4xl">👥</div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/dashboard/firefighters">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Pompiers</CardTitle>
-              <CardDescription className="text-sm">Liste de tous les pompiers</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl md:text-4xl">🚒</div>
+              <div className="text-3xl md:text-4xl">⚙️</div>
             </CardContent>
           </Card>
         </Link>

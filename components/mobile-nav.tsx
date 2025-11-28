@@ -21,10 +21,13 @@ export function MobileNav({ userName, isAdmin }: MobileNavProps) {
     { href: "/dashboard/replacements", label: "Remplacements" },
     { href: "/dashboard/exchanges", label: "Échanges" },
     { href: "/dashboard/notifications", label: "Notifications" },
-    { href: "/dashboard/teams", label: "Équipes" },
-    { href: "/dashboard/firefighters", label: "Pompiers" },
     { href: "/dashboard/settings", label: "Paramètres" },
-    ...(isAdmin ? [{ href: "/dashboard/admin/run-scripts", label: "Scripts SQL" }] : []),
+    ...(isAdmin
+      ? [
+          { href: "/dashboard/admin/audit-logs", label: "Journal d'activités" },
+          { href: "/dashboard/admin/run-scripts", label: "Scripts SQL" },
+        ]
+      : []),
   ]
 
   return (

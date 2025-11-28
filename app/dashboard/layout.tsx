@@ -81,27 +81,24 @@ export default async function DashboardLayout({
                 </Suspense>
               </Button>
             </Link>
-            <Link href="/dashboard/teams" scroll={false}>
-              <Button variant="ghost" size="sm">
-                Équipes
-              </Button>
-            </Link>
-            <Link href="/dashboard/firefighters" scroll={false}>
-              <Button variant="ghost" size="sm">
-                Pompiers
-              </Button>
-            </Link>
             <Link href="/dashboard/settings" scroll={false}>
               <Button variant="ghost" size="sm">
                 Paramètres
               </Button>
             </Link>
             {user.isAdmin && (
-              <Link href="/dashboard/admin/run-scripts" scroll={false}>
-                <Button variant="ghost" size="sm">
-                  Scripts SQL
-                </Button>
-              </Link>
+              <>
+                <Link href="/dashboard/admin/audit-logs" scroll={false}>
+                  <Button variant="ghost" size="sm">
+                    Journal d'activités
+                  </Button>
+                </Link>
+                <Link href="/dashboard/admin/run-scripts" scroll={false}>
+                  <Button variant="ghost" size="sm">
+                    Scripts SQL
+                  </Button>
+                </Link>
+              </>
             )}
           </nav>
         </div>

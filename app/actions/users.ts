@@ -1,8 +1,9 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { hashPassword } from "@/app/actions/auth"
+import { hashPassword, getSession } from "@/app/actions/auth"
 import { sql } from "@/lib/db"
+import { createAuditLog } from "./audit"
 
 interface ParsedFirefighter {
   firstName: string
@@ -283,6 +284,18 @@ export async function addFirefighter(data: {
       `
     }
 
+    const currentUser = await getSession()
+    if (currentUser) {
+      await createAuditLog({
+        userId: currentUser.id,
+        actionType: "USER_CREATED",
+        tableName: "users",
+        recordId: userId,
+        description: `Pompier ajouté: ${data.firstName} ${data.lastName} (${data.email})`,
+        newValues: { firstName: data.firstName, lastName: data.lastName, email: data.email, role: data.role },
+      })
+    }
+
     try {
       revalidatePath("/dashboard/firefighters")
       revalidatePath("/dashboard/teams")
@@ -329,5 +342,148 @@ export async function getAllFirefighters() {
   } catch (error) {
     console.error("[v0] Error getting firefighters:", error)
     return []
+  }
+}
+
+export async function updateFirefighter(
+  userId: number,
+  data: {
+    firstName: string
+    lastName: string
+    email: string
+    phone: string | null
+    role: string
+    teamIds: number[]
+  },
+) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { success: false, message: "Non autorisé" }
+  }
+
+  try {
+    const oldUser = await sql`
+      SELECT first_name, last_name, email, phone, role FROM users WHERE id = ${userId}
+    `
+
+    await sql`
+      UPDATE users
+      SET 
+        first_name = ${data.firstName},
+        last_name = ${data.lastName},
+        email = ${data.email},
+        phone = ${data.phone},
+        role = ${data.role},
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${userId}
+    `
+
+    await sql`
+      DELETE FROM team_members WHERE user_id = ${userId}
+    `
+
+    for (const teamId of data.teamIds) {
+      await sql`
+        INSERT INTO team_members (user_id, team_id)
+        VALUES (${userId}, ${teamId})
+        ON CONFLICT DO NOTHING
+      `
+    }
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "USER_UPDATED",
+      tableName: "users",
+      recordId: userId,
+      description: `Pompier modifié: ${data.firstName} ${data.lastName}`,
+      oldValues: oldUser[0],
+      newValues: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        role: data.role,
+      },
+    })
+
+    revalidatePath("/dashboard/firefighters")
+    revalidatePath("/dashboard/teams")
+    return { success: true, message: "Pompier mis à jour avec succès" }
+  } catch (error) {
+    console.error("[v0] Error updating firefighter:", error)
+    const errorMessage = error instanceof Error ? error.message : "Erreur inconnue"
+    return {
+      success: false,
+      message: `Erreur lors de la mise à jour du pompier: ${errorMessage}`,
+    }
+  }
+}
+
+export async function deleteFirefighter(userId: number) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    const deletedUser = await sql`
+      SELECT first_name, last_name, email FROM users WHERE id = ${userId}
+    `
+
+    await sql`
+      DELETE FROM users WHERE id = ${userId}
+    `
+
+    if (deletedUser.length > 0) {
+      await createAuditLog({
+        userId: user.id,
+        actionType: "USER_DELETED",
+        tableName: "users",
+        recordId: userId,
+        description: `Pompier supprimé: ${deletedUser[0].first_name} ${deletedUser[0].last_name} (${deletedUser[0].email})`,
+        oldValues: deletedUser[0],
+      })
+    }
+
+    revalidatePath("/dashboard/firefighters")
+    return { success: true }
+  } catch (error) {
+    return { error: "Erreur lors de la suppression" }
+  }
+}
+
+export async function updateFirefighterRole(userId: number, role: string) {
+  const user = await getSession()
+  if (!user?.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  try {
+    const oldUser = await sql`
+      SELECT first_name, last_name, role FROM users WHERE id = ${userId}
+    `
+
+    await sql`
+      UPDATE users
+      SET role = ${role}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${userId}
+    `
+
+    if (oldUser.length > 0) {
+      await createAuditLog({
+        userId: user.id,
+        actionType: "USER_ROLE_UPDATED",
+        tableName: "users",
+        recordId: userId,
+        description: `Rôle modifié pour ${oldUser[0].first_name} ${oldUser[0].last_name}: ${oldUser[0].role} → ${role}`,
+        oldValues: { role: oldUser[0].role },
+        newValues: { role },
+      })
+    }
+
+    revalidatePath("/dashboard/firefighters")
+    return { success: true }
+  } catch (error) {
+    return { error: "Erreur lors de la mise à jour du rôle" }
   }
 }
