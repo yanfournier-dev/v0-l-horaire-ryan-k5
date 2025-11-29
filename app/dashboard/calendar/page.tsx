@@ -205,7 +205,6 @@ export default async function CalendarPage({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">Calendrier des quarts</h1>
-              <TodayButton />
             </div>
 
             <div className="flex gap-2">
@@ -218,21 +217,27 @@ export default async function CalendarPage({
           </div>
         </div>
 
-        <CalendarView
-          initialMonths={allMonthsDays}
-          shiftsByCycleDay={shiftsByCycleDay}
-          replacementMap={replacementMap}
-          exchangeMap={exchangeMap}
-          leaves={leaves}
-          leaveMap={leaveMap}
-          noteMap={noteMap}
-          directAssignmentMap={directAssignmentMap}
-          actingDesignationMap={actingDesignationMap}
-          isAdmin={user.is_admin}
-          cycleStartDate={cycleStartDate}
-          currentYear={selectedYear}
-          currentMonth={selectedMonth}
-        />
+        <div className="relative">
+          <div className="sticky top-32 -left-16 z-50 float-left">
+            <TodayButton />
+          </div>
+
+          <CalendarView
+            initialMonths={allMonthsDays}
+            shiftsByCycleDay={shiftsByCycleDay}
+            replacementMap={replacementMap}
+            exchangeMap={exchangeMap}
+            leaves={leaves}
+            leaveMap={leaveMap}
+            noteMap={noteMap}
+            directAssignmentMap={directAssignmentMap}
+            actingDesignationMap={actingDesignationMap}
+            isAdmin={user.is_admin}
+            cycleStartDate={cycleStartDate}
+            currentYear={selectedYear}
+            currentMonth={selectedMonth}
+          />
+        </div>
       </div>
     )
   } catch (error) {
