@@ -554,8 +554,26 @@ export async function getAllFirefightersWeeklyHours(weekDate: string | Date) {
       dateStrings.push(formatDateStr(currentDate))
     }
 
+    const directAssignmentsMap = new Map<string, boolean>()
+
+    const directAssignments = await sql`
+      SELECT sa.user_id, sa.is_partial, sa.start_time, sa.end_time, s.shift_type, sa.shift_date
+      FROM shift_assignments sa
+      JOIN shifts s ON sa.shift_id = s.id
+      WHERE sa.user_id = ANY(${userIds})
+        AND (sa.is_direct_assignment = true OR sa.replacement_order IS NOT NULL)
+        AND sa.shift_date >= ${weekStartStr}::date
+        AND sa.shift_date <= ${weekEndStr}::date
+    `
+
+    // Build map of direct assignments: user_id + date
+    for (const da of directAssignments) {
+      const dateKey = formatDateStr(new Date(da.shift_date))
+      directAssignmentsMap.set(`${da.user_id}_${dateKey}`, true)
+    }
+
     // Get all shifts for all users in this week
-    const [regularShifts, replacements, directAssignments] = await Promise.all([
+    const [regularShifts, replacements] = await Promise.all([
       sql`
         SELECT tm.user_id, s.shift_type, s.cycle_day, sa.shift_date
         FROM shifts s
@@ -574,15 +592,6 @@ export async function getAllFirefightersWeeklyHours(weekDate: string | Date) {
           AND r.status = 'assigned'
           AND r.shift_date >= ${weekStartStr}
           AND r.shift_date <= ${weekEndStr}
-      `,
-      sql`
-        SELECT sa.user_id, sa.is_partial, sa.start_time, sa.end_time, s.shift_type, sa.shift_date
-        FROM shift_assignments sa
-        JOIN shifts s ON sa.shift_id = s.id
-        WHERE sa.user_id = ANY(${userIds})
-          AND (sa.is_direct_assignment = true OR sa.replacement_order IS NOT NULL)
-          AND sa.shift_date >= ${weekStartStr}::date
-          AND sa.shift_date <= ${weekEndStr}::date
       `,
     ])
 
@@ -605,11 +614,18 @@ export async function getAllFirefightersWeeklyHours(weekDate: string | Date) {
       userShifts.set(shift.user_id, shifts)
     }
 
-    // Add replacements
     for (const shift of replacements) {
+      const dateKey = formatDateStr(new Date(shift.shift_date))
+      const hasDirectAssignment = directAssignmentsMap.has(`${shift.user_id}_${dateKey}`)
+
+      // Skip this replacement if there's a direct assignment for the same date
+      if (hasDirectAssignment) {
+        continue
+      }
+
       const shifts = userShifts.get(shift.user_id) || []
       shifts.push({
-        shiftDate: shift.shift_date,
+        shiftDate: formatDateStr(new Date(shift.shift_date)),
         shiftType: shift.shift_type,
         hours: calculateShiftHours(shift.shift_type, shift.is_partial, shift.start_time, shift.end_time),
         isPartial: shift.is_partial,
@@ -623,7 +639,7 @@ export async function getAllFirefightersWeeklyHours(weekDate: string | Date) {
     for (const shift of directAssignments) {
       const shifts = userShifts.get(shift.user_id) || []
       shifts.push({
-        shiftDate: shift.shift_date,
+        shiftDate: formatDateStr(new Date(shift.shift_date)),
         shiftType: shift.shift_type,
         hours: calculateShiftHours(shift.shift_type, shift.is_partial, shift.start_time, shift.end_time),
         isPartial: shift.is_partial,

@@ -54,17 +54,29 @@ export default async function CalendarPage({
 
     const currentCycleDay = getCycleDay(today, cycleStartDate)
 
-    const monthsToDisplay = [
-      {
-        year: selectedMonth - 1 < 0 ? selectedYear - 1 : selectedYear,
-        month: selectedMonth - 1 < 0 ? 11 : selectedMonth - 1,
-      },
-      { year: selectedYear, month: selectedMonth },
-      {
-        year: selectedMonth + 1 > 11 ? selectedYear + 1 : selectedYear,
-        month: (selectedMonth + 1) % 12,
-      },
-    ]
+    // To revert to original behavior (3 months: 1 before + current + 1 after), replace this block with:
+    // const monthsToDisplay = [
+    //   {
+    //     year: selectedMonth - 1 < 0 ? selectedYear - 1 : selectedYear,
+    //     month: selectedMonth - 1 < 0 ? 11 : selectedMonth - 1,
+    //   },
+    //   { year: selectedYear, month: selectedMonth },
+    //   {
+    //     year: selectedMonth + 1 > 11 ? selectedYear + 1 : selectedYear,
+    //     month: (selectedMonth + 1) % 12,
+    //   },
+    // ]
+    const monthsToDisplay = []
+    for (let i = 0; i < 12; i++) {
+      const targetMonth = selectedMonth + i
+      const targetYear = selectedYear + Math.floor(targetMonth / 12)
+      const normalizedMonth = targetMonth % 12
+
+      monthsToDisplay.push({
+        year: targetYear,
+        month: normalizedMonth,
+      })
+    }
 
     const allMonthsDays = monthsToDisplay.map(({ year, month }) => ({
       year,

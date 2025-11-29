@@ -7,7 +7,7 @@ import { MarkAsReadButton } from "@/components/mark-as-read-button"
 import { DeleteNotificationButton } from "@/components/delete-notification-button"
 import { MarkAllAsReadButton } from "@/components/mark-all-as-read-button"
 import { DeleteAllNotificationsButton } from "@/components/delete-all-notifications-button"
-import { formatLocalDateTime } from "@/lib/date-utils"
+import { NotificationTimestamp } from "@/components/notification-timestamp"
 
 export const dynamic = "force-dynamic"
 
@@ -83,7 +83,7 @@ export default async function NotificationsPage() {
                       <CardTitle className="text-lg">{notification.title}</CardTitle>
                       <CardDescription>{notification.message}</CardDescription>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {formatLocalDateTime(notification.created_at)}
+                        <NotificationTimestamp timestamp={notification.created_at} />
                       </p>
                     </div>
                   </div>

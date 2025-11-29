@@ -1,13 +1,9 @@
 import { getSession } from "@/app/actions/auth"
 import { getAllFirefighters } from "@/app/actions/teams"
 import { redirect } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { EditFirefighterDialog } from "@/components/edit-firefighter-dialog"
-import { DeleteFirefighterButton } from "@/components/delete-firefighter-button"
 import { AddFirefighterDialog } from "@/components/add-firefighter-dialog"
-import { ResetPasswordDialog } from "@/components/reset-password-dialog"
 import { sql } from "@/lib/db"
+import { FirefightersList } from "@/components/firefighters-list"
 
 export const dynamic = "force-dynamic"
 
@@ -59,58 +55,7 @@ export default async function FirefightersPage() {
         {user.is_admin && <AddFirefighterDialog teams={teams} />}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {firefighters.map((firefighter: any) => (
-          <Card key={firefighter.id}>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">
-                    {firefighter.first_name} {firefighter.last_name}
-                  </CardTitle>
-                  <CardDescription>{firefighter.email}</CardDescription>
-                </div>
-                <Badge className={getRoleBadgeColor(firefighter.role)}>{getRoleLabel(firefighter.role)}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {firefighter.phone && <p className="text-sm text-muted-foreground mb-2">📞 {firefighter.phone}</p>}
-
-              {firefighter.is_admin && (
-                <Badge className="mb-3 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Administrateur</Badge>
-              )}
-
-              <div className="mb-3">
-                <p className="text-xs font-semibold text-foreground mb-1">Équipes:</p>
-                {firefighter.teams && firefighter.teams.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {firefighter.teams.map((team: any) => (
-                      <Badge key={team.id} variant="outline" className="text-xs">
-                        {team.name}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Aucune équipe</p>
-                )}
-              </div>
-
-              {user.is_admin && (
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <EditFirefighterDialog firefighter={firefighter} availableTeams={teams} />
-                    <DeleteFirefighterButton userId={firefighter.id} />
-                  </div>
-                  <ResetPasswordDialog
-                    userId={firefighter.id}
-                    userName={`${firefighter.first_name} ${firefighter.last_name}`}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <FirefightersList firefighters={firefighters} teams={teams} isAdmin={user.is_admin} />
     </div>
   )
 }

@@ -270,67 +270,77 @@ export function CalendarView({
       const data = await getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
 
       const newReplacementMap = { ...replacementMap }
-      data.replacements.forEach((repl: any) => {
-        const dateOnly = formatLocalDate(repl.shift_date)
-        const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
-        if (!newReplacementMap[key]) {
-          newReplacementMap[key] = []
-        }
-        newReplacementMap[key].push(repl)
-      })
+      if (data.replacements) {
+        data.replacements.forEach((repl: any) => {
+          const dateOnly = formatLocalDate(repl.shift_date)
+          const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
+          if (!newReplacementMap[key]) {
+            newReplacementMap[key] = []
+          }
+          newReplacementMap[key].push(repl)
+        })
+      }
       setReplacementMap(newReplacementMap)
 
       const newExchangeMap = { ...exchangeMap }
-      data.exchanges.forEach((exchange: any) => {
-        const requesterDateOnly = formatLocalDate(exchange.requester_shift_date)
-        const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
-        if (!newExchangeMap[requesterKey]) {
-          newExchangeMap[requesterKey] = []
-        }
-        newExchangeMap[requesterKey].push({ ...exchange, type: "requester" })
+      if (data.exchanges) {
+        data.exchanges.forEach((exchange: any) => {
+          const requesterDateOnly = formatLocalDate(exchange.requester_shift_date)
+          const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
+          if (!newExchangeMap[requesterKey]) {
+            newExchangeMap[requesterKey] = []
+          }
+          newExchangeMap[requesterKey].push({ ...exchange, type: "requester" })
 
-        const targetDateOnly = formatLocalDate(exchange.target_shift_date)
-        const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
-        if (!newExchangeMap[targetKey]) {
-          newExchangeMap[targetKey] = []
-        }
-        newExchangeMap[targetKey].push({ ...exchange, type: "target" })
-      })
+          const targetDateOnly = formatLocalDate(exchange.target_shift_date)
+          const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
+          if (!newExchangeMap[targetKey]) {
+            newExchangeMap[targetKey] = []
+          }
+          newExchangeMap[targetKey].push({ ...exchange, type: "target" })
+        })
+      }
       setExchangeMap(newExchangeMap)
 
       const newLeaveMap = { ...leaveMap }
-      data.leaves.forEach((leave: any) => {
-        const startDate = new Date(leave.start_date)
-        const endDate = new Date(leave.end_date)
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          const dateStr = formatDateForDB(d)
-          const key = `${dateStr}_${leave.user_id}`
-          if (!newLeaveMap[key]) {
-            newLeaveMap[key] = []
+      if (data.leaves) {
+        data.leaves.forEach((leave: any) => {
+          const startDate = new Date(leave.start_date)
+          const endDate = new Date(leave.end_date)
+          for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateStr = formatDateForDB(d)
+            const key = `${dateStr}_${leave.user_id}`
+            if (!newLeaveMap[key]) {
+              newLeaveMap[key] = []
+            }
+            newLeaveMap[key].push(leave)
           }
-          newLeaveMap[key].push(leave)
-        }
-      })
+        })
+        setLeaves([...leaves, ...data.leaves])
+      }
       setLeaveMap(newLeaveMap)
-      setLeaves([...leaves, ...data.leaves])
 
       const newNoteMap = { ...noteMap }
-      data.shiftNotes.forEach((note: any) => {
-        const dateOnly = formatLocalDate(note.shift_date)
-        const key = `${note.shift_id}_${dateOnly}`
-        newNoteMap[key] = true
-      })
+      if (data.shiftNotes) {
+        data.shiftNotes.forEach((note: any) => {
+          const dateOnly = formatLocalDate(note.shift_date)
+          const key = `${note.shift_id}_${dateOnly}`
+          newNoteMap[key] = true
+        })
+      }
       setNoteMap(newNoteMap)
 
       const newDirectAssignmentMap = { ...directAssignmentMap }
-      data.directAssignments.forEach((assignment: any) => {
-        const dateOnly = formatLocalDate(assignment.shift_date)
-        const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
-        if (!newDirectAssignmentMap[key]) {
-          newDirectAssignmentMap[key] = []
-        }
-        newDirectAssignmentMap[key].push(assignment)
-      })
+      if (data.directAssignments) {
+        data.directAssignments.forEach((assignment: any) => {
+          const dateOnly = formatLocalDate(assignment.shift_date)
+          const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
+          if (!newDirectAssignmentMap[key]) {
+            newDirectAssignmentMap[key] = []
+          }
+          newDirectAssignmentMap[key].push(assignment)
+        })
+      }
       setDirectAssignmentMap(newDirectAssignmentMap)
 
       const newActingDesignationMap = { ...actingDesignationMap }

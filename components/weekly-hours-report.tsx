@@ -281,7 +281,13 @@ export function WeeklyHoursReport() {
               <TableBody>
                 {selectedFirefighter?.shifts.map((shift, index) => (
                   <TableRow key={index}>
-                    <TableCell>{format(new Date(shift.shiftDate), "EEE d MMM", { locale: fr })}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const [year, month, day] = shift.shiftDate.split("-")
+                        const date = new Date(Number.parseInt(year), Number.parseInt(month) - 1, Number.parseInt(day))
+                        return format(date, "EEE d MMM", { locale: fr })
+                      })()}
+                    </TableCell>
                     <TableCell className="capitalize">{shift.shiftType}</TableCell>
                     <TableCell className="font-semibold">{shift.hours}h</TableCell>
                     <TableCell>

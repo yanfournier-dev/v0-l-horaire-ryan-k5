@@ -59,10 +59,10 @@ export function formatLocalDate(dateInput: string | Date): string {
 
 /**
  * Format a date and time for display in French Canadian format
- * Handles timezone conversion to display local time correctly
+ * Uses Intl.DateTimeFormat to handle timezone automatically (EST/EDT)
  *
- * @param dateInput - Date string or Date object from database
- * @returns Formatted date and time string (e.g., "2025-03-10 à 14:30")
+ * @param dateInput - Date string or Date object from database (assumed to be in UTC)
+ * @returns Formatted date and time string (e.g., "2025-11-29 à 14h30")
  */
 export function formatLocalDateTime(dateInput: string | Date | null | undefined): string {
   if (!dateInput) {
@@ -71,16 +71,15 @@ export function formatLocalDateTime(dateInput: string | Date | null | undefined)
 
   const date = new Date(dateInput)
 
-  const offsetHours = -5
-  const localTime = new Date(date.getTime() + offsetHours * 60 * 60 * 1000)
-
-  const year = localTime.getUTCFullYear()
-  const month = String(localTime.getUTCMonth() + 1).padStart(2, "0")
-  const day = String(localTime.getUTCDate()).padStart(2, "0")
-  const hours = String(localTime.getUTCHours()).padStart(2, "0")
-  const minutes = String(localTime.getUTCMinutes()).padStart(2, "0")
-
-  return `${year}-${month}-${day} à ${hours}h${minutes}`
+  return new Intl.DateTimeFormat("fr-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+    .format(date)
+    .replace(/(\d{4})-(\d{2})-(\d{2}),?\s*(\d{2}):(\d{2})/, "$1-$2-$3 à $4h$5")
 }
 
 function getSecondSunday(year: number, month: number): Date {
@@ -201,15 +200,12 @@ export function getCurrentLocalDate(): string {
 export function formatCreatedAt(dateInput: string | Date): string {
   const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput
 
-  const offsetHours = -5
-  const localTime = new Date(date.getTime() + offsetHours * 60 * 60 * 1000)
-
-  const day = localTime.getUTCDate()
+  const yearValue = date.getFullYear()
   const monthNames = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
-  const month = monthNames[localTime.getUTCMonth()]
-  const yearValue = localTime.getUTCFullYear()
-  const hours = String(localTime.getUTCHours()).padStart(2, "0")
-  const minutes = String(localTime.getUTCMinutes()).padStart(2, "0")
+  const month = monthNames[date.getMonth()]
+  const day = date.getDate()
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
 
   const now = getTodayInLocalTimezone()
   const currentYear = now.getFullYear()
@@ -399,7 +395,7 @@ export function getTodayInLocalTimezone(): Date {
   }
 
   // In V0 or other environments, use default behavior
-  return new Date()
+  return now
 }
 
 /**
@@ -408,20 +404,19 @@ export function getTodayInLocalTimezone(): Date {
  *
  * @param shiftDate - The date of the shift (YYYY-MM-DD or Date object)
  * @param endTime - The end time of the shift (HH:MM:SS or HH:MM)
- * @param startTime - The start time of the shift (HH:MM:SS or HH:MM)
  * @returns Date object representing the deadline (end of shift)
  *
  * @example
  * // For a day shift on December 25, 2025 ending at 17:00
- * calculateEndOfShiftDeadline("2025-12-25", "17:00:00")
+ * calculateEndOfShiftDeadlineSansDélai("2025-12-25", "17:00:00")
  * // Returns: December 25, 2025 at 17:00
  *
  * // For a night shift on December 25, 2025 starting at 17:00 and ending at 07:00
- * calculateEndOfShiftDeadline("2025-12-25", "07:00:00", "17:00:00")
+ * calculateEndOfShiftDeadlineSansDélai("2025-12-25", "07:00:00", "17:00:00")
  * // Returns: December 26, 2025 at 07:00 (next day)
  *
  * // For a 24h shift on December 25, 2025 starting at 07:00 and ending at 07:00
- * calculateEndOfShiftDeadline("2025-12-25", "07:00:00", "07:00:00")
+ * calculateEndOfShiftDeadlineSansDélai("2025-12-25", "07:00:00", "07:00:00")
  * // Returns: December 26, 2025 at 07:00 (next day)
  */
 export function calculateEndOfShiftDeadlineSansDélai(shiftDate: string | Date, endTime: string): Date {
