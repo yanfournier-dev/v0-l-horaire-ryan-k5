@@ -400,61 +400,58 @@ export function CalendarView({
         </Button>
       </div>
 
-      {months.map(({ year, month, days }) => {
-        const isCurrentMonth = year === currentYear && month === currentMonth
-
-        return (
-          <div key={`${year}-${month}`} id={`month-${year}-${month}`} className="flex flex-col gap-4">
-            <h2 className="text-xl md:text-2xl font-semibold text-foreground">
-              {getMonthName(month)} {year}
-              {isCurrentMonth && <span className="ml-2 text-sm font-normal text-muted-foreground">(Mois actuel)</span>}
-            </h2>
-
-            <div className="grid grid-cols-7 gap-1 md:gap-3">
-              {["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => (
-                <div
-                  key={day}
-                  className="text-center text-xs md:text-sm font-semibold text-muted-foreground py-1 md:py-2"
-                >
-                  {day}
-                </div>
-              ))}
+      <div>
+        <div className="grid grid-cols-7 gap-1 md:gap-3 mb-4">
+          {["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => (
+            <div key={day} className="text-center text-xs md:text-sm font-semibold text-muted-foreground py-1 md:py-2">
+              {day}
             </div>
+          ))}
+        </div>
 
-            <div className="grid gap-1 md:gap-3 grid-cols-7">
-              {days.map((day, index) => {
-                const shifts = shiftsByCycleDay[day.cycleDay] || []
+        <div className="grid gap-1 md:gap-3 grid-cols-7">
+          {months.flatMap(({ year, month, days }) =>
+            days.map((day, index) => {
+              const shifts = shiftsByCycleDay[day.cycleDay] || []
+              const dateStr = formatLocalDate(day.date)
 
-                const dateStr = formatLocalDate(day.date)
-                const dayReplacements = shifts.map((shift: any) => {
-                  const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-                  return replacementMap[key] || []
-                })
+              const dayReplacements = shifts.map((shift: any) => {
+                const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+                return replacementMap[key] || []
+              })
 
-                const dayExchanges = shifts.map((shift: any) => {
-                  const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-                  return exchangeMap[key] || []
-                })
+              const dayExchanges = shifts.map((shift: any) => {
+                const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+                return exchangeMap[key] || []
+              })
 
-                const dayDirectAssignments = shifts.map((shift: any) => {
-                  // Getting direct assignments for this date+shift
-                  const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-                  return directAssignmentMap[key] || []
-                })
+              const dayDirectAssignments = shifts.map((shift: any) => {
+                const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+                return directAssignmentMap[key] || []
+              })
 
-                const actingDesignations = actingDesignationMap
+              const actingDesignations = actingDesignationMap
 
-                const shiftsWithNotes = shifts.map((shift: any) => {
-                  const noteKey = `${shift.id}_${dateStr}`
-                  return {
-                    ...shift,
-                    has_note: noteMap[noteKey] || false,
-                  }
-                })
+              const shiftsWithNotes = shifts.map((shift: any) => {
+                const noteKey = `${shift.id}_${dateStr}`
+                return {
+                  ...shift,
+                  has_note: noteMap[noteKey] || false,
+                }
+              })
 
-                return (
+              const showMonthBadge = day.isFirstDayOfMonth
+
+              return (
+                <div key={`${year}-${month}-${index}`} className="relative">
+                  {showMonthBadge && (
+                    <div className="absolute top-5 left-0 right-0 flex justify-center z-10 pointer-events-none">
+                      <span className="text-sm font-bold text-orange-600">
+                        {getMonthName(month)} {year}
+                      </span>
+                    </div>
+                  )}
                   <CalendarCell
-                    key={index}
                     day={day}
                     shifts={shiftsWithNotes}
                     replacements={dayReplacements}
@@ -467,12 +464,12 @@ export function CalendarView({
                     isAdmin={isAdmin}
                     onReplacementCreated={handleReplacementCreated}
                   />
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
+                </div>
+              )
+            }),
+          )}
+        </div>
+      </div>
 
       <div className="flex justify-center">
         <Button onClick={loadNextMonths} variant="outline" className="gap-2 bg-transparent" disabled={loading}>

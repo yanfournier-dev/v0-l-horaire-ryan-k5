@@ -69,24 +69,10 @@ export function formatDateLong(date: Date): string {
 
 export function generateMonthView(year: number, month: number, cycleStartDate: Date) {
   const days = []
-  const firstDay = new Date(year, month, 1)
+
   const lastDay = new Date(year, month + 1, 0)
 
-  // Add padding days from previous month to start on Sunday
-  const firstDayOfWeek = firstDay.getDay()
-  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-    const date = new Date(year, month, -i, 12, 0, 0, 0)
-    const cycleDay = getCycleDay(date, cycleStartDate)
-    days.push({
-      date,
-      cycleDay,
-      dayOfWeek: date.getDay(),
-      isToday: isToday(date),
-      isCurrentMonth: false,
-    })
-  }
-
-  // Add all days of the current month
+  // Add all days of the current month only
   for (let day = 1; day <= lastDay.getDate(); day++) {
     const date = new Date(year, month, day, 12, 0, 0, 0)
     const cycleDay = getCycleDay(date, cycleStartDate)
@@ -96,23 +82,8 @@ export function generateMonthView(year: number, month: number, cycleStartDate: D
       dayOfWeek: date.getDay(),
       isToday: isToday(date),
       isCurrentMonth: true,
+      isFirstDayOfMonth: day === 1, // Mark first day of month
     })
-  }
-
-  // Add padding days from next month to complete the grid
-  const remainingDays = 7 - (days.length % 7)
-  if (remainingDays < 7) {
-    for (let i = 1; i <= remainingDays; i++) {
-      const date = new Date(year, month + 1, i, 12, 0, 0, 0)
-      const cycleDay = getCycleDay(date, cycleStartDate)
-      days.push({
-        date,
-        cycleDay,
-        dayOfWeek: date.getDay(),
-        isToday: isToday(date),
-        isCurrentMonth: false,
-      })
-    }
   }
 
   return days
