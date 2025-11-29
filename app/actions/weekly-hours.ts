@@ -8,10 +8,11 @@ import { parseLocalDate } from "@/lib/date-utils"
  */
 function getWeekStart(date: Date): Date {
   const d = new Date(date)
-  const day = d.getDay()
+  // Use UTC methods to avoid timezone issues
+  const day = d.getUTCDay()
   const diff = day === 0 ? 0 : -day
-  d.setDate(d.getDate() + diff)
-  d.setHours(0, 0, 0, 0)
+  d.setUTCDate(d.getUTCDate() + diff)
+  d.setUTCHours(0, 0, 0, 0)
   return d
 }
 
@@ -21,18 +22,18 @@ function getWeekStart(date: Date): Date {
 function getWeekEnd(date: Date): Date {
   const weekStart = getWeekStart(date)
   const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekStart.getDate() + 6)
-  weekEnd.setHours(23, 59, 59, 999)
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
+  weekEnd.setUTCHours(23, 59, 59, 999)
   return weekEnd
 }
 
 /**
- * Format date to YYYY-MM-DD string
+ * Format date to YYYY-MM-DD string using UTC methods for consistency
  */
 function formatDateStr(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(date.getUTCDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
 }
 
@@ -269,9 +270,34 @@ export async function getBatchFirefighterWeeklyHours(
   try {
     console.log("[v0] getBatchFirefighterWeeklyHours called for userIds:", userIds, "weekDate:", weekDate)
 
-    const date = parseLocalDate(weekDate)
+    const date = typeof weekDate === "string" ? new Date(weekDate) : weekDate
+    console.log("[v0] Parsed date object:", date)
+    console.log(
+      "[v0] Date details - getDay():",
+      date.getDay(),
+      "getDate():",
+      date.getDate(),
+      "getMonth():",
+      date.getMonth(),
+      "getFullYear():",
+      date.getFullYear(),
+    )
+    console.log(
+      "[v0] Date details - getUTCDay():",
+      date.getUTCDay(),
+      "getUTCDate():",
+      date.getUTCDate(),
+      "getUTCMonth():",
+      date.getUTCMonth(),
+      "getUTCFullYear():",
+      date.getUTCFullYear(),
+    )
+
     const weekStart = getWeekStart(date)
     const weekEnd = getWeekEnd(date)
+
+    console.log("[v0] Week start object:", weekStart)
+    console.log("[v0] Week end object:", weekEnd)
 
     const weekStartStr = formatDateStr(weekStart)
     const weekEndStr = formatDateStr(weekEnd)
@@ -303,7 +329,7 @@ export async function getBatchFirefighterWeeklyHours(
     }
 
     const { start_date, cycle_length_days } = cycleConfig[0]
-    const cycleStartDate = parseLocalDate(start_date)
+    const cycleStartDate = new Date(start_date)
 
     // Calculate cycle days for the entire week
     const cycleDays: number[] = []
@@ -462,5 +488,166 @@ export async function getBatchFirefighterWeeklyHours(
     const permanentUserIds = new Set(permanentFirefighters.map((row: any) => row.user_id))
     userIds.forEach((id) => hoursMap.set(id, permanentUserIds.has(id) ? 42 : 0))
     return hoursMap
+  }
+}
+
+/**
+ * Get weekly hours for all firefighters in the system
+ * Optimized to fetch all data in one go
+ *
+ * @param weekDate - Any date within the week to calculate hours for
+ * @returns Array of firefighter hours with shift details
+ */
+export async function getAllFirefightersWeeklyHours(weekDate: string | Date) {
+  try {
+    const date = new Date(weekDate)
+    const weekStart = getWeekStart(date)
+    const weekEnd = getWeekEnd(date)
+
+    const weekStartStr = formatDateStr(weekStart)
+    const weekEndStr = formatDateStr(weekEnd)
+
+    const allUsers = await sql`
+      SELECT id, first_name, last_name, email
+      FROM users
+      ORDER BY last_name, first_name
+    `
+
+    const userIds = allUsers.map((u: any) => u.id)
+
+    if (userIds.length === 0) {
+      return []
+    }
+
+    // Get weekly hours for all firefighters
+    const hoursMap = await getBatchFirefighterWeeklyHours(userIds, weekDate)
+
+    // Get cycle config
+    const cycleConfig = await sql`
+      SELECT start_date, cycle_length_days
+      FROM cycle_config
+      WHERE is_active = true
+      LIMIT 1
+    `
+
+    if (cycleConfig.length === 0) {
+      return allUsers.map((u: any) => ({
+        userId: u.id,
+        firstName: u.first_name,
+        lastName: u.last_name,
+        email: u.email,
+        hours: 0,
+        shifts: [],
+      }))
+    }
+
+    const { start_date, cycle_length_days } = cycleConfig[0]
+    const cycleStartDate = new Date(start_date)
+
+    // Calculate cycle days for the week
+    const cycleDays: number[] = []
+    const dateStrings: string[] = []
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(weekStart)
+      currentDate.setDate(weekStart.getDate() + i)
+      cycleDays.push(getCycleDay(currentDate, cycleStartDate, cycle_length_days))
+      dateStrings.push(formatDateStr(currentDate))
+    }
+
+    // Get all shifts for all users in this week
+    const [regularShifts, replacements, directAssignments] = await Promise.all([
+      sql`
+        SELECT tm.user_id, s.shift_type, s.cycle_day, sa.shift_date
+        FROM shifts s
+        JOIN team_members tm ON s.team_id = tm.team_id
+        LEFT JOIN shift_assignments sa ON sa.shift_id = s.id AND sa.user_id = tm.user_id
+        WHERE tm.user_id = ANY(${userIds})
+          AND s.cycle_day = ANY(${cycleDays})
+          AND (sa.shift_date IS NULL OR (sa.shift_date >= ${weekStartStr}::date AND sa.shift_date <= ${weekEndStr}::date))
+      `,
+      sql`
+        SELECT ra.applicant_id as user_id, r.shift_type, r.is_partial, r.start_time, r.end_time, r.shift_date
+        FROM replacements r
+        JOIN replacement_applications ra ON r.id = ra.replacement_id
+        WHERE ra.applicant_id = ANY(${userIds})
+          AND ra.status = 'approved'
+          AND r.status = 'assigned'
+          AND r.shift_date >= ${weekStartStr}
+          AND r.shift_date <= ${weekEndStr}
+      `,
+      sql`
+        SELECT sa.user_id, sa.is_partial, sa.start_time, sa.end_time, s.shift_type, sa.shift_date
+        FROM shift_assignments sa
+        JOIN shifts s ON sa.shift_id = s.id
+        WHERE sa.user_id = ANY(${userIds})
+          AND (sa.is_direct_assignment = true OR sa.replacement_order IS NOT NULL)
+          AND sa.shift_date >= ${weekStartStr}::date
+          AND sa.shift_date <= ${weekEndStr}::date
+      `,
+    ])
+
+    // Build shift details for each user
+    const userShifts = new Map<number, any[]>()
+
+    // Add regular shifts
+    for (const shift of regularShifts) {
+      const shifts = userShifts.get(shift.user_id) || []
+      // Calculate the date for this cycle day
+      const shiftDate = shift.shift_date || dateStrings[cycleDays.indexOf(shift.cycle_day)]
+      shifts.push({
+        shiftDate,
+        shiftType: shift.shift_type,
+        hours: calculateShiftHours(shift.shift_type, false, null, null),
+        isPartial: false,
+        startTime: null,
+        endTime: null,
+      })
+      userShifts.set(shift.user_id, shifts)
+    }
+
+    // Add replacements
+    for (const shift of replacements) {
+      const shifts = userShifts.get(shift.user_id) || []
+      shifts.push({
+        shiftDate: shift.shift_date,
+        shiftType: shift.shift_type,
+        hours: calculateShiftHours(shift.shift_type, shift.is_partial, shift.start_time, shift.end_time),
+        isPartial: shift.is_partial,
+        startTime: shift.start_time,
+        endTime: shift.end_time,
+      })
+      userShifts.set(shift.user_id, shifts)
+    }
+
+    // Add direct assignments
+    for (const shift of directAssignments) {
+      const shifts = userShifts.get(shift.user_id) || []
+      shifts.push({
+        shiftDate: shift.shift_date,
+        shiftType: shift.shift_type,
+        hours: calculateShiftHours(shift.shift_type, shift.is_partial, shift.start_time, shift.end_time),
+        isPartial: shift.is_partial,
+        startTime: shift.start_time,
+        endTime: shift.end_time,
+      })
+      userShifts.set(shift.user_id, shifts)
+    }
+
+    // Build final result
+    return allUsers.map((u: any) => ({
+      userId: u.id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      email: u.email,
+      hours: hoursMap.get(u.id) || 0,
+      shifts: (userShifts.get(u.id) || []).sort((a, b) => {
+        const dateA = new Date(a.shiftDate).getTime()
+        const dateB = new Date(b.shiftDate).getTime()
+        return dateA - dateB
+      }),
+    }))
+  } catch (error) {
+    console.error("getAllFirefightersWeeklyHours: Error:", error)
+    return []
   }
 }
