@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { CalendarView } from "@/components/calendar-view"
-import { TodayButton } from "@/components/today-button"
+import { CalendarMonthNavigation } from "@/components/calendar-month-navigation"
 import { ScrollToTodayOnNav } from "@/components/scroll-to-today-on-nav"
 
 export const dynamic = "force-dynamic"
@@ -218,8 +218,8 @@ export default async function CalendarPage({
         </div>
 
         <div className="relative">
-          <div className="sticky top-32 -left-16 z-50 float-left">
-            <TodayButton />
+          <div className="sticky top-32 -left-20 z-50 float-left">
+            <CalendarMonthNavigation />
           </div>
 
           <CalendarView
