@@ -410,8 +410,18 @@ export function CalendarView({
         </div>
 
         <div className="grid gap-1 md:gap-3 grid-cols-7">
-          {months.flatMap(({ year, month, days }) =>
-            days.map((day, index) => {
+          {months.flatMap(({ year, month, days }, monthIndex) => {
+            const cells = []
+
+            if (monthIndex === 0 && days.length > 0) {
+              const firstDayOfWeek = days[0].dayOfWeek
+              for (let i = 0; i < firstDayOfWeek; i++) {
+                cells.push(<div key={`empty-${year}-${month}-${i}`} />)
+              }
+            }
+
+            // Add actual day cells
+            days.forEach((day, index) => {
               const shifts = shiftsByCycleDay[day.cycleDay] || []
               const dateStr = formatLocalDate(day.date)
 
@@ -442,7 +452,7 @@ export function CalendarView({
 
               const showMonthBadge = day.isFirstDayOfMonth
 
-              return (
+              cells.push(
                 <div key={`${year}-${month}-${index}`} className="relative">
                   {showMonthBadge && (
                     <div className="absolute top-5 left-0 right-0 flex justify-center z-10 pointer-events-none">
@@ -464,10 +474,12 @@ export function CalendarView({
                     isAdmin={isAdmin}
                     onReplacementCreated={handleReplacementCreated}
                   />
-                </div>
+                </div>,
               )
-            }),
-          )}
+            })
+
+            return cells
+          })}
         </div>
       </div>
 
