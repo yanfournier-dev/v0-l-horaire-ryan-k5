@@ -400,6 +400,8 @@ export async function approveApplication(
     return { error: "Non autorisé" }
   }
 
+  console.log("[v0] approveApplication called - applicationId:", applicationId, "forceAssign:", forceAssign)
+
   try {
     const db = neon(process.env.DATABASE_URL!, {
       fetchConnectionCache: true,
@@ -436,6 +438,8 @@ export async function approveApplication(
       user_id: replacedUserId,
     } = appResult[0]
 
+    console.log("[v0] About to check consecutive hours for applicant:", applicantId, "forceAssign:", forceAssign)
+
     if (!forceAssign) {
       const shiftDateStr = new Date(shift_date).toISOString().split("T")[0]
       const consecutiveCheck = await checkConsecutiveHours(
@@ -447,13 +451,18 @@ export async function approveApplication(
         end_time,
       )
 
+      console.log("[v0] Consecutive check result:", consecutiveCheck)
+
       if (consecutiveCheck.exceeds) {
+        console.log("[v0] Returning CONSECUTIVE_HOURS_EXCEEDED error")
         return {
           error: "CONSECUTIVE_HOURS_EXCEEDED",
           message: consecutiveCheck.message,
           totalHours: consecutiveCheck.totalHours,
         }
       }
+    } else {
+      console.log("[v0] Skipping consecutive hours check (forceAssign=true)")
     }
 
     const cycleConfig = await db`
