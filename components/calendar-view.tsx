@@ -455,7 +455,7 @@ export function CalendarView({
               cells.push(
                 <div key={`${year}-${month}-${index}`} className="relative">
                   {showMonthBadge && (
-                    <div className="absolute top-5 left-0 right-0 flex justify-center z-10 pointer-events-none">
+                    <div className="absolute top-5 left-0 right-0 justify-center z-10 pointer-events-none hidden md:flex">
                       <span className="text-sm font-bold text-orange-600">
                         {getMonthName(month)} {year}
                       </span>
