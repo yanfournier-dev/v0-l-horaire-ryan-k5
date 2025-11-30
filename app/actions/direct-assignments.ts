@@ -4,6 +4,7 @@ import { neon } from "@neondatabase/serverless"
 import { revalidatePath } from "next/cache"
 import { createAuditLog } from "./audit"
 import { getSession } from "./auth"
+import { checkConsecutiveHours } from "@/lib/consecutive-hours"
 
 const sql = neon(process.env.DATABASE_URL!, {
   fetchConnectionCache: true,
@@ -44,6 +45,33 @@ export async function createDirectAssignment(params: {
       params
 
     const finalShiftDate = shiftDate || null
+
+    const shiftInfo = await sql`
+      SELECT shift_type FROM shifts WHERE id = ${shiftId}
+    `
+
+    if (shiftInfo.length === 0) {
+      return { success: false, error: "Quart non trouvé" }
+    }
+
+    if (finalShiftDate) {
+      const consecutiveCheck = await checkConsecutiveHours(
+        assignedUserId,
+        finalShiftDate,
+        shiftInfo[0].shift_type,
+        isPartial || false,
+        startTime,
+        endTime,
+      )
+
+      if (consecutiveCheck.exceeds) {
+        return {
+          error: "CONSECUTIVE_HOURS_EXCEEDED",
+          message: consecutiveCheck.message,
+          totalHours: consecutiveCheck.totalHours,
+        }
+      }
+    }
 
     const existing = await sql`
       SELECT id FROM shift_assignments

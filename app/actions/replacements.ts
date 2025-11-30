@@ -7,6 +7,7 @@ import { calculateAutoDeadline, formatLocalDate, calculateEndOfShiftDeadline } f
 import { revalidatePath } from "next/cache"
 import { neon } from "@neondatabase/serverless"
 import { createAuditLog } from "./audit"
+import { checkConsecutiveHours } from "@/lib/consecutive-hours"
 
 export async function getUserApplications(userId: number) {
   try {
@@ -389,7 +390,11 @@ export async function withdrawApplication(applicationId: number) {
   }
 }
 
-export async function approveApplication(applicationId: number, replacementId: number) {
+export async function approveApplication(
+  applicationId: number,
+  replacementId: number,
+  forceAssign = false, // Added parameter to bypass consecutive hours check
+) {
   const user = await getSession()
   if (!user?.is_admin) {
     return { error: "Non autorisé" }
@@ -430,6 +435,26 @@ export async function approveApplication(applicationId: number, replacementId: n
       end_time,
       user_id: replacedUserId,
     } = appResult[0]
+
+    if (!forceAssign) {
+      const shiftDateStr = new Date(shift_date).toISOString().split("T")[0]
+      const consecutiveCheck = await checkConsecutiveHours(
+        applicantId,
+        shiftDateStr,
+        shift_type,
+        is_partial || false,
+        start_time,
+        end_time,
+      )
+
+      if (consecutiveCheck.exceeds) {
+        return {
+          error: "CONSECUTIVE_HOURS_EXCEEDED",
+          message: consecutiveCheck.message,
+          totalHours: consecutiveCheck.totalHours,
+        }
+      }
+    }
 
     const cycleConfig = await db`
       SELECT start_date, cycle_length_days

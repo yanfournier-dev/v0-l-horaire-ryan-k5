@@ -60,6 +60,9 @@ export function ApproveApplicationButton({
   const [isLoading, setIsLoading] = useState(false)
   const [showRoleSelectionDialog, setShowRoleSelectionDialog] = useState(false)
   const [showOvertimeWarning, setShowOvertimeWarning] = useState(false)
+  const [showConsecutiveHoursWarning, setShowConsecutiveHoursWarning] = useState(false)
+  const [consecutiveHoursMessage, setConsecutiveHoursMessage] = useState("")
+  const [consecutiveHoursTotal, setConsecutiveHoursTotal] = useState(0)
   const [selectedLieutenantId, setSelectedLieutenantId] = useState<string>("")
   const [selectedCaptainId, setSelectedCaptainId] = useState<string>("")
   const router = useRouter()
@@ -154,12 +157,20 @@ export function ApproveApplicationButton({
     await performApproval()
   }
 
-  const performApproval = async (captainId?: number, lieutenantId?: number) => {
+  const performApproval = async (captainId?: number, lieutenantId?: number, forceConsecutive = false) => {
     setIsLoading(true)
     const pathParts = window.location.pathname.split("/")
     const replacementId = Number.parseInt(pathParts[pathParts.length - 1])
 
-    const result = await approveApplication(applicationId, replacementId)
+    const result = await approveApplication(applicationId, replacementId, forceConsecutive)
+
+    if (result.error === "CONSECUTIVE_HOURS_EXCEEDED") {
+      setConsecutiveHoursMessage(result.message || "")
+      setConsecutiveHoursTotal(result.totalHours || 0)
+      setShowConsecutiveHoursWarning(true)
+      setIsLoading(false)
+      return
+    }
 
     if (result.success && result.shiftId) {
       if (isReplacingCaptain && captainId) {
@@ -180,11 +191,16 @@ export function ApproveApplicationButton({
       const currentPath = window.location.pathname + window.location.search
       router.push(currentPath)
       router.refresh()
-    } else {
+    } else if (result.error) {
       toast.error(result.error || "Erreur lors de l'assignation")
     }
 
     setIsLoading(false)
+  }
+
+  const handleConsecutiveHoursConfirm = async () => {
+    setShowConsecutiveHoursWarning(false)
+    await performApproval(undefined, undefined, true)
   }
 
   const handleRoleSelection = async () => {
@@ -279,6 +295,38 @@ export function ApproveApplicationButton({
               Annuler
             </Button>
             <Button onClick={handleOvertimeConfirm} disabled={isLoading} className="bg-amber-600 hover:bg-amber-700">
+              Assigner quand même
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showConsecutiveHoursWarning} onOpenChange={setShowConsecutiveHoursWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <AlertTriangle className="h-5 w-5" />
+              Avertissement: Heures consécutives élevées
+            </DialogTitle>
+            <div className="text-muted-foreground text-sm space-y-2 pt-2">
+              <div className="text-foreground font-medium">{consecutiveHoursMessage}</div>
+              <div>
+                Le pompier sélectionné travaillerait{" "}
+                <strong className="text-orange-600">{consecutiveHoursTotal}h consécutives</strong>, ce qui dépasse la
+                limite recommandée de 38 heures.
+              </div>
+              <div className="text-foreground font-medium pt-2">Voulez-vous quand même assigner ce pompier?</div>
+            </div>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConsecutiveHoursWarning(false)} disabled={isLoading}>
+              Annuler
+            </Button>
+            <Button
+              onClick={handleConsecutiveHoursConfirm}
+              disabled={isLoading}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
               Assigner quand même
             </Button>
           </DialogFooter>
