@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { createNotification } from "@/app/actions/notifications"
 import { parseLocalDate } from "@/lib/calendar"
 import { createAuditLog } from "./audit"
+import { checkConsecutiveHours } from "@/lib/consecutive-hours"
 
 export async function checkExchangeTablesExist() {
   try {
@@ -446,7 +447,7 @@ export async function getUserExchangeCount(userId: number, year?: number) {
   }
 }
 
-export async function approveExchange(exchangeId: number) {
+export async function approveExchange(exchangeId: number, forceConsecutiveHours = false) {
   try {
     const user = await getSession()
     if (!user || !user.is_admin) {
@@ -476,6 +477,55 @@ export async function approveExchange(exchangeId: number) {
     }
 
     console.log("[v0] Approving exchange:", exchangeId, exchange)
+
+    if (!forceConsecutiveHours) {
+      console.log("[v0] Checking consecutive hours for exchange approval")
+
+      const requesterShiftDateStr = new Date(exchange.target_shift_date).toISOString().split("T")[0]
+      const targetShiftDateStr = new Date(exchange.requester_shift_date).toISOString().split("T")[0]
+
+      // Check requester (taking target's shift)
+      const requesterCheck = await checkConsecutiveHours(
+        exchange.requester_id,
+        requesterShiftDateStr,
+        exchange.target_shift_type,
+      )
+
+      if (requesterCheck.exceeds) {
+        const users = await sql`SELECT first_name, last_name FROM users WHERE id = ${exchange.requester_id}`
+        const userName = users.length > 0 ? `${users[0].first_name} ${users[0].last_name}` : "Le pompier"
+
+        return {
+          error: "CONSECUTIVE_HOURS_EXCEEDED",
+          message: `${userName} travaillerait ${requesterCheck.totalHours.toFixed(1)}h consécutives en prenant ce quart, ce qui dépasse la limite de 38h.`,
+          maxHours: requesterCheck.totalHours,
+          userId: exchange.requester_id,
+        }
+      }
+
+      // Check target (taking requester's shift)
+      const targetCheck = await checkConsecutiveHours(
+        exchange.target_id,
+        targetShiftDateStr,
+        exchange.requester_shift_type,
+      )
+
+      if (targetCheck.exceeds) {
+        const users = await sql`SELECT first_name, last_name FROM users WHERE id = ${exchange.target_id}`
+        const userName = users.length > 0 ? `${users[0].first_name} ${users[0].last_name}` : "Le pompier"
+
+        return {
+          error: "CONSECUTIVE_HOURS_EXCEEDED",
+          message: `${userName} travaillerait ${targetCheck.totalHours.toFixed(1)}h consécutives en prenant ce quart, ce qui dépasse la limite de 38h.`,
+          maxHours: targetCheck.totalHours,
+          userId: exchange.target_id,
+        }
+      }
+
+      console.log("[v0] Consecutive hours check passed for both firefighters")
+    } else {
+      console.log("[v0] Consecutive hours check bypassed (forced approval)")
+    }
 
     // Start transaction
     await sql`BEGIN`
@@ -1025,6 +1075,7 @@ export async function createExchangeAsAdmin(data: {
   targetStartTime?: string
   targetEndTime?: string
   autoApprove: boolean
+  forceConsecutiveHours?: boolean
 }) {
   try {
     const user = await getSession()
@@ -1039,6 +1090,44 @@ export async function createExchangeAsAdmin(data: {
     let warning = undefined
     if (count >= 8) {
       warning = `Attention: Le pompier a déjà ${count} échanges approuvés pour l'année ${requesterShiftYear}. La limite recommandée est de 8 échanges par année.`
+    }
+
+    if (data.autoApprove && !data.forceConsecutiveHours) {
+      console.log("[v0] Checking consecutive hours for admin exchange creation")
+
+      // Check requester (taking target's shift)
+      const requesterCheck = await checkConsecutiveHours(data.requesterId, data.targetShiftDate, data.targetShiftType)
+
+      if (requesterCheck.exceeds) {
+        const users = await sql`SELECT first_name, last_name FROM users WHERE id = ${data.requesterId}`
+        const userName = users.length > 0 ? `${users[0].first_name} ${users[0].last_name}` : "Le pompier"
+
+        return {
+          error: "CONSECUTIVE_HOURS_EXCEEDED",
+          message: `${userName} travaillerait ${requesterCheck.totalHours.toFixed(1)}h consécutives en prenant ce quart, ce qui dépasse la limite de 38h.`,
+          maxHours: requesterCheck.totalHours,
+          userId: data.requesterId,
+        }
+      }
+
+      // Check target (taking requester's shift)
+      const targetCheck = await checkConsecutiveHours(data.targetId, data.requesterShiftDate, data.requesterShiftType)
+
+      if (targetCheck.exceeds) {
+        const users = await sql`SELECT first_name, last_name FROM users WHERE id = ${data.targetId}`
+        const userName = users.length > 0 ? `${users[0].first_name} ${users[0].last_name}` : "Le pompier"
+
+        return {
+          error: "CONSECUTIVE_HOURS_EXCEEDED",
+          message: `${userName} travaillerait ${targetCheck.totalHours.toFixed(1)}h consécutives en prenant ce quart, ce qui dépasse la limite de 38h.`,
+          maxHours: targetCheck.totalHours,
+          userId: data.targetId,
+        }
+      }
+
+      console.log("[v0] Consecutive hours check passed for both firefighters")
+    } else if (data.autoApprove) {
+      console.log("[v0] Consecutive hours check bypassed (forced approval)")
     }
 
     // Create the exchange request

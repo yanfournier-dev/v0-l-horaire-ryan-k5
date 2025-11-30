@@ -33,6 +33,13 @@ export function PendingExchangesTab({ exchanges }: PendingExchangesTabProps) {
   const [rejectReason, setRejectReason] = useState("")
   const [exchangeCounts, setExchangeCounts] = useState<Record<number, { count: number; year: number }>>({})
 
+  const [showConsecutiveHoursAlert, setShowConsecutiveHoursAlert] = useState(false)
+  const [consecutiveHoursData, setConsecutiveHoursData] = useState<{
+    exchangeId: number
+    message: string
+    maxHours: number
+  } | null>(null)
+
   useEffect(() => {
     const loadExchangeCounts = async () => {
       const counts: Record<number, { count: number; year: number }> = {}
@@ -48,7 +55,7 @@ export function PendingExchangesTab({ exchanges }: PendingExchangesTabProps) {
     }
   }, [exchanges])
 
-  const handleApprove = async (exchangeId: number) => {
+  const handleApprove = async (exchangeId: number, forceConsecutiveHours = false) => {
     const countInfo = exchangeCounts[exchangeId]
     if (countInfo && countInfo.count >= 8) {
       if (
@@ -61,9 +68,19 @@ export function PendingExchangesTab({ exchanges }: PendingExchangesTabProps) {
     }
 
     setProcessingId(exchangeId)
-    const result = await approveExchange(exchangeId)
+    const result = await approveExchange(exchangeId, forceConsecutiveHours)
 
     if (result.error) {
+      if (result.error === "CONSECUTIVE_HOURS_EXCEEDED") {
+        setConsecutiveHoursData({
+          exchangeId,
+          message: result.message || "Heures consécutives dépassées",
+          maxHours: result.maxHours || 0,
+        })
+        setShowConsecutiveHoursAlert(true)
+        setProcessingId(null)
+        return
+      }
       alert(result.error)
     } else {
       if (result.warning) {
@@ -73,6 +90,14 @@ export function PendingExchangesTab({ exchanges }: PendingExchangesTabProps) {
     }
 
     setProcessingId(null)
+  }
+
+  const handleForceConsecutiveHours = async () => {
+    if (!consecutiveHoursData) return
+
+    setShowConsecutiveHoursAlert(false)
+    await handleApprove(consecutiveHoursData.exchangeId, true)
+    setConsecutiveHoursData(null)
   }
 
   const handleRejectClick = (exchangeId: number) => {
@@ -256,6 +281,45 @@ export function PendingExchangesTab({ exchanges }: PendingExchangesTabProps) {
             </Button>
             <Button onClick={handleRejectConfirm} disabled={processingId !== null} variant="destructive">
               {processingId !== null ? "Traitement..." : "Refuser l'échange"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showConsecutiveHoursAlert} onOpenChange={setShowConsecutiveHoursAlert}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+              <AlertTriangle className="h-5 w-5" />
+              Avertissement: Heures consécutives élevées
+            </DialogTitle>
+            <DialogDescription>
+              <div className="space-y-2 mt-2">
+                <div className="text-foreground font-medium">{consecutiveHoursData?.message}</div>
+                <div className="text-sm">
+                  Le pompier sélectionné travaillerait{" "}
+                  <span className="font-bold text-orange-600 dark:text-orange-400">
+                    {consecutiveHoursData?.maxHours.toFixed(1)}h consécutives
+                  </span>
+                  , ce qui dépasse la limite recommandée de 38 heures.
+                </div>
+                <div className="text-sm font-medium mt-4">Voulez-vous quand même approuver cet échange?</div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowConsecutiveHoursAlert(false)
+                setConsecutiveHoursData(null)
+                setProcessingId(null)
+              }}
+            >
+              Annuler
+            </Button>
+            <Button onClick={handleForceConsecutiveHours} className="bg-orange-600 hover:bg-orange-700 text-white">
+              Approuver quand même
             </Button>
           </DialogFooter>
         </DialogContent>
