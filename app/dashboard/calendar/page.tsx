@@ -218,7 +218,7 @@ export default async function CalendarPage({
         </div>
 
         <div className="relative">
-          <div className="sticky top-32 -left-20 z-50 float-left">
+          <div className="hidden md:block sticky top-32 -left-20 z-50 float-left">
             <CalendarMonthNavigation />
           </div>
 
