@@ -656,7 +656,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
 
     setIsLoading(false)
-    refreshAndClose()
+    refreshShiftAndClose()
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
@@ -675,7 +675,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} n'est plus désigné comme lieutenant`)
 
     setIsLoading(false)
-    refreshAndClose()
+    refreshShiftAndClose()
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
@@ -694,7 +694,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme capitaine`)
 
     setIsLoading(false)
-    refreshAndClose()
+    refreshShiftAndClose()
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
@@ -713,7 +713,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} n'est plus désigné comme capitaine`)
 
     setIsLoading(false)
-    refreshAndClose()
+    refreshShiftAndClose()
   }
 
   const handleRemoveReplacement = async (

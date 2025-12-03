@@ -791,11 +791,12 @@ export async function getShiftNotesForDate(shiftId: number, date: string) {
 }
 
 export async function getCalendarDataForDateRange(startDate: string, endDate: string) {
-  const [replacements, exchanges, leaves, shiftNotes] = await Promise.all([
+  const [replacements, exchanges, leaves, shiftNotes, actingDesignations] = await Promise.all([
     getReplacementsForDateRange(startDate, endDate),
     getExchangesForDateRange(startDate, endDate),
     getLeavesForDateRange(startDate, endDate),
     getShiftNotesForDateRange(startDate, endDate),
+    getActingDesignationsForRange(startDate, endDate),
   ])
 
   return {
@@ -803,6 +804,7 @@ export async function getCalendarDataForDateRange(startDate: string, endDate: st
     exchanges,
     leaves,
     shiftNotes,
+    actingDesignations,
   }
 }
 

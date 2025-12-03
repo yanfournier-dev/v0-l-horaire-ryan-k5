@@ -419,6 +419,7 @@ export function CalendarView({
 
       console.log("[v0] handleShiftUpdated - received directAssignments:", directAssignmentsData?.length || 0)
       console.log("[v0] handleShiftUpdated - received replacements:", data.replacements?.length || 0)
+      console.log("[v0] handleShiftUpdated - received actingDesignations:", data.actingDesignations?.length || 0)
 
       const newDirectAssignmentMap: Record<string, any[]> = {}
       if (directAssignmentsData) {
@@ -446,7 +447,20 @@ export function CalendarView({
       })
       setReplacementMap(newReplacementMap)
 
-      console.log("[v0] CalendarView - direct assignment map and replacement map updated")
+      const newActingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
+      if (data.actingDesignations) {
+        data.actingDesignations.forEach((ad: any) => {
+          const key = `${ad.cycle_day}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+          newActingDesignationMap[key] = {
+            isActingLieutenant: ad.is_acting_lieutenant,
+            isActingCaptain: ad.is_acting_captain,
+          }
+        })
+      }
+      console.log("[v0] handleShiftUpdated - new actingDesignationMap keys:", Object.keys(newActingDesignationMap))
+      setActingDesignationMap(newActingDesignationMap)
+
+      console.log("[v0] CalendarView - direct assignment map, replacement map, and acting designation map updated")
     },
     [months],
   )
