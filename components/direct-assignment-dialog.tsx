@@ -100,11 +100,24 @@ export function DirectAssignmentDialog({
       return
     }
 
+    if (typeof window !== "undefined") {
+      const scrollPos = window.scrollY
+      console.log("[v0] DirectAssignmentDialog - saving scroll before createDirectAssignment:", scrollPos)
+      sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
+      sessionStorage.setItem("skip-scroll-to-today", "true")
+    }
+
     setIsLoading(true)
 
     try {
       const shiftDateStr = `${shift.date.getFullYear()}-${String(shift.date.getMonth() + 1).padStart(2, "0")}-${String(shift.date.getDate()).padStart(2, "0")}`
       console.log("[v0] DirectAssignmentDialog - shift.date:", shift.date, "converted to:", shiftDateStr)
+      console.log("[v0] DirectAssignmentDialog - Creating direct assignment:", {
+        shiftId: shift.id,
+        replacedUserId: preSelectedFirefighter.id,
+        assignedUserId: assignedFirefighter,
+        isPartial,
+      })
 
       const result = await createDirectAssignment({
         shiftId: shift.id,
@@ -115,6 +128,8 @@ export function DirectAssignmentDialog({
         endTime: isPartial ? endTime : undefined,
         shiftDate: shiftDateStr,
       })
+
+      console.log("[v0] DirectAssignmentDialog - createDirectAssignment result:", result)
 
       if (result.error === "CONSECUTIVE_HOURS_EXCEEDED") {
         setWarningMessage(result.message || "")
@@ -131,12 +146,15 @@ export function DirectAssignmentDialog({
       }
 
       toast.success("Pompier assigné directement avec succès")
+      console.log("[v0] DirectAssignmentDialog - Closing dialog and calling onSuccess")
       onOpenChange(false)
       setIsLoading(false)
       setTimeout(() => {
+        console.log("[v0] DirectAssignmentDialog - Calling onSuccess callback")
         onSuccess()
       }, 100)
     } catch (error) {
+      console.error("[v0] DirectAssignmentDialog - Error:", error)
       toast.error("Erreur lors de l'assignation")
       setIsLoading(false)
     }

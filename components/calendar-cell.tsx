@@ -15,35 +15,18 @@ import { FileText } from "lucide-react"
 import { format } from "date-fns"
 
 interface CalendarCellProps {
-  day: {
-    date: Date
-    cycleDay: number
-    dayOfWeek: number
-    isToday: boolean
-    isCurrentMonth?: boolean
-  }
-  shifts: Array<{
-    id: number
-    team_id: number
-    cycle_day: number
-    shift_type: string
-    start_time: string
-    end_time: string
-    team_name: string
-    team_color?: string
-    assigned_count: number
-    assigned_firefighters?: string
-    has_note: boolean // New prop to indicate if a shift has a note
-  }>
-  replacements: Array<any[]>
-  exchanges: Array<any[]> // Add exchanges prop
-  leaves: Array<any>
+  day: any
+  shifts: any[]
+  replacements: any[][]
+  exchanges: any[][]
+  leaves: any[]
   leaveMap: Record<string, any[]>
-  directAssignments: Array<any[]> // Array of direct assignments per shift
+  directAssignments: any[][]
   actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }>
   dateStr: string
   isAdmin: boolean
   onReplacementCreated?: () => void
+  onShiftUpdated?: (shift: any) => void
 }
 
 function getDayOfWeekLabel(dayOfWeek: number): string {
@@ -69,11 +52,12 @@ export function CalendarCell({
   exchanges,
   leaves,
   leaveMap,
-  directAssignments, // Using directAssignments array instead of map
+  directAssignments,
   actingDesignationMap,
   dateStr,
   isAdmin,
   onReplacementCreated,
+  onShiftUpdated,
 }: CalendarCellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedShift, setSelectedShift] = useState<any>(null)
@@ -694,7 +678,8 @@ export function CalendarCell({
           leaves={leaves}
           dateStr={dateStr}
           isAdmin={isAdmin}
-          onReplacementCreated={onReplacementCreated} // Pass callback to drawer
+          onReplacementCreated={onReplacementCreated}
+          onShiftUpdated={onShiftUpdated}
         />
       )}
 

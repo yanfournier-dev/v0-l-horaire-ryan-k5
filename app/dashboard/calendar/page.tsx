@@ -176,17 +176,23 @@ export default async function CalendarPage({
       })
     })
 
+    console.log("[v0] directAssignments array:", directAssignments)
+    console.log("[v0] directAssignments length:", directAssignments.length)
+
     const directAssignmentMap: Record<string, any[]> = {}
     directAssignments.forEach((da: any) => {
       const dateOnly = formatDateForDB(new Date(da.shift_date))
       const key = `${dateOnly}_${da.shift_type}_${da.team_id}`
+      console.log("[v0] directAssignment key:", key, "data:", da)
       if (!directAssignmentMap[key]) {
         directAssignmentMap[key] = []
       }
       directAssignmentMap[key].push(da)
     })
 
+    console.log("[v0] directAssignmentMap keys:", Object.keys(directAssignmentMap))
     console.log("[v0] Sample directAssignment for Nov 26:", directAssignmentMap["2025-11-26_day_2"]?.[0])
+    console.log("[v0] Sample directAssignment for Dec 4:", directAssignmentMap["2025-12-04_day_4"]?.[0])
 
     const actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
     actingDesignations.forEach((ad: any) => {

@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { CalendarCell } from "@/components/calendar-cell"
 import { Button } from "@/components/ui/button"
 import { ChevronUp, ChevronDown } from "lucide-react"
 import { generateMonthView, getMonthName } from "@/lib/calendar"
 import { getCurrentLocalDate, formatLocalDate, formatDateForDB } from "@/lib/date-utils"
-import { getCalendarDataForDateRange } from "@/app/actions/calendar"
+import { getCalendarDataForDateRange, getDirectAssignmentsForDateRange } from "@/app/actions/calendar"
 
 interface CalendarViewProps {
   initialMonths: Array<{
@@ -26,6 +27,7 @@ interface CalendarViewProps {
   cycleStartDate: Date
   currentYear: number
   currentMonth: number
+  onReplacementCreated?: () => void
 }
 
 export function CalendarView({
@@ -42,6 +44,7 @@ export function CalendarView({
   cycleStartDate,
   currentYear,
   currentMonth,
+  onReplacementCreated,
 }: CalendarViewProps) {
   const [months, setMonths] = useState(initialMonths)
   const [replacementMap, setReplacementMap] = useState(initialReplacementMap)
@@ -53,6 +56,7 @@ export function CalendarView({
   const [actingDesignationMap, setActingDesignationMap] = useState(initialActingDesignationMap) // Adding state for actingDesignationMap
   const [loading, setLoading] = useState(false)
   const scrollAnchorRef = useRef<string | null>(null)
+  const router = useRouter() // Adding router to refresh server component
 
   const todayStr = getCurrentLocalDate()
 
@@ -193,8 +197,8 @@ export function CalendarView({
           newLeaveMap[key].push(leave)
         }
       })
-      setLeaveMap(newLeaveMap)
       setLeaves([...leaves, ...data.leaves])
+      setLeaveMap(newLeaveMap)
 
       const newNoteMap = { ...noteMap }
       data.shiftNotes.forEach((note: any) => {
@@ -372,7 +376,7 @@ export function CalendarView({
     const lastMonth = months[months.length - 1]
     const lastDay = lastMonth.days[lastMonth.days.length - 1].date
 
-    // Fetch new data
+    // Fetch new replacement data only
     const data = await getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
 
     // Build new replacement map
@@ -385,11 +389,67 @@ export function CalendarView({
       }
       newReplacementMap[key].push(repl)
     })
-
-    // Update state with new map (immutable update)
     setReplacementMap(newReplacementMap)
+
     console.log("[v0] CalendarView - replacement map updated")
   }, [months])
+
+  const handleShiftUpdated = useCallback(
+    async (updatedShift: any) => {
+      console.log("[v0] CalendarView - shift updated, refreshing calendar data")
+
+      const firstMonth = months[0]
+      if (!firstMonth || !firstMonth.days.length) return
+
+      const firstDay = firstMonth.days[0].date
+      const lastMonth = months[months.length - 1]
+      const lastDay = lastMonth.days[lastMonth.days.length - 1].date
+
+      console.log(
+        "[v0] handleShiftUpdated - fetching data from",
+        formatDateForDB(firstDay),
+        "to",
+        formatDateForDB(lastDay),
+      )
+
+      const [data, directAssignmentsData] = await Promise.all([
+        getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)),
+        getDirectAssignmentsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)),
+      ])
+
+      console.log("[v0] handleShiftUpdated - received directAssignments:", directAssignmentsData?.length || 0)
+      console.log("[v0] handleShiftUpdated - received replacements:", data.replacements?.length || 0)
+
+      const newDirectAssignmentMap: Record<string, any[]> = {}
+      if (directAssignmentsData) {
+        directAssignmentsData.forEach((assignment: any) => {
+          const dateOnly = formatLocalDate(assignment.shift_date)
+          const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
+          if (!newDirectAssignmentMap[key]) {
+            newDirectAssignmentMap[key] = []
+          }
+          newDirectAssignmentMap[key].push(assignment)
+        })
+      }
+      console.log("[v0] handleShiftUpdated - new directAssignmentMap keys:", Object.keys(newDirectAssignmentMap))
+      setDirectAssignmentMap(newDirectAssignmentMap)
+
+      // Also update replacement map since other actions might have happened
+      const newReplacementMap: Record<string, any[]> = {}
+      data.replacements.forEach((repl: any) => {
+        const dateOnly = formatLocalDate(repl.shift_date)
+        const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
+        if (!newReplacementMap[key]) {
+          newReplacementMap[key] = []
+        }
+        newReplacementMap[key].push(repl)
+      })
+      setReplacementMap(newReplacementMap)
+
+      console.log("[v0] CalendarView - direct assignment map and replacement map updated")
+    },
+    [months],
+  )
 
   return (
     <div className="flex flex-col gap-8">
@@ -473,6 +533,7 @@ export function CalendarView({
                     dateStr={dateStr}
                     isAdmin={isAdmin}
                     onReplacementCreated={handleReplacementCreated}
+                    onShiftUpdated={handleShiftUpdated}
                   />
                 </div>,
               )

@@ -99,6 +99,7 @@ interface ShiftAssignmentDrawerProps {
   isAdmin?: boolean
   currentUserId?: number
   onReplacementCreated?: () => void
+  onShiftUpdated?: (shift: any) => void
 }
 
 function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
@@ -119,6 +120,7 @@ export function ShiftAssignmentDrawer({
   isAdmin = false,
   currentUserId,
   onReplacementCreated,
+  onShiftUpdated,
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter() // Added missing import
 
@@ -183,9 +185,30 @@ export function ShiftAssignmentDrawer({
   }, [open, shift, teamFirefighters, currentAssignments])
 
   const refreshAndClose = useCallback(() => {
-    // Just close the drawer
+    console.log("[v0] Drawer - refreshAndClose called")
+    if (onReplacementCreated) {
+      console.log("[v0] Drawer - Calling onReplacementCreated callback")
+      onReplacementCreated()
+    } else {
+      console.log("[v0] Drawer - No onReplacementCreated callback available")
+    }
+    console.log("[v0] Drawer - Closing drawer")
     onOpenChange(false)
-  }, [onOpenChange])
+  }, [onReplacementCreated, onOpenChange])
+
+  const refreshShiftAndClose = useCallback(async () => {
+    console.log("[v0] Drawer - refreshShiftAndClose called")
+
+    if (onShiftUpdated) {
+      console.log("[v0] Drawer - Calling onShiftUpdated callback")
+      await onShiftUpdated(shift)
+    } else {
+      console.log("[v0] Drawer - No onShiftUpdated callback available")
+    }
+
+    console.log("[v0] Drawer - Closing drawer")
+    onOpenChange(false)
+  }, [onShiftUpdated, shift, onOpenChange])
 
   useEffect(() => {
     if (open) {
@@ -552,6 +575,13 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleRemoveReplacementAssignment = async (replacementId: number, replacementName: string) => {
+    if (typeof window !== "undefined") {
+      const scrollPos = window.scrollY
+      console.log("[v0] Drawer - saving scroll before removeReplacementAssignment:", scrollPos)
+      sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
+      sessionStorage.setItem("skip-scroll-to-today", "true")
+    }
+
     setIsLoading(true)
 
     const result = await removeReplacementAssignment(replacementId)
@@ -574,9 +604,21 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleRemoveDirectAssignment = async (userId: number, firefighterName: string) => {
+    console.log("[v0] Drawer - handleRemoveDirectAssignment called for:", firefighterName, "userId:", userId)
+
+    if (typeof window !== "undefined") {
+      const scrollPos = window.scrollY
+      console.log("[v0] Drawer - saving scroll before removeDirectAssignment:", scrollPos)
+      sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
+      sessionStorage.setItem("skip-scroll-to-today", "true")
+    }
+
     setIsLoading(true)
 
+    console.log("[v0] Drawer - Calling removeDirectAssignment action")
     const result = await removeDirectAssignment(shift.id, userId)
+
+    console.log("[v0] Drawer - removeDirectAssignment result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -587,11 +629,19 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été retiré de l'assignation directe`)
 
     setIsLoading(false)
-    refreshAndClose()
+    console.log("[v0] Drawer - Calling refreshShiftAndClose after removeDirectAssignment")
+    refreshShiftAndClose()
   }
 
   const handleSetLieutenant = async (userId: number, firefighterName: string) => {
     if (!shift) return
+
+    if (typeof window !== "undefined") {
+      const scrollPos = window.scrollY
+      console.log("[v0] Drawer - saving scroll before setActingLieutenant:", scrollPos)
+      sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
+      sessionStorage.setItem("skip-scroll-to-today", "true")
+    }
 
     setIsLoading(true)
 
@@ -672,7 +722,13 @@ export function ShiftAssignmentDrawer({
     replacementOrder: number,
     firefighterName: string,
   ) => {
-    // Added
+    if (typeof window !== "undefined") {
+      const scrollPos = window.scrollY
+      console.log("[v0] Drawer - saving scroll before removeReplacement:", scrollPos)
+      sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
+      sessionStorage.setItem("skip-scroll-to-today", "true")
+    }
+
     setIsLoading(true)
 
     const result = await removeReplacement(shiftId, userId, replacementOrder)
@@ -1471,7 +1527,18 @@ export function ShiftAssignmentDrawer({
                                   {isAdmin && (
                                     <DeleteReplacementButton
                                       replacementId={replacement.id}
-                                      onSuccess={refreshAndClose}
+                                      onSuccess={() => {
+                                        if (typeof window !== "undefined") {
+                                          const scrollPos = window.scrollY
+                                          console.log(
+                                            "[v0] Drawer - saving scroll before DeleteReplacementButton:",
+                                            scrollPos,
+                                          )
+                                          sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
+                                          sessionStorage.setItem("skip-scroll-to-today", "true")
+                                        }
+                                        refreshAndClose()
+                                      }}
                                     />
                                   )}
                                 </div>
@@ -1656,8 +1723,6 @@ export function ShiftAssignmentDrawer({
               <p className="text-sm text-muted-foreground p-4">Aucun pompier disponible pour ce quart.</p>
             )}
           </div>
-
-          {/* Removed the extra section that displays replaced firefighters again */}
 
           {/* Use displayedAssignments to check if it's empty */}
           {displayedAssignments.length === 0 && (
@@ -2019,7 +2084,7 @@ export function ShiftAssignmentDrawer({
           shift={shift}
           teamFirefighters={teamFirefighters}
           allFirefighters={allFirefighters}
-          onSuccess={refreshAndClose}
+          onSuccess={refreshShiftAndClose} // Use refreshShiftAndClose instead of refreshAndClose
           preSelectedFirefighter={selectedFirefighter}
         />
       )}

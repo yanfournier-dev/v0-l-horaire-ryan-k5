@@ -848,11 +848,13 @@ export async function getDirectAssignmentsForDateRange(startDate: Date, endDate:
       JOIN users u ON sa.user_id = u.id
       JOIN users replaced_user ON sa.replaced_user_id = replaced_user.id
       JOIN shifts s ON sa.shift_id = s.id
-      WHERE sa.replacement_order IS NOT NULL
+      WHERE sa.is_direct_assignment = true
         AND sa.shift_date >= ${startDateStr}::date
         AND sa.shift_date <= ${endDateStr}::date
       ORDER BY sa.shift_date, sa.replacement_order
     `
+
+    console.log(`[v0] getDirectAssignmentsForDateRange: Found ${result.length} direct assignments`)
 
     return result
   } catch (error: any) {
