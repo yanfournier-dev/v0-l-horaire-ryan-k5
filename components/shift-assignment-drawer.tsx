@@ -41,6 +41,7 @@ import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input" // Added Input import
 import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
@@ -161,6 +162,17 @@ export function ShiftAssignmentDrawer({
 
   const [emailResults, setEmailResults] = useState<any>(null)
   const [showEmailResults, setShowEmailResults] = useState(false)
+
+  // Added a state to track the mode within the extra firefighter dialog
+  const [extraRequestMode, setExtraRequestMode] = useState<"request" | "assign" | null>(null)
+
+  const handleExtraDeadlineChange = (value: string) => {
+    if (value === "default") {
+      setExtraDeadlineSeconds(null)
+    } else {
+      setExtraDeadlineSeconds(Number(value))
+    }
+  }
 
   useEffect(() => {
     if (open && shift) {
@@ -458,6 +470,13 @@ export function ShiftAssignmentDrawer({
       return
     }
 
+    if (selectedExtraFirefighter === "selecting") {
+      // This case should ideally not be reached if the button logic is correct,
+      // but as a safeguard, we can close the dialog or show an error.
+      toast.error("Veuillez sélectionner un pompier avant de continuer.")
+      return
+    }
+
     if (!selectedExtraFirefighter || isLoading) return
 
     if (isExtraPartial && extraStartTime >= extraEndTime) {
@@ -489,6 +508,7 @@ export function ShiftAssignmentDrawer({
     setIsCreatingRequest(false)
     setIsExtraPartial(false)
     setExtraDeadlineSeconds(null)
+    setShowExtraDeadlineWarning(false) // Ensure this is reset
     const times = getDefaultReplacementTimes(shift.shift_type)
     setExtraStartTime(times.startTime)
     setExtraEndTime(times.endTime)
@@ -944,11 +964,15 @@ export function ShiftAssignmentDrawer({
             </div>
           </SheetHeader>
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-4">
             <Button
-              onClick={() => setShowExtraDialog(true)}
+              onClick={() => {
+                setExtraRequestMode(null) // Reset mode so user can choose
+                setShowExtraDialog(true)
+              }}
               disabled={isLoading || loadingReplacements}
-              className="w-full bg-green-600 hover:bg-green-700"
+              className="w-full"
+              variant="outline"
               size="sm"
             >
               <UserPlus className="h-4 w-4 mr-2" />
@@ -1872,135 +1896,126 @@ export function ShiftAssignmentDrawer({
           <AlertDialogHeader>
             <AlertDialogTitle>Ajouter un pompier supplémentaire</AlertDialogTitle>
             <AlertDialogDescription>
-              Sélectionnez un pompier à ajouter comme supplémentaire pour ce quart, ou créez une demande de remplacement
-              disponible.
+              Choisissez comment ajouter un pompier supplémentaire pour ce quart.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <div className="space-y-4 py-4">
-            {shift && (
-              <Select
-                value={selectedExtraFirefighter?.toString() || ""}
-                onValueChange={(value) => {
-                  setSelectedExtraFirefighter(value === "request" ? "request" : Number.parseInt(value))
-                  setIsCreatingRequest(value === "request")
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une option" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="request" className="font-semibold text-orange-600">
-                    Créer une demande de remplacement disponible
-                  </SelectItem>
-                  {availableFirefighters.length > 0 && (
-                    <>
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                        Ou assigner directement:
-                      </div>
-                      {availableFirefighters.map((ff) => (
-                        <SelectItem key={ff.id} value={ff.id.toString()}>
-                          {ff.first_name} {ff.last_name}
-                        </SelectItem>
-                      ))}
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            )}
+            {extraRequestMode === null && ( // Only show options if mode is not set
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Sélectionnez une option:</p>
+                <div className="grid gap-3">
+                  <Button
+                    variant="outline"
+                    className="h-auto flex-col items-start justify-start gap-1 p-4 text-left hover:bg-muted bg-transparent"
+                    onClick={() => {
+                      setExtraRequestMode("request")
+                      setIsCreatingRequest(true)
+                    }}
+                  >
+                    <div className="font-semibold">Créer une demande de remplacement</div>
+                    <div className="text-xs text-muted-foreground">Les pompiers disponibles pourront postuler</div>
+                  </Button>
 
-            {(isCreatingRequest || isExtraPartial) && (
-              <div className="space-y-3 pl-6">
-                <div className="space-y-2">
-                  <Label htmlFor="extra-start-time" className="text-sm">
-                    Heure de début
-                  </Label>
-                  <Select value={extraStartTime} onValueChange={setExtraStartTime}>
-                    <SelectTrigger id="extra-start-time">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {generateTimeOptions().map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="extra-end-time" className="text-sm">
-                    Heure de fin
-                  </Label>
-                  <Select value={extraEndTime} onValueChange={setExtraEndTime}>
-                    <SelectTrigger id="extra-end-time">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {generateTimeOptions().map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Button
+                    variant="outline"
+                    className="h-auto flex-col items-start justify-start gap-1 p-4 text-left hover:bg-muted bg-transparent"
+                    onClick={() => {
+                      setExtraRequestMode("assign")
+                      setIsCreatingRequest(false)
+                    }}
+                  >
+                    <div className="font-semibold">Assignation directe</div>
+                    <div className="text-xs text-muted-foreground">Choisir un pompier spécifique</div>
+                  </Button>
                 </div>
               </div>
             )}
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="extra-partial"
-                checked={isExtraPartial}
-                onCheckedChange={(checked) => {
-                  setIsExtraPartial(checked === true)
-                }}
-              />
-              <Label
-                htmlFor="extra-partial"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Remplacement partiel
-              </Label>
-            </div>
+            {extraRequestMode === "assign" && ( // Show firefighter selection only for "assign" mode
+              <div className="space-y-2">
+                <Label htmlFor="firefighter-select" className="text-sm font-medium">
+                  Sélectionner un pompier
+                </Label>
+                <Select
+                  value={typeof selectedExtraFirefighter === "number" ? selectedExtraFirefighter.toString() : ""}
+                  onValueChange={(value) => {
+                    setSelectedExtraFirefighter(Number.parseInt(value))
+                  }}
+                >
+                  <SelectTrigger id="firefighter-select">
+                    <SelectValue placeholder="Choisir un pompier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableFirefighters.map((ff) => (
+                      <SelectItem key={ff.id} value={ff.id.toString()}>
+                        {ff.first_name} {ff.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {extraRequestMode === "request" &&
+              shift && ( // Show deadline select for "request" mode
+                <DeadlineSelect
+                  value={extraDeadlineSeconds}
+                  onValueChange={handleExtraDeadlineChange}
+                  shiftDate={shift.date}
+                  shiftEndTime={isExtraPartial ? extraEndTime : shift.end_time}
+                  partialEndTime={isExtraPartial ? extraEndTime : undefined}
+                  isPartial={isExtraPartial}
+                  shift={shift}
+                />
+              )}
+
+            {extraRequestMode && ( // Show partial options if a mode is selected
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="extra-partial"
+                  checked={isExtraPartial}
+                  onCheckedChange={(checked) => {
+                    setIsExtraPartial(checked === true)
+                  }}
+                />
+                <Label
+                  htmlFor="extra-partial"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Remplacement partiel
+                </Label>
+              </div>
+            )}
 
             {isExtraPartial && (
-              <div className="space-y-3 pl-6">
-                <div className="space-y-2">
-                  <Label htmlFor="extra-start-time" className="text-sm">
-                    Heure de début
-                  </Label>
-                  <Select value={extraStartTime} onValueChange={setExtraStartTime}>
-                    <SelectTrigger id="extra-start-time">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {generateTimeOptions().map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="extra-end-time" className="text-sm">
-                    Heure de fin
-                  </Label>
-                  <Select value={extraEndTime} onValueChange={setExtraEndTime}>
-                    <SelectTrigger id="extra-end-time">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {generateTimeOptions().map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-3 rounded-md border p-3">
+                <p className="text-sm font-medium">Heures du quart</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="extra-start" className="text-xs text-muted-foreground">
+                      Début
+                    </Label>
+                    <Input
+                      id="extra-start"
+                      type="time"
+                      value={extraStartTime}
+                      onChange={(e) => setExtraStartTime(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="extra-end" className="text-xs text-muted-foreground">
+                      Fin
+                    </Label>
+                    <Input
+                      id="extra-end"
+                      type="time"
+                      value={extraEndTime}
+                      onChange={(e) => setExtraEndTime(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -2016,6 +2031,7 @@ export function ShiftAssignmentDrawer({
                 setIsExtraPartial(false)
                 setExtraDeadlineSeconds(null)
                 setShowExtraDeadlineWarning(false)
+                setExtraRequestMode(null) // Reset the mode
                 const times = getDefaultReplacementTimes(shift?.shift_type)
                 setExtraStartTime(times.startTime)
                 setExtraEndTime(times.endTime)
@@ -2026,14 +2042,22 @@ export function ShiftAssignmentDrawer({
             </Button>
             <AlertDialogAction
               onClick={handleAddExtraFirefighter}
-              disabled={isLoading || !selectedExtraFirefighter}
-              className={isCreatingRequest ? "bg-orange-600 hover:bg-orange-700" : "bg-green-600 hover:bg-green-700"}
+              disabled={
+                isLoading ||
+                !extraRequestMode || // Disable if no mode is selected
+                (extraRequestMode === "assign" && !selectedExtraFirefighter) || // Disable if assign mode but no firefighter selected
+                (extraRequestMode === "request" && !extraDeadlineSeconds) || // Disable if request mode but no deadline set
+                (isExtraPartial && extraStartTime >= extraEndTime)
+              }
+              className={
+                extraRequestMode === "request" ? "bg-orange-600 hover:bg-orange-700" : "bg-green-600 hover:bg-green-700"
+              }
             >
               {isLoading
-                ? isCreatingRequest
+                ? extraRequestMode === "request"
                   ? "Création..."
                   : "Ajout..."
-                : isCreatingRequest
+                : extraRequestMode === "request"
                   ? "Créer la demande"
                   : "Ajouter"}
             </AlertDialogAction>
@@ -2061,6 +2085,7 @@ export function ShiftAssignmentDrawer({
                 setShowExtraDialog(false)
                 setSelectedExtraFirefighter(null)
                 setIsCreatingRequest(false)
+                setExtraRequestMode(null) // Reset the mode
               }}
             >
               Annuler

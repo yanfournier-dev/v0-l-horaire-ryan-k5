@@ -786,12 +786,12 @@ export async function createExtraFirefighterReplacement(
 
     const result = await db`
       INSERT INTO replacements (
-        shift_date, shift_type, team_id, status, is_partial, start_time, end_time, is_extra,
+        shift_date, shift_type, team_id, status, is_partial, start_time, end_time,
         application_deadline, deadline_duration
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
-        ${isPartial}, ${isPartial ? startTime : null}, ${isPartial ? endTime : null}, true,
+        ${isPartial}, ${isPartial ? startTime : null}, ${isPartial ? endTime : null},
         ${applicationDeadline}, ${deadlineDuration}
       )
       RETURNING id
