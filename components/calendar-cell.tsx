@@ -590,6 +590,12 @@ export function CalendarCell({
 
                         const isDirectAssignment = firefighter.isDirectAssignment === true
 
+                        const hasExtraReplacementPartialTime =
+                          isExtraFirefighterReplacement &&
+                          firefighter.isPartial &&
+                          firefighter.startTime &&
+                          firefighter.endTime
+
                         return (
                           <div
                             key={index}
@@ -611,6 +617,7 @@ export function CalendarCell({
                           >
                             {(hasPartialReplacement ||
                               hasExtraPartialTime ||
+                              hasExtraReplacementPartialTime ||
                               hasPartialLeave ||
                               (isDirectAssignment && firefighter.isPartial)) &&
                               !isExchange && (
@@ -686,6 +693,15 @@ export function CalendarCell({
                                 ({firefighter.startTime!.slice(0, 5)}-{firefighter.endTime!.slice(0, 5)})
                               </span>
                             )}
+                            {isExtraFirefighterReplacement &&
+                              firefighter.isPartial &&
+                              firefighter.startTime &&
+                              firefighter.endTime &&
+                              !isExchange && (
+                                <span className="time-indicator ml-0.5 md:ml-1 text-[6px] md:text-[10px] font-normal text-amber-600 dark:text-amber-400">
+                                  ({firefighter.startTime.slice(0, 5)}-{firefighter.endTime.slice(0, 5)})
+                                </span>
+                              )}
                             {hasPartialLeave && !isExchange && (
                               <span className="time-indicator ml-0.5 md:ml-1 text-[6px] md:text-[10px] font-normal text-blue-600 dark:text-blue-400">
                                 ({firefighterLeave.start_time.slice(0, 5)}-{firefighterLeave.end_time.slice(0, 5)})
