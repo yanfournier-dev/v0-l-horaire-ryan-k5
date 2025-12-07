@@ -664,7 +664,7 @@ export function CalendarCell({
                               </span>
                             )}
                             {isExtraFirefighterReplacement && extraReplacementStatus === "assigned" && (
-                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[6px] md:text-sm font-bold inline-block">
+                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-xs font-bold inline-block">
                                 ➕
                               </span>
                             )}
