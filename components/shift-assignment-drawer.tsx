@@ -474,7 +474,8 @@ export function ShiftAssignmentDrawer({
     console.log("[v0] extraDeadlineSeconds:", extraDeadlineSeconds)
     console.log("[v0] isExtraPartial:", isExtraPartial)
 
-    if (selectedExtraFirefighter === "request") {
+    // </CHANGE> Fixed condition to check extraRequestMode instead of selectedExtraFirefighter
+    if (extraRequestMode === "request") {
       await handleCreateExtraRequest()
       return
     }
