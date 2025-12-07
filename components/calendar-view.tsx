@@ -8,6 +8,7 @@ import { ChevronUp, ChevronDown } from "lucide-react"
 import { generateMonthView, getMonthName } from "@/lib/calendar"
 import { getCurrentLocalDate, formatLocalDate, formatDateForDB } from "@/lib/date-utils"
 import { getCalendarDataForDateRange, getDirectAssignmentsForDateRange } from "@/app/actions/calendar"
+import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
 
 interface CalendarViewProps {
   initialMonths: Array<{
@@ -524,6 +525,31 @@ export function CalendarView({
     [months],
   )
 
+  const handleNoteChange = async () => {
+    try {
+      console.log("[v0] CalendarView - note changed, reloading notes")
+
+      // Reload notes from the server using the server action
+      const startDate = formatDateForDB(months[0].days[0].date)
+      const endDate = formatDateForDB(months[months.length - 1].days[months[months.length - 1].days.length - 1].date)
+
+      const shiftNotes = await getShiftNotesForDateRange(startDate, endDate)
+
+      // Update the noteMap with the new notes
+      const newNoteMap: Record<string, boolean> = {}
+      shiftNotes.forEach((note: any) => {
+        const dateOnly = formatLocalDate(note.shift_date)
+        const key = `${note.shift_id}_${dateOnly}`
+        newNoteMap[key] = true
+      })
+
+      setNoteMap(newNoteMap)
+      console.log("[v0] CalendarView - notes reloaded, noteMap updated")
+    } catch (error) {
+      console.error("[v0] Error reloading notes:", error)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-center">
@@ -608,11 +634,12 @@ export function CalendarView({
                     leaveMap={leaveMap}
                     directAssignments={dayDirectAssignments}
                     actingDesignationMap={actingDesignations}
-                    extraFirefighters={dayExtraFirefighters} // Passing extra firefighters to CalendarCell
+                    extraFirefighters={dayExtraFirefighters}
                     dateStr={dateStr}
                     isAdmin={isAdmin}
                     onReplacementCreated={handleReplacementCreated}
                     onShiftUpdated={handleShiftUpdated}
+                    onNoteChange={handleNoteChange}
                   />
                 </div>,
               )

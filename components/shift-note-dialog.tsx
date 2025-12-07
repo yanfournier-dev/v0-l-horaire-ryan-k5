@@ -34,6 +34,7 @@ interface ShiftNoteDialogProps {
     updated_at: string
   } | null
   isAdmin: boolean
+  onNoteChange?: () => void
 }
 
 export function ShiftNoteDialog({
@@ -45,6 +46,7 @@ export function ShiftNoteDialog({
   shiftType,
   existingNote,
   isAdmin,
+  onNoteChange,
 }: ShiftNoteDialogProps) {
   const [note, setNote] = useState(existingNote?.note || "")
   const [isLoading, setIsLoading] = useState(false)
@@ -83,6 +85,9 @@ export function ShiftNoteDialog({
 
     if (result.success) {
       onOpenChange(false)
+      if (onNoteChange) {
+        onNoteChange()
+      }
       router.refresh()
     } else {
       alert(result.error || "Erreur lors de la sauvegarde")
@@ -97,6 +102,9 @@ export function ShiftNoteDialog({
     if (result.success) {
       setShowDeleteConfirm(false)
       onOpenChange(false)
+      if (onNoteChange) {
+        onNoteChange()
+      }
       router.refresh()
     } else {
       alert(result.error || "Erreur lors de la suppression")

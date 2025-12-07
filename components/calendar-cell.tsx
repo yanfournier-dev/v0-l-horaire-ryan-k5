@@ -17,17 +17,18 @@ import { format } from "date-fns"
 interface CalendarCellProps {
   day: any
   shifts: any[]
-  replacements: any[][]
+  replacements: any[]
   exchanges: any[][]
   leaves: any[]
-  leaveMap: Record<string, any[]>
-  directAssignments: any[][]
-  actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }>
-  extraFirefighters: any[][] // Added prop for extra firefighters
+  leaveMap: Record<number, any>
+  directAssignments: any[]
+  actingDesignationMap: Record<number, any[]>
+  extraFirefighters: any[]
   dateStr: string
   isAdmin: boolean
-  onReplacementCreated?: () => void
-  onShiftUpdated?: (shift: any) => void
+  onReplacementCreated: () => void
+  onShiftUpdated: () => void
+  onNoteChange: () => void
 }
 
 function getDayOfWeekLabel(dayOfWeek: number): string {
@@ -40,9 +41,8 @@ function getMonthLabel(month: number): string {
   return months[month]
 }
 
-function getFirefighterLeave(userId: number, dateStr: string, leaveMap: Record<string, any[]>) {
-  const key = `${dateStr}_${userId}`
-  const dayLeaves = leaveMap[key] || []
+function getFirefighterLeave(userId: number, dateStr: string, leaveMap: Record<number, any>) {
+  const dayLeaves = leaveMap[dateStr] || []
   return dayLeaves.find((leave) => leave.start_time && leave.end_time) // Only return if it's a partial leave
 }
 
@@ -55,11 +55,12 @@ export function CalendarCell({
   leaveMap,
   directAssignments,
   actingDesignationMap,
-  extraFirefighters, // Receiving extra firefighters
+  extraFirefighters,
   dateStr,
   isAdmin,
   onReplacementCreated,
   onShiftUpdated,
+  onNoteChange,
 }: CalendarCellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedShift, setSelectedShift] = useState<any>(null)
@@ -777,6 +778,7 @@ export function CalendarCell({
           shiftType={selectedShiftForNote.shift_type}
           existingNote={currentNote}
           isAdmin={isAdmin}
+          onNoteChange={onNoteChange}
         />
       )}
     </>
