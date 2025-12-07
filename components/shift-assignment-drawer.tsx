@@ -417,6 +417,11 @@ export function ShiftAssignmentDrawer({
     return found || null
   }
 
+  const getReplacementForExtraFirefighter = () => {
+    const found = replacements.find((r) => r.user_id === null) // Assuming user_id is null for extra firefighter requests
+    return found || null
+  }
+
   const getRoleLabel = (role: string) => {
     switch (role) {
       case "captain":
@@ -1315,7 +1320,14 @@ export function ShiftAssignmentDrawer({
                   if (assignment) {
                     const firefighterId = assignment.user_id || assignment.id
 
-                    const replacement = !loadingReplacements ? getReplacementForFirefighter(firefighterId) : null
+                    const isExtraRequest =
+                      assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire"
+
+                    const replacement = !loadingReplacements
+                      ? isExtraRequest
+                        ? getReplacementForExtraFirefighter()
+                        : getReplacementForFirefighter(firefighterId)
+                      : null
                     const hasReplacement = !!replacement
 
                     const isReplacementFirefighter = assignment.is_replacement === true
@@ -1325,9 +1337,6 @@ export function ShiftAssignmentDrawer({
 
                     const hasPartialReplacement =
                       replacement?.is_partial && replacement?.start_time && replacement?.end_time
-
-                    const isExtraRequest =
-                      assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire"
 
                     const exchange = getExchangeForFirefighter(
                       assignment.user_id,
@@ -1507,19 +1516,22 @@ export function ShiftAssignmentDrawer({
                                       onSuccess={refreshReplacements}
                                     />
                                   )}
-                                  {isAdmin && replacement.applications.length > 0 && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        router.push(`/dashboard/replacements/${replacement.id}`)
-                                      }}
-                                      className="text-foreground hover:bg-gray-50"
-                                    >
-                                      <Users className="h-4 w-4 mr-1" />
-                                      Voir les candidats ({replacement.applications.length})
-                                    </Button>
-                                  )}
+                                  {isAdmin &&
+                                    replacement &&
+                                    replacement.applications &&
+                                    replacement.applications.length > 0 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          router.push(`/dashboard/replacements/${replacement.id}`)
+                                        }}
+                                        className="text-foreground hover:bg-gray-50"
+                                      >
+                                        <Users className="h-4 w-4 mr-1" />
+                                        Voir les candidats ({replacement.applications.length})
+                                      </Button>
+                                    )}
                                   {isAdmin && (
                                     <DeleteReplacementButton
                                       replacementId={replacement.id}
