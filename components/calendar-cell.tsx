@@ -574,9 +574,17 @@ export function CalendarCell({
                           (isAssignedReplacement && !hasActingCaptain && replacement?.replaced_role === "captain") ||
                           (isAssignedReplacement && replacementIsActingCaptain)
 
+                        const isDirectAssignment = firefighter.isDirectAssignment === true
+
+                        const hasExtraReplacementPartialTime =
+                          isExtraFirefighterReplacement &&
+                          firefighter.isPartial &&
+                          firefighter.startTime &&
+                          firefighter.endTime
+
                         const showLtBadge =
                           firefighter.isActingLieutenant === true ||
-                          (!hasActingLieutenant && firefighter.role === "lieutenant") ||
+                          (!hasActingLieutenant && firefighter.role === "lieutenant" && !isDirectAssignment) ||
                           (isAssignedReplacement &&
                             !hasActingLieutenant &&
                             replacement?.replaced_role === "lieutenant") ||
@@ -588,14 +596,6 @@ export function CalendarCell({
                             !hasActingLieutenant &&
                             replacement?.replaced_role === "lieutenant") ||
                           (isAssignedReplacement && replacementIsActingLieutenant)
-
-                        const isDirectAssignment = firefighter.isDirectAssignment === true
-
-                        const hasExtraReplacementPartialTime =
-                          isExtraFirefighterReplacement &&
-                          firefighter.isPartial &&
-                          firefighter.startTime &&
-                          firefighter.endTime
 
                         return (
                           <div
