@@ -7,6 +7,7 @@ import {
   getExchangesForDateRange,
   getDirectAssignmentsForDateRange,
   getActingDesignationsForRange,
+  getExtraFirefightersForDateRange,
 } from "@/app/actions/calendar"
 import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
 import { redirect } from "next/navigation"
@@ -90,14 +91,20 @@ export default async function CalendarPage({
 
     const allShifts = await getAllShiftsWithAssignments(firstDay, lastDay)
 
-    const [replacements, leaves, exchanges, shiftNotes, directAssignments, actingDesignations] = await Promise.all([
-      firstDay && lastDay ? getReplacementsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
-      firstDay && lastDay ? getLeavesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
-      firstDay && lastDay ? getExchangesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
-      firstDay && lastDay ? getShiftNotesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
-      firstDay && lastDay ? getDirectAssignmentsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
-      firstDay && lastDay ? getActingDesignationsForRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
-    ])
+    const [replacements, leaves, exchanges, shiftNotes, directAssignments, actingDesignations, extraFirefighters] =
+      await Promise.all([
+        firstDay && lastDay ? getReplacementsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay ? getLeavesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay ? getExchangesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay ? getShiftNotesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay
+          ? getDirectAssignmentsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
+          : [],
+        firstDay && lastDay ? getActingDesignationsForRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay
+          ? getExtraFirefightersForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
+          : [],
+      ])
 
     const replacementMap: Record<string, any[]> = {}
     replacements.forEach((repl: any) => {
@@ -204,6 +211,18 @@ export default async function CalendarPage({
       }
     })
 
+    const extraFirefighterMap: Record<string, any[]> = {}
+    extraFirefighters.forEach((extra: any) => {
+      const dateOnly = formatDateForDB(new Date(extra.shift_date))
+      const key = `${dateOnly}_${extra.shift_type}_${extra.team_id}`
+      if (!extraFirefighterMap[key]) {
+        extraFirefighterMap[key] = []
+      }
+      extraFirefighterMap[key].push(extra)
+    })
+
+    console.log("[v0] extraFirefighterMap keys:", Object.keys(extraFirefighterMap))
+
     return (
       <div className="p-4 md:p-6">
         <ScrollToTodayOnNav />
@@ -238,6 +257,7 @@ export default async function CalendarPage({
             noteMap={noteMap}
             directAssignmentMap={directAssignmentMap}
             actingDesignationMap={actingDesignationMap}
+            extraFirefighterMap={extraFirefighterMap}
             isAdmin={user.is_admin}
             cycleStartDate={cycleStartDate}
             currentYear={selectedYear}

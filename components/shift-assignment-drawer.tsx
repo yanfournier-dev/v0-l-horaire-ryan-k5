@@ -167,10 +167,13 @@ export function ShiftAssignmentDrawer({
   const [extraRequestMode, setExtraRequestMode] = useState<"request" | "assign" | null>(null)
 
   const handleExtraDeadlineChange = (value: string) => {
+    console.log("[v0] handleExtraDeadlineChange called with value:", value)
     if (value === "default") {
       setExtraDeadlineSeconds(null)
+      console.log("[v0] Set extraDeadlineSeconds to null")
     } else {
       setExtraDeadlineSeconds(Number(value))
+      console.log("[v0] Set extraDeadlineSeconds to:", Number(value))
     }
   }
 
@@ -465,6 +468,12 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleAddExtraFirefighter = async () => {
+    console.log("[v0] handleAddExtraFirefighter called!")
+    console.log("[v0] extraRequestMode:", extraRequestMode)
+    console.log("[v0] selectedExtraFirefighter:", selectedExtraFirefighter)
+    console.log("[v0] extraDeadlineSeconds:", extraDeadlineSeconds)
+    console.log("[v0] isExtraPartial:", isExtraPartial)
+
     if (selectedExtraFirefighter === "request") {
       await handleCreateExtraRequest()
       return
@@ -543,6 +552,16 @@ export function ShiftAssignmentDrawer({
 
     const shiftDate = formatDateForDB(shift.date)
 
+    console.log("[v0] Drawer - executeCreateExtraRequest with params:", {
+      shiftDate,
+      shift_type: shift.shift_type,
+      team_id: shift.team_id,
+      isExtraPartial,
+      extraStartTime,
+      extraEndTime,
+      extraDeadlineSeconds,
+    })
+
     const result = await createExtraFirefighterReplacement(
       shiftDate,
       shift.shift_type,
@@ -554,11 +573,13 @@ export function ShiftAssignmentDrawer({
     )
 
     if (result.error) {
+      console.log("[v0] Drawer - executeCreateExtraRequest failed:", result.error)
       toast.error(result.error)
       setIsLoading(false)
       return
     }
 
+    console.log("[v0] Drawer - executeCreateExtraRequest success, replacement ID:", result.id)
     toast.success("Demande de pompier supplémentaire créée avec succès")
 
     setIsLoading(false)
@@ -1861,13 +1882,13 @@ export function ShiftAssignmentDrawer({
             <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
               Annuler
             </Button>
-            <AlertDialogAction
+            <Button
               onClick={handleCreateReplacement}
               disabled={isLoading}
               className="bg-orange-600 hover:bg-orange-700"
             >
               {isLoading ? "Création..." : "Créer la demande"}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -2040,13 +2061,13 @@ export function ShiftAssignmentDrawer({
             >
               Annuler
             </Button>
-            <AlertDialogAction
+            <Button
               onClick={handleAddExtraFirefighter}
               disabled={
                 isLoading ||
-                !extraRequestMode || // Disable if no mode is selected
-                (extraRequestMode === "assign" && !selectedExtraFirefighter) || // Disable if assign mode but no firefighter selected
-                (extraRequestMode === "request" && !extraDeadlineSeconds) || // Disable if request mode but no deadline set
+                !extraRequestMode ||
+                (extraRequestMode === "assign" && !selectedExtraFirefighter) ||
+                (extraRequestMode === "request" && !extraDeadlineSeconds) ||
                 (isExtraPartial && extraStartTime >= extraEndTime)
               }
               className={
@@ -2060,7 +2081,7 @@ export function ShiftAssignmentDrawer({
                 : extraRequestMode === "request"
                   ? "Créer la demande"
                   : "Ajouter"}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

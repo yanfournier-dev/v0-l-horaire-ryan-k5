@@ -22,6 +22,7 @@ interface CalendarViewProps {
   leaveMap: Record<string, any[]>
   noteMap: Record<string, boolean> // Add noteMap prop
   directAssignmentMap: Record<string, any[]> // Adding directAssignmentMap prop
+  extraFirefighterMap: Record<string, any[]> // Added prop for extra firefighters
   actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> // Adding actingDesignationMap prop
   isAdmin: boolean
   cycleStartDate: Date
@@ -38,8 +39,9 @@ export function CalendarView({
   leaves: initialLeaves,
   leaveMap: initialLeaveMap,
   noteMap: initialNoteMap,
-  directAssignmentMap: initialDirectAssignmentMap, // Receiving directAssignmentMap
-  actingDesignationMap: initialActingDesignationMap, // Receiving actingDesignationMap
+  directAssignmentMap: initialDirectAssignmentMap, // Adding state for directAssignmentMap
+  actingDesignationMap: initialActingDesignationMap, // Adding state for actingDesignationMap
+  extraFirefighterMap: initialExtraFirefighterMap, // Receiving extra firefighters map
   isAdmin,
   cycleStartDate,
   currentYear,
@@ -54,6 +56,7 @@ export function CalendarView({
   const [noteMap, setNoteMap] = useState(initialNoteMap)
   const [directAssignmentMap, setDirectAssignmentMap] = useState(initialDirectAssignmentMap) // Adding state for directAssignmentMap
   const [actingDesignationMap, setActingDesignationMap] = useState(initialActingDesignationMap) // Adding state for actingDesignationMap
+  const [extraFirefighterMap, setExtraFirefighterMap] = useState(initialExtraFirefighterMap) // Added state for extra firefighters
   const [loading, setLoading] = useState(false)
   const scrollAnchorRef = useRef<string | null>(null)
   const router = useRouter() // Adding router to refresh server component
@@ -231,6 +234,19 @@ export function CalendarView({
         })
       }
       setActingDesignationMap(newActingDesignationMap)
+
+      const newExtraFirefighterMap = { ...extraFirefighterMap }
+      if (data.extraFirefighters) {
+        data.extraFirefighters.forEach((firefighter: any) => {
+          const dateOnly = formatLocalDate(firefighter.shift_date)
+          const key = `${dateOnly}_${firefighter.shift_type}_${firefighter.team_id}`
+          if (!newExtraFirefighterMap[key]) {
+            newExtraFirefighterMap[key] = []
+          }
+          newExtraFirefighterMap[key].push(firefighter)
+        })
+      }
+      setExtraFirefighterMap(newExtraFirefighterMap)
     }
 
     setMonths([...newMonths, ...months])
@@ -359,6 +375,19 @@ export function CalendarView({
         })
       }
       setActingDesignationMap(newActingDesignationMap)
+
+      const newExtraFirefighterMap = { ...extraFirefighterMap }
+      if (data.extraFirefighters) {
+        data.extraFirefighters.forEach((firefighter: any) => {
+          const dateOnly = formatLocalDate(firefighter.shift_date)
+          const key = `${dateOnly}_${firefighter.shift_type}_${firefighter.team_id}`
+          if (!newExtraFirefighterMap[key]) {
+            newExtraFirefighterMap[key] = []
+          }
+          newExtraFirefighterMap[key].push(firefighter)
+        })
+      }
+      setExtraFirefighterMap(newExtraFirefighterMap)
     }
 
     setMonths([...months, ...newMonths])
@@ -417,9 +446,11 @@ export function CalendarView({
         getDirectAssignmentsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)),
       ])
 
+      console.log("[v0] handleShiftUpdated - received data:", data)
       console.log("[v0] handleShiftUpdated - received directAssignments:", directAssignmentsData?.length || 0)
       console.log("[v0] handleShiftUpdated - received replacements:", data.replacements?.length || 0)
       console.log("[v0] handleShiftUpdated - received actingDesignations:", data.actingDesignations?.length || 0)
+      console.log("[v0] handleShiftUpdated - received extraFirefighters:", data.extraFirefighters?.length || 0)
 
       const newDirectAssignmentMap: Record<string, any[]> = {}
       if (directAssignmentsData) {
@@ -460,7 +491,23 @@ export function CalendarView({
       console.log("[v0] handleShiftUpdated - new actingDesignationMap keys:", Object.keys(newActingDesignationMap))
       setActingDesignationMap(newActingDesignationMap)
 
-      console.log("[v0] CalendarView - direct assignment map, replacement map, and acting designation map updated")
+      const newExtraFirefighterMap: Record<string, any[]> = {}
+      if (data.extraFirefighters) {
+        data.extraFirefighters.forEach((firefighter: any) => {
+          const dateOnly = formatLocalDate(firefighter.shift_date)
+          const key = `${dateOnly}_${firefighter.shift_type}_${firefighter.team_id}`
+          if (!newExtraFirefighterMap[key]) {
+            newExtraFirefighterMap[key] = []
+          }
+          newExtraFirefighterMap[key].push(firefighter)
+        })
+      }
+      console.log("[v0] handleShiftUpdated - new extraFirefighterMap keys:", Object.keys(newExtraFirefighterMap))
+      setExtraFirefighterMap(newExtraFirefighterMap)
+
+      console.log(
+        "[v0] CalendarView - direct assignment map, replacement map, acting designation map, and extra firefighters map updated",
+      )
     },
     [months],
   )
@@ -514,6 +561,11 @@ export function CalendarView({
                 return directAssignmentMap[key] || []
               })
 
+              const dayExtraFirefighters = shifts.map((shift: any) => {
+                const key = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+                return extraFirefighterMap[key] || []
+              })
+
               const actingDesignations = actingDesignationMap
 
               const shiftsWithNotes = shifts.map((shift: any) => {
@@ -544,6 +596,7 @@ export function CalendarView({
                     leaveMap={leaveMap}
                     directAssignments={dayDirectAssignments}
                     actingDesignationMap={actingDesignations}
+                    extraFirefighters={dayExtraFirefighters} // Passing extra firefighters to CalendarCell
                     dateStr={dateStr}
                     isAdmin={isAdmin}
                     onReplacementCreated={handleReplacementCreated}

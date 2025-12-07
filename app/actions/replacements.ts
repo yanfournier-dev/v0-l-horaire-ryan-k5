@@ -752,6 +752,16 @@ export async function createExtraFirefighterReplacement(
   }
 
   try {
+    console.log("[v0] createExtraFirefighterReplacement - Starting with params:", {
+      shiftDate,
+      shiftType,
+      teamId,
+      isPartial,
+      startTime,
+      endTime,
+      deadlineSeconds,
+    })
+
     const db = neon(process.env.DATABASE_URL!, {
       fetchConnectionCache: true,
       disableWarningInBrowsers: true,
@@ -784,6 +794,11 @@ export async function createExtraFirefighterReplacement(
       deadlineDuration = null
     }
 
+    console.log("[v0] createExtraFirefighterReplacement - Calculated deadline:", {
+      applicationDeadline,
+      deadlineDuration,
+    })
+
     const result = await db`
       INSERT INTO replacements (
         shift_date, shift_type, team_id, status, is_partial, start_time, end_time,
@@ -798,6 +813,8 @@ export async function createExtraFirefighterReplacement(
     `
 
     const replacementId = result[0].id
+
+    console.log("[v0] createExtraFirefighterReplacement - Created replacement with ID:", replacementId)
 
     const firefighterToReplaceName = "Pompier supplémentaire"
 
@@ -1303,6 +1320,8 @@ export async function reactivateApplication(applicationId: number) {
 
 export async function getReplacementsForShift(shiftDate: string, shiftType: string, teamId: number) {
   try {
+    console.log("[v0] getReplacementsForShift - Fetching for:", { shiftDate, shiftType, teamId })
+
     const db = neon(process.env.DATABASE_URL!, {
       fetchConnectionCache: true,
       disableWarningInBrowsers: true,
@@ -1338,6 +1357,20 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
         AND r.status != 'cancelled'
       ORDER BY r.created_at DESC
     `
+
+    console.log("[v0] getReplacementsForShift - Found", replacements.length, "replacements")
+    const extraFirefighters = replacements.filter((r: any) => r.user_id === null)
+    console.log("[v0] getReplacementsForShift - Extra firefighters (user_id=null):", extraFirefighters.length)
+    extraFirefighters.forEach((ef: any, index: number) => {
+      console.log(`[v0] Extra firefighter ${index + 1}:`, {
+        id: ef.id,
+        status: ef.status,
+        is_partial: ef.is_partial,
+        start_time: ef.start_time,
+        end_time: ef.end_time,
+        application_deadline: ef.application_deadline,
+      })
+    })
 
     return replacements.map((r) => ({
       ...r,

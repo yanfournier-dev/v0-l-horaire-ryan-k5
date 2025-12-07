@@ -700,6 +700,47 @@ export async function getReplacementsForDateRange(startDate: string, endDate: st
   }
 }
 
+export async function getExtraFirefightersForDateRange(startDate: string, endDate: string) {
+  try {
+    const extraFirefighters = await sql`
+      WITH cycle_info AS (
+        SELECT start_date, cycle_length_days
+        FROM cycle_config
+        WHERE is_active = true
+        LIMIT 1
+      )
+      SELECT 
+        r.id,
+        r.shift_date,
+        r.shift_type,
+        r.team_id,
+        r.status,
+        r.is_partial,
+        r.start_time,
+        r.end_time,
+        approved_app.applicant_id as replacement_user_id,
+        repl_user.first_name as replacement_first_name,
+        repl_user.last_name as replacement_last_name
+      FROM replacements r
+      CROSS JOIN cycle_info ci
+      LEFT JOIN replacement_applications approved_app ON 
+        approved_app.replacement_id = r.id 
+        AND approved_app.status = 'approved'
+      LEFT JOIN users repl_user ON approved_app.applicant_id = repl_user.id
+      WHERE r.user_id IS NULL
+        AND r.shift_date >= ${startDate}
+        AND r.shift_date <= ${endDate}
+        AND r.status != 'cancelled'
+    `
+
+    console.log("[v0] getExtraFirefightersForDateRange: Found", extraFirefighters.length, "extra firefighters")
+    return extraFirefighters
+  } catch (error: any) {
+    console.error("[v0] getExtraFirefightersForDateRange: Query failed", error?.message || error)
+    return []
+  }
+}
+
 export async function getLeavesForDateRange(startDate: string, endDate: string) {
   try {
     const leaves = await sql`
@@ -791,12 +832,13 @@ export async function getShiftNotesForDate(shiftId: number, date: string) {
 }
 
 export async function getCalendarDataForDateRange(startDate: string, endDate: string) {
-  const [replacements, exchanges, leaves, shiftNotes, actingDesignations] = await Promise.all([
+  const [replacements, exchanges, leaves, shiftNotes, actingDesignations, extraFirefighters] = await Promise.all([
     getReplacementsForDateRange(startDate, endDate),
     getExchangesForDateRange(startDate, endDate),
     getLeavesForDateRange(startDate, endDate),
     getShiftNotesForDateRange(startDate, endDate),
     getActingDesignationsForRange(startDate, endDate),
+    getExtraFirefightersForDateRange(startDate, endDate),
   ])
 
   return {
@@ -805,6 +847,7 @@ export async function getCalendarDataForDateRange(startDate: string, endDate: st
     leaves,
     shiftNotes,
     actingDesignations,
+    extraFirefighters,
   }
 }
 

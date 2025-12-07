@@ -23,6 +23,7 @@ interface CalendarCellProps {
   leaveMap: Record<string, any[]>
   directAssignments: any[][]
   actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }>
+  extraFirefighters: any[][] // Added prop for extra firefighters
   dateStr: string
   isAdmin: boolean
   onReplacementCreated?: () => void
@@ -54,6 +55,7 @@ export function CalendarCell({
   leaveMap,
   directAssignments,
   actingDesignationMap,
+  extraFirefighters, // Receiving extra firefighters
   dateStr,
   isAdmin,
   onReplacementCreated,
@@ -161,6 +163,7 @@ export function CalendarCell({
               const shiftExchanges = exchanges[shiftIndex] || []
               const dateStrFormatted = format(day.date, "yyyy-MM-dd")
               const shiftDirectAssignments = directAssignments[shiftIndex] || []
+              const shiftExtraFirefighters = extraFirefighters[shiftIndex] || [] // Get extra firefighters for this shift
 
               const firefighters =
                 shift.assigned_firefighters && shift.assigned_firefighters.trim() !== ""
@@ -262,7 +265,13 @@ export function CalendarCell({
 
               const assignmentsWithLtBadge = processedFirefighters.map((assignment: any) => {
                 const calendarIndex = processedFirefighters.findIndex(
-                  (f) => f.firstName === assignment.firstName && f.lastName === assignment.lastName,
+                  (f) =>
+                    f &&
+                    assignment &&
+                    f.firstName &&
+                    assignment.firstName &&
+                    f.firstName === assignment.firstName &&
+                    f.lastName === assignment.lastName,
                 )
 
                 if (calendarIndex === -1) {
@@ -321,6 +330,13 @@ export function CalendarCell({
               }> = []
 
               processedFirefighters.forEach((firefighter, index) => {
+                if (!firefighter) {
+                  return
+                }
+                if (!firefighter.firstName || !firefighter.lastName) {
+                  return
+                }
+
                 const firefighterKey = `${firefighter.firstName}|${firefighter.lastName}`
                 const replacedKey = `${firefighter.firstName}|${firefighter.lastName}|${firefighter.role}`
 
@@ -350,7 +366,34 @@ export function CalendarCell({
                 }
               })
 
-              displayItems.sort((a, b) => a.index - b.index)
+              shiftExtraFirefighters.forEach((extra: any) => {
+                const isOpen = extra.status === "open"
+                const isAssigned = extra.status === "assigned" && extra.replacement_first_name
+
+                displayItems.push({
+                  type: "firefighter",
+                  data: {
+                    id: 0,
+                    firstName: isAssigned ? extra.replacement_first_name : "Pompier",
+                    lastName: isAssigned ? extra.replacement_last_name : "supplémentaire",
+                    role: "firefighter",
+                    userId: "0",
+                    teamRank: 999,
+                    isExtra: false,
+                    isPartial: extra.is_partial || false,
+                    startTime: extra.start_time || null,
+                    endTime: extra.end_time || null,
+                    isActingLieutenant: false,
+                    isActingCaptain: false,
+                    isDirectAssignment: false,
+                    replacementOrder: 0,
+                    isExtraFirefighterReplacement: true,
+                    extraReplacementStatus: extra.status,
+                  },
+                  role: "firefighter",
+                  index: 9999,
+                })
+              })
 
               return (
                 <div
@@ -426,17 +469,25 @@ export function CalendarCell({
                           return null
                         }
 
-                        const firefighter = processedFirefighters[item.index]
+                        const firefighter = item.index === 9999 ? item.data : processedFirefighters[item.index]
                         const index = item.index
+
+                        if (!firefighter) {
+                          return null
+                        }
 
                         const replacement = shiftReplacements.find(
                           (r: any) =>
+                            firefighter &&
+                            firefighter.firstName &&
+                            firefighter.lastName &&
                             r.replaced_first_name === firefighter.firstName &&
                             r.replaced_last_name === firefighter.lastName &&
                             r.replaced_role === firefighter.role,
                         )
 
                         const exchange = shiftExchanges.find((ex: any) => {
+                          if (!firefighter || !firefighter.firstName || !firefighter.lastName) return false
                           if (ex.type === "requester") {
                             return (
                               ex.requester_first_name === firefighter.firstName &&
@@ -454,6 +505,9 @@ export function CalendarCell({
 
                         const firefighterLeave = leaves.find(
                           (leave: any) =>
+                            firefighter &&
+                            firefighter.firstName &&
+                            firefighter.lastName &&
                             leave.first_name === firefighter.firstName &&
                             leave.last_name === firefighter.lastName &&
                             leave.start_time &&
@@ -468,8 +522,9 @@ export function CalendarCell({
                         const isApprovedNotAssigned =
                           replacement && replacement?.status !== "assigned" && replacement?.status !== "pending"
 
-                        let displayFirstName = firefighter.firstName
-                        let displayLastName = firefighter.lastName
+                        let displayFirstName = firefighter.firstName || ""
+                        let displayLastName = firefighter.lastName || ""
+
                         let isExchange = false
                         let exchangePartialTimes = null
 
@@ -500,6 +555,9 @@ export function CalendarCell({
                         const isExtraFirefighter = firefighter.isExtra
                         const hasExtraPartialTime =
                           isExtraFirefighter && firefighter.isPartial && firefighter.startTime && firefighter.endTime
+
+                        const isExtraFirefighterReplacement = firefighter.isExtraFirefighterReplacement
+                        const extraReplacementStatus = firefighter.extraReplacementStatus
 
                         const replacementIsActingLieutenant = replacement?.replacement_is_acting_lieutenant === true
                         const replacementIsActingCaptain = replacement?.replacement_is_acting_captain === true
@@ -598,6 +656,16 @@ export function CalendarCell({
                             {isExtraFirefighter && !isExchange && (
                               <span className="inline-block scale-100 md:scale-125 text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[6px] md:text-sm">
                                 +
+                              </span>
+                            )}
+                            {isExtraFirefighterReplacement && extraReplacementStatus === "open" && (
+                              <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1 text-[6px] md:text-sm">
+                                ⏳
+                              </span>
+                            )}
+                            {isExtraFirefighterReplacement && extraReplacementStatus === "assigned" && (
+                              <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[6px] md:text-sm font-bold inline-block">
+                                ➕
                               </span>
                             )}
                             {displayFirstName === "Pompier" && displayLastName === "supplémentaire"
