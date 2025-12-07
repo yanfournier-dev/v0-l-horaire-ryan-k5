@@ -22,7 +22,6 @@ import {
   // removeReplacement, // Moved import
 } from "@/app/actions/replacements"
 import {
-  addExtraFirefighterToShift,
   getAllFirefighters,
   removeFirefighterFromShift,
   setActingLieutenant,
@@ -163,8 +162,7 @@ export function ShiftAssignmentDrawer({
   const [emailResults, setEmailResults] = useState<any>(null)
   const [showEmailResults, setShowEmailResults] = useState(false)
 
-  // Added a state to track the mode within the extra firefighter dialog
-  const [extraRequestMode, setExtraRequestMode] = useState<"request" | "assign" | null>(null)
+  const [extraRequestMode, setExtraRequestMode] = useState<"request" | "assign" | null>("request")
 
   const handleExtraDeadlineChange = (value: string) => {
     console.log("[v0] handleExtraDeadlineChange called with value:", value)
@@ -474,56 +472,8 @@ export function ShiftAssignmentDrawer({
     console.log("[v0] extraDeadlineSeconds:", extraDeadlineSeconds)
     console.log("[v0] isExtraPartial:", isExtraPartial)
 
-    // </CHANGE> Fixed condition to check extraRequestMode instead of selectedExtraFirefighter
-    if (extraRequestMode === "request") {
-      await handleCreateExtraRequest()
-      return
-    }
-
-    if (selectedExtraFirefighter === "selecting") {
-      // This case should ideally not be reached if the button logic is correct,
-      // but as a safeguard, we can close the dialog or show an error.
-      toast.error("Veuillez sélectionner un pompier avant de continuer.")
-      return
-    }
-
-    if (!selectedExtraFirefighter || isLoading) return
-
-    if (isExtraPartial && extraStartTime >= extraEndTime) {
-      toast.error("L'heure de début doit être avant l'heure de fin")
-      return
-    }
-
-    setIsLoading(true)
-
-    const result = await addExtraFirefighterToShift(
-      shift.id,
-      Number(selectedExtraFirefighter),
-      isExtraPartial,
-      isExtraPartial ? extraStartTime : undefined,
-      isExtraPartial ? extraEndTime : undefined,
-    )
-
-    if (result.error) {
-      toast.error(result.error)
-      setIsLoading(false)
-      return
-    }
-
-    toast.success("Pompier supplémentaire ajouté avec succès")
-
-    setIsLoading(false)
-    setShowExtraDialog(false)
-    setSelectedExtraFirefighter(null)
-    setIsCreatingRequest(false)
-    setIsExtraPartial(false)
-    setExtraDeadlineSeconds(null)
-    setShowExtraDeadlineWarning(false) // Ensure this is reset
-    const times = getDefaultReplacementTimes(shift.shift_type)
-    setExtraStartTime(times.startTime)
-    setExtraEndTime(times.endTime)
-
-    refreshAndClose()
+    await handleCreateExtraRequest()
+    return
   }
 
   const handleCreateExtraRequest = async () => {
@@ -989,7 +939,7 @@ export function ShiftAssignmentDrawer({
           <div className="mt-4">
             <Button
               onClick={() => {
-                setExtraRequestMode(null) // Reset mode so user can choose
+                setExtraRequestMode("request") // Ensure mode is "request" when opening
                 setShowExtraDialog(true)
               }}
               disabled={isLoading || loadingReplacements}
@@ -1923,92 +1873,33 @@ export function ShiftAssignmentDrawer({
           </AlertDialogHeader>
 
           <div className="space-y-4 py-4">
-            {extraRequestMode === null && ( // Only show options if mode is not set
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Sélectionnez une option:</p>
-                <div className="grid gap-3">
-                  <Button
-                    variant="outline"
-                    className="h-auto flex-col items-start justify-start gap-1 p-4 text-left hover:bg-muted bg-transparent"
-                    onClick={() => {
-                      setExtraRequestMode("request")
-                      setIsCreatingRequest(true)
-                    }}
-                  >
-                    <div className="font-semibold">Créer une demande de remplacement</div>
-                    <div className="text-xs text-muted-foreground">Les pompiers disponibles pourront postuler</div>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="h-auto flex-col items-start justify-start gap-1 p-4 text-left hover:bg-muted bg-transparent"
-                    onClick={() => {
-                      setExtraRequestMode("assign")
-                      setIsCreatingRequest(false)
-                    }}
-                  >
-                    <div className="font-semibold">Assignation directe</div>
-                    <div className="text-xs text-muted-foreground">Choisir un pompier spécifique</div>
-                  </Button>
-                </div>
-              </div>
+            {shift && (
+              <DeadlineSelect
+                value={extraDeadlineSeconds}
+                onValueChange={handleExtraDeadlineChange}
+                shiftDate={shift.date}
+                shiftEndTime={isExtraPartial ? extraEndTime : shift.end_time}
+                partialEndTime={isExtraPartial ? extraEndTime : undefined}
+                isPartial={isExtraPartial}
+                shift={shift}
+              />
             )}
 
-            {extraRequestMode === "assign" && ( // Show firefighter selection only for "assign" mode
-              <div className="space-y-2">
-                <Label htmlFor="firefighter-select" className="text-sm font-medium">
-                  Sélectionner un pompier
-                </Label>
-                <Select
-                  value={typeof selectedExtraFirefighter === "number" ? selectedExtraFirefighter.toString() : ""}
-                  onValueChange={(value) => {
-                    setSelectedExtraFirefighter(Number.parseInt(value))
-                  }}
-                >
-                  <SelectTrigger id="firefighter-select">
-                    <SelectValue placeholder="Choisir un pompier" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableFirefighters.map((ff) => (
-                      <SelectItem key={ff.id} value={ff.id.toString()}>
-                        {ff.first_name} {ff.last_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {extraRequestMode === "request" &&
-              shift && ( // Show deadline select for "request" mode
-                <DeadlineSelect
-                  value={extraDeadlineSeconds}
-                  onValueChange={handleExtraDeadlineChange}
-                  shiftDate={shift.date}
-                  shiftEndTime={isExtraPartial ? extraEndTime : shift.end_time}
-                  partialEndTime={isExtraPartial ? extraEndTime : undefined}
-                  isPartial={isExtraPartial}
-                  shift={shift}
-                />
-              )}
-
-            {extraRequestMode && ( // Show partial options if a mode is selected
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="extra-partial"
-                  checked={isExtraPartial}
-                  onCheckedChange={(checked) => {
-                    setIsExtraPartial(checked === true)
-                  }}
-                />
-                <Label
-                  htmlFor="extra-partial"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Remplacement partiel
-                </Label>
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="extra-partial"
+                checked={isExtraPartial}
+                onCheckedChange={(checked) => {
+                  setIsExtraPartial(checked === true)
+                }}
+              />
+              <Label
+                htmlFor="extra-partial"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Remplacement partiel
+              </Label>
+            </div>
 
             {isExtraPartial && (
               <div className="space-y-3 rounded-md border p-3">
@@ -2064,24 +1955,10 @@ export function ShiftAssignmentDrawer({
             </Button>
             <Button
               onClick={handleAddExtraFirefighter}
-              disabled={
-                isLoading ||
-                !extraRequestMode ||
-                (extraRequestMode === "assign" && !selectedExtraFirefighter) ||
-                (extraRequestMode === "request" && !extraDeadlineSeconds) ||
-                (isExtraPartial && extraStartTime >= extraEndTime)
-              }
-              className={
-                extraRequestMode === "request" ? "bg-orange-600 hover:bg-orange-700" : "bg-green-600 hover:bg-green-700"
-              }
+              disabled={isLoading || !extraDeadlineSeconds || (isExtraPartial && extraStartTime >= extraEndTime)}
+              className="bg-orange-600 hover:bg-orange-700"
             >
-              {isLoading
-                ? extraRequestMode === "request"
-                  ? "Création..."
-                  : "Ajout..."
-                : extraRequestMode === "request"
-                  ? "Créer la demande"
-                  : "Ajouter"}
+              {isLoading ? "Création..." : "Créer la demande"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
