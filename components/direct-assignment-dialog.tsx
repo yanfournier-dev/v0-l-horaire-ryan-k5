@@ -204,7 +204,7 @@ export function DirectAssignmentDialog({
                 <SelectContent>
                   {sortedAllFirefighters.map((ff) => (
                     <SelectItem key={ff.id} value={ff.id.toString()}>
-                      {ff.first_name} {ff.last_name}
+                      {ff.last_name}, {ff.first_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
