@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
@@ -54,6 +54,12 @@ export function ShiftNoteDialog({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const router = useRouter()
 
+  useEffect(() => {
+    if (open) {
+      setNote(existingNote?.note || "")
+    }
+  }, [open, existingNote])
+
   const scrollToToday = (attempt = 1, maxAttempts = 10) => {
     console.log("[v0] scrollToToday: Attempt", attempt, "of", maxAttempts)
     const today = new Date()
@@ -102,6 +108,7 @@ export function ShiftNoteDialog({
     if (result.success) {
       setShowDeleteConfirm(false)
       onOpenChange(false)
+      setNote("")
       if (onNoteChange) {
         onNoteChange()
       }
