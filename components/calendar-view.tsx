@@ -405,7 +405,6 @@ export function CalendarView({
     const lastMonth = months[months.length - 1]
     const lastDay = lastMonth.days[lastMonth.days.length - 1].date
 
-    // Fetch new replacement data only
     const data = await getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
 
     // Build new replacement map
@@ -420,7 +419,20 @@ export function CalendarView({
     })
     setReplacementMap(newReplacementMap)
 
-    console.log("[v0] CalendarView - replacement map updated")
+    const newExtraFirefighterMap: Record<string, any[]> = {}
+    if (data.extraFirefighters && data.extraFirefighters.length > 0) {
+      data.extraFirefighters.forEach((extra: any) => {
+        const dateOnly = formatLocalDate(extra.shift_date)
+        const key = `${dateOnly}_${extra.shift_type}_${extra.team_id}`
+        if (!newExtraFirefighterMap[key]) {
+          newExtraFirefighterMap[key] = []
+        }
+        newExtraFirefighterMap[key].push(extra)
+      })
+    }
+    setExtraFirefighterMap(newExtraFirefighterMap)
+
+    console.log("[v0] CalendarView - replacement map and extra firefighter map updated")
   }, [months])
 
   const handleShiftUpdated = useCallback(
