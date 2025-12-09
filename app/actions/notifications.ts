@@ -603,7 +603,7 @@ export async function createBatchNotifications(
 export async function sendBatchReplacementEmails(
   replacementId: number,
   firefighterToReplaceName: string,
-  deadlineLabel: string, // Add deadline label parameter
+  deadlineLabel: string,
 ) {
   // Only send emails in production
   if (process.env.VERCEL_ENV !== "production") {
@@ -665,6 +665,7 @@ export async function sendBatchReplacementEmails(
     }
 
     console.log("[v0] PRODUCTION: Generating email contents...")
+    console.log("[v0] PRODUCTION: deadlineLabel parameter:", deadlineLabel)
 
     // Generate all email contents
     const emails = await Promise.all(
@@ -683,23 +684,32 @@ export async function sendBatchReplacementEmails(
           DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
         `
 
-        const emailContent = await getReplacementAvailableEmail(
-          fullName,
-          parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
-          r.shift_type,
-          firefighterToReplaceName,
-          r.is_partial,
-          partialHours,
-          applyToken,
-          deadlineLabel, // Pass deadline label to email template
-        )
+        try {
+          console.log("[v0] PRODUCTION: Generating email for user", user.email, "with deadlineLabel:", deadlineLabel)
 
-        return {
-          to: user.email,
-          subject: emailContent.subject,
-          html: emailContent.html,
-          userId: user.id,
-          name: fullName,
+          const emailContent = await getReplacementAvailableEmail(
+            fullName,
+            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
+            r.shift_type,
+            firefighterToReplaceName,
+            r.is_partial,
+            partialHours,
+            applyToken,
+            deadlineLabel,
+          )
+
+          console.log("[v0] PRODUCTION: Email content generated successfully for", user.email)
+
+          return {
+            to: user.email,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            userId: user.id,
+            name: fullName,
+          }
+        } catch (emailError) {
+          console.error("[v0] PRODUCTION ERROR: Failed to generate email for", user.email, "Error:", emailError)
+          throw emailError
         }
       }),
     )
@@ -744,6 +754,9 @@ export async function sendBatchReplacementEmails(
     }
   } catch (error) {
     console.error("[v0] PRODUCTION: sendBatchReplacementEmails error:", error)
+    if (error instanceof Error) {
+      console.error("[v0] PRODUCTION ERROR STACK:", error.stack)
+    }
 
     return {
       success: false,
