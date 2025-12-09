@@ -600,7 +600,11 @@ export async function createBatchNotifications(
   }
 }
 
-export async function sendBatchReplacementEmails(replacementId: number, firefighterToReplaceName: string) {
+export async function sendBatchReplacementEmails(
+  replacementId: number,
+  firefighterToReplaceName: string,
+  deadlineLabel: string, // Add deadline label parameter
+) {
   // Only send emails in production
   if (process.env.VERCEL_ENV !== "production") {
     console.log("[v0] V0 PREVIEW: Skipping batch emails in preview environment")
@@ -687,6 +691,7 @@ export async function sendBatchReplacementEmails(replacementId: number, firefigh
           r.is_partial,
           partialHours,
           applyToken,
+          deadlineLabel, // Pass deadline label to email template
         )
 
         return {

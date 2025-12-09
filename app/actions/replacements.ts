@@ -9,6 +9,14 @@ import { neon } from "@neondatabase/serverless"
 import { createAuditLog } from "./audit"
 import { checkConsecutiveHours } from "@/lib/consecutive-hours"
 
+const getDeadlineLabel = (deadlineSeconds: number | null | undefined): string | null => {
+  if (deadlineSeconds === 900) return "15 minutes"
+  if (deadlineSeconds === 86400) return "24 heures"
+  if (deadlineSeconds === 0) return "Sans délai"
+  // Don't send notifications for other deadline types (-1, -2, or any other values)
+  return null
+}
+
 export async function getUserApplications(userId: number) {
   try {
     const applications = await sql`
@@ -225,6 +233,9 @@ export async function createReplacementFromShift(
     const firefighterToReplaceName =
       firefighterInfo.length > 0 ? `${firefighterInfo[0].first_name} ${firefighterInfo[0].last_name}` : "Pompier"
 
+    const deadlineLabel = getDeadlineLabel(deadlineSeconds)
+    const shouldSendNotifications = deadlineLabel !== null
+
     const eligibleUsers = await db`
       SELECT DISTINCT u.id
       FROM users u
@@ -240,11 +251,16 @@ export async function createReplacementFromShift(
         )
     `
 
-    if (eligibleUsers.length > 0) {
+    if (eligibleUsers.length > 0 && shouldSendNotifications) {
       const userIds = eligibleUsers.map((u) => u.id)
+      const notificationTitle =
+        deadlineLabel === "Sans délai"
+          ? "🚨 SANS DÉLAI - Nouveau remplacement"
+          : `Nouveau remplacement - Délai: ${deadlineLabel}`
+
       createBatchNotificationsInApp(
         userIds,
-        "Nouveau remplacement disponible",
+        notificationTitle,
         `Remplacement pour ${firefighterToReplaceName} le ${formatLocalDate(shiftDate)} (${shiftType === "day" ? "Jour" : "Nuit"})`,
         "replacement_available",
         replacementId,
@@ -255,18 +271,20 @@ export async function createReplacementFromShift(
     }
 
     let emailResults
-    if (process.env.VERCEL_ENV === "production") {
-      emailResults = await sendBatchReplacementEmails(replacementId, firefighterToReplaceName)
+    if (process.env.VERCEL_ENV === "production" && shouldSendNotifications) {
+      emailResults = await sendBatchReplacementEmails(replacementId, firefighterToReplaceName, deadlineLabel!)
     } else {
       // In preview, simulate email sending
       emailResults = {
         success: true,
-        sent: eligibleUsers.length,
+        sent: shouldSendNotifications ? eligibleUsers.length : 0,
         failed: 0,
-        recipients: eligibleUsers.map((u: any) => ({
-          userId: u.id,
-          success: true,
-        })),
+        recipients: shouldSendNotifications
+          ? eligibleUsers.map((u: any) => ({
+              userId: u.id,
+              success: true,
+            }))
+          : [],
       }
     }
 
@@ -818,6 +836,9 @@ export async function createExtraFirefighterReplacement(
 
     const firefighterToReplaceName = "Pompier supplémentaire"
 
+    const deadlineLabel = getDeadlineLabel(deadlineSeconds)
+    const shouldSendNotifications = deadlineLabel !== null
+
     const eligibleUsers = await db`
       SELECT DISTINCT u.id
       FROM users u
@@ -832,11 +853,16 @@ export async function createExtraFirefighterReplacement(
         )
     `
 
-    if (eligibleUsers.length > 0) {
+    if (eligibleUsers.length > 0 && shouldSendNotifications) {
       const userIds = eligibleUsers.map((u) => u.id)
+      const notificationTitle =
+        deadlineLabel === "Sans délai"
+          ? "🚨 SANS DÉLAI - Nouveau remplacement"
+          : `Nouveau remplacement - Délai: ${deadlineLabel}`
+
       createBatchNotificationsInApp(
         userIds,
-        "Nouveau remplacement disponible",
+        notificationTitle,
         `Remplacement (pompier supplémentaire) le ${formatLocalDate(shiftDate)} (${shiftType === "day" ? "Jour" : "Nuit"})`,
         "replacement_available",
         replacementId,
@@ -846,8 +872,8 @@ export async function createExtraFirefighterReplacement(
       })
     }
 
-    if (process.env.VERCEL_ENV === "production") {
-      sendBatchReplacementEmails(replacementId, firefighterToReplaceName).catch((error) => {
+    if (process.env.VERCEL_ENV === "production" && shouldSendNotifications) {
+      sendBatchReplacementEmails(replacementId, firefighterToReplaceName, deadlineLabel!).catch((error) => {
         console.error("PRODUCTION: Batch email sending failed:", error)
       })
     }

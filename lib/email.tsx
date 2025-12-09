@@ -162,22 +162,16 @@ function getFallbackTemplate(type: string, variables: Record<string, string>) {
           <p style="margin: 5px 0;"><strong>Type de quart :</strong> ${variables.shiftType}</p>
           <p style="margin: 5px 0;"><strong>Pompier à remplacer :</strong> ${variables.firefighterToReplace}</p>
           ${variables.isPartial ? `<p style="margin: 5px 0; color: #f97316;"><strong>Remplacement partiel :</strong> ${variables.partialHours}</p>` : ""}
+          ${
+            variables.deadlineLabel
+              ? variables.deadlineLabel === "Sans délai"
+                ? `<p style="margin: 10px 0; padding: 12px; background-color: #fee2e2; border: 2px solid #dc2626; border-radius: 5px; color: #dc2626; font-weight: bold; font-size: 16px; text-align: center;">
+                     ⚠️ SANS DÉLAI - Postulez immédiatement ⚠️
+                   </p>`
+                : `<p style="margin: 5px 0;"><strong>Délai pour postuler :</strong> ${variables.deadlineLabel}</p>`
+              : ""
+          }
         </div>
-        ${
-          variables.applyToken
-            ? `
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${appUrl}/apply-replacement?token=${variables.applyToken}" 
-               style="display: inline-block; background-color: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
-              Postuler maintenant
-            </a>
-            <p style="margin-top: 10px; font-size: 14px; color: #6b7280;">
-              Cliquez sur ce bouton pour postuler directement
-            </p>
-          </div>
-        `
-            : ""
-        }
         <a href="${appUrl}/dashboard/replacements" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les remplacements</a>
       `,
     },
@@ -354,9 +348,18 @@ export async function getReplacementAvailableEmail(
   isPartial?: boolean,
   partialHours?: string,
   applyToken?: string,
+  deadlineLabel?: string,
 ) {
   const translatedShiftType = translateShiftType(shiftType)
-  return await getEmailFromTemplate("replacement_available", {
+
+  const subject =
+    deadlineLabel === "Sans délai"
+      ? "🚨 SANS DÉLAI - Remplacement"
+      : deadlineLabel
+        ? `Remplacement - Délai: ${deadlineLabel}`
+        : "Remplacement disponible"
+
+  const emailContent = await getEmailFromTemplate("replacement_available", {
     name,
     date,
     shiftType: translatedShiftType,
@@ -364,7 +367,13 @@ export async function getReplacementAvailableEmail(
     isPartial: isPartial ? "true" : "",
     partialHours: partialHours || "",
     applyToken: applyToken || "",
+    deadlineLabel: deadlineLabel || "",
   })
+
+  return {
+    subject,
+    html: emailContent.html,
+  }
 }
 
 export async function getApplicationApprovedEmail(
@@ -480,7 +489,6 @@ export async function getExchangeApprovedEmail(
     newShiftType: translatedYourShiftType,
     oldDate: otherDate,
     oldShiftType: translatedOtherShiftType,
-    // Also include original names for fallback template
     name,
     otherName,
     yourDate,
