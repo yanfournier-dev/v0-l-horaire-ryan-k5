@@ -7,8 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Eye, EyeOff, Plus } from "lucide-react"
 import { AvailableReplacementsTab } from "@/components/available-replacements-tab"
-import { AssignedReplacementsTab } from "@/components/assigned-replacements-tab"
-import { DirectAssignmentsTab } from "@/components/direct-assignments-tab" // Added import for new tab
+import { DirectAssignmentsTab } from "@/components/direct-assignments-tab"
 import { PendingRequestsTab } from "@/components/pending-requests-tab"
 import { UserRequestsTab } from "@/components/user-requests-tab"
 import { WithdrawApplicationButton } from "@/components/withdraw-application-button"
@@ -27,7 +26,7 @@ interface ReplacementsTabsProps {
   pendingRequests: any[]
   userRequests: any[]
   expiredReplacements: any[]
-  directAssignments: any[] // Added prop for direct assignments
+  directAssignments: any[]
   isAdmin: boolean
   userId: number
   initialTab?: string
@@ -41,7 +40,7 @@ export function ReplacementsTabs({
   pendingRequests,
   userRequests,
   expiredReplacements,
-  directAssignments, // Destructured new prop
+  directAssignments,
   isAdmin,
   userId,
   initialTab = "available",
@@ -123,17 +122,20 @@ export function ReplacementsTabs({
       </div>
 
       <TabsList>
-        <TabsTrigger value="available">Disponibles ({openReplacements.length})</TabsTrigger>
-        {isAdmin && expiredReplacements.length > 0 && (
+        <TabsTrigger value="available">Demandes de remplacement ({openReplacements.length})</TabsTrigger>
+        {isAdmin && (
           <TabsTrigger
             value="to-assign"
-            className="data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
+            className={
+              expiredReplacements.length > 0
+                ? "data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
+                : ""
+            }
           >
             Prêts à assigner ({expiredReplacements.length})
           </TabsTrigger>
         )}
-        <TabsTrigger value="assigned">Assignés ({assignedReplacements.length})</TabsTrigger>
-        <TabsTrigger value="direct-assignments">Assignation directe ({directAssignments.length})</TabsTrigger>
+        <TabsTrigger value="direct-assignments">Assignations directes ({directAssignments.length})</TabsTrigger>
         <TabsTrigger value="my-applications">Mes candidatures ({pendingApplications.length})</TabsTrigger>
         <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
         {isAdmin && (
@@ -153,15 +155,12 @@ export function ReplacementsTabs({
       <TabsContent value="available">
         <AvailableReplacementsTab
           groupedReplacements={groupedOpenReplacements}
+          allReplacements={replacementsToDisplay}
           userApplications={userApplications}
           isAdmin={isAdmin}
           firefighters={firefighters}
           userId={userId}
         />
-      </TabsContent>
-
-      <TabsContent value="assigned">
-        <AssignedReplacementsTab allReplacements={assignedReplacements} isAdmin={isAdmin} />
       </TabsContent>
 
       <TabsContent value="direct-assignments">

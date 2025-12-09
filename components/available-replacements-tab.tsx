@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Users, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { ApplyForReplacementButton } from "@/components/apply-for-replacement-button"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
+import { EditReplacementAssignmentButton } from "@/components/edit-replacement-assignment-button"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { parseLocalDate, formatShortDate, formatCreatedAt } from "@/lib/date-utils"
 import Link from "next/link"
@@ -14,9 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { compareShifts } from "@/lib/shift-sort"
 import { DeadlineTimer } from "@/components/deadline-timer"
 import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface AvailableReplacementsTabProps {
   groupedReplacements: Record<string, any[]>
+  allReplacements: any[]
   userApplications: any[]
   isAdmin: boolean
   firefighters: any[]
@@ -25,6 +28,7 @@ interface AvailableReplacementsTabProps {
 
 export function AvailableReplacementsTab({
   groupedReplacements,
+  allReplacements,
   userApplications,
   isAdmin,
   firefighters,
@@ -32,31 +36,30 @@ export function AvailableReplacementsTab({
 }: AvailableReplacementsTabProps) {
   const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "candidates">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [showAssigned, setShowAssigned] = useState(false)
 
-  const allReplacements: any[] = []
+  const openReplacements: any[] = []
   Object.entries(groupedReplacements).forEach(([dateKey, replacements]) => {
     replacements.forEach((replacement: any) => {
-      allReplacements.push(replacement)
+      openReplacements.push(replacement)
     })
   })
 
-  console.log("[v0] AvailableReplacementsTab - Total replacements:", allReplacements.length)
-  console.log("[v0] AvailableReplacementsTab - Current time:", new Date().toISOString())
+  const assignedReplacements = allReplacements.filter((r) => r.status === "assigned")
 
-  allReplacements.forEach((r, index) => {
-    const isExpired = r.application_deadline && new Date(r.application_deadline) < new Date()
-    console.log(`[v0] Replacement ${index + 1}:`, {
-      id: r.id,
-      name: `${r.first_name} ${r.last_name}`,
-      shift_date: r.shift_date,
-      deadline: r.application_deadline,
-      deadline_duration: r.deadline_duration,
-      isFirstCome: r.deadline_duration === -1,
-      isExpired,
-    })
-  })
+  const displayReplacements = showAssigned ? [...openReplacements, ...assignedReplacements] : openReplacements
 
-  const filteredReplacements = allReplacements.filter((replacement) => {
+  console.log("[v0] AvailableReplacementsTab - Total open replacements:", openReplacements.length)
+  console.log("[v0] AvailableReplacementsTab - Total assigned replacements:", assignedReplacements.length)
+  console.log("[v0] AvailableReplacementsTab - Show assigned:", showAssigned)
+  console.log("[v0] AvailableReplacementsTab - Display count:", displayReplacements.length)
+
+  const filteredReplacements = displayReplacements.filter((replacement) => {
+    // If it's assigned, always show it
+    if (replacement.status === "assigned") {
+      return true
+    }
+    // For open replacements, check if expired
     const isExpired = replacement.application_deadline && new Date(replacement.application_deadline) < new Date()
     return !isExpired
   })
@@ -115,6 +118,20 @@ export function AvailableReplacementsTab({
             {sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
           </Button>
         </div>
+
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="show-assigned"
+            checked={showAssigned}
+            onCheckedChange={(checked) => setShowAssigned(!!checked)}
+          />
+          <label
+            htmlFor="show-assigned"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          >
+            Afficher les remplacements assignés
+          </label>
+        </div>
       </div>
 
       {sortedReplacements.length === 0 ? (
@@ -129,8 +146,8 @@ export function AvailableReplacementsTab({
           const candidateCount = Number.parseInt(replacement.application_count) || 0
           const isOwnReplacement = replacement.user_id === userId
           const isExpired = replacement.application_deadline && new Date(replacement.application_deadline) < new Date()
-          // Check if deadline_duration is exactly -1 for first-come replacements
           const isFirstCome = replacement.deadline_duration === -1
+          const isAssigned = replacement.status === "assigned"
 
           return (
             <Card
@@ -147,7 +164,7 @@ export function AvailableReplacementsTab({
                       {getShiftTypeLabel(replacement.shift_type).split(" ")[0]}
                     </Badge>
                     <PartTimeTeamBadge shiftDate={replacement.shift_date} />
-                    {isFirstCome && (
+                    {isFirstCome && !isAssigned && (
                       <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs px-1.5 py-0 h-5 leading-none whitespace-nowrap">
                         Sans délai
                       </Badge>
@@ -172,13 +189,13 @@ export function AvailableReplacementsTab({
                     </div>
                   </div>
 
-                  {replacement.status === "assigned" && replacement.assigned_first_name && (
-                    <div className="text-xs text-blue-600 dark:text-blue-400 shrink-0 leading-none">
+                  {isAssigned && replacement.assigned_first_name && (
+                    <div className="text-xs text-blue-600 dark:text-blue-400 shrink-0 leading-none font-medium">
                       → {replacement.assigned_first_name} {replacement.assigned_last_name}
                     </div>
                   )}
 
-                  {replacement.application_deadline && !isExpired && (
+                  {replacement.application_deadline && !isExpired && !isAssigned && (
                     <DeadlineTimer
                       deadline={replacement.application_deadline}
                       deadlineDuration={replacement.deadline_duration}
@@ -187,7 +204,7 @@ export function AvailableReplacementsTab({
                   )}
 
                   <div className="shrink-0">
-                    {replacement.status === "assigned" ? (
+                    {isAssigned ? (
                       <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-sm px-1.5 py-0 h-5 leading-none">
                         Assigné
                       </Badge>
@@ -199,7 +216,8 @@ export function AvailableReplacementsTab({
                   </div>
 
                   <div className="flex gap-0.5 shrink-0">
-                    {(isAdmin || (!hasApplied && !isOwnReplacement && !isExpired)) &&
+                    {!isAssigned &&
+                      (isAdmin || (!hasApplied && !isOwnReplacement && !isExpired)) &&
                       replacement.status !== "assigned" && (
                         <ApplyForReplacementButton
                           replacementId={replacement.id}
@@ -212,14 +230,26 @@ export function AvailableReplacementsTab({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 text-xs px-2 gap-0.5 bg-transparent leading-none"
+                        className={`${isAssigned ? "h-6" : "h-8"} text-xs px-2 gap-0.5 bg-transparent leading-none`}
                       >
-                        <Users className="h-3 w-3" />
-                        <Badge variant="secondary" className="text-[9px] px-0.5 py-0 h-3.5 leading-none">
-                          {candidateCount}
-                        </Badge>
+                        {isAssigned ? (
+                          `Voir (${candidateCount})`
+                        ) : (
+                          <>
+                            <Users className="h-3 w-3" />
+                            <Badge variant="secondary" className="text-[9px] px-0.5 py-0 h-3.5 leading-none">
+                              {candidateCount}
+                            </Badge>
+                          </>
+                        )}
                       </Button>
                     </Link>
+                    {isAdmin && isAssigned && replacement.assigned_first_name && (
+                      <EditReplacementAssignmentButton
+                        replacementId={replacement.id}
+                        currentFirefighterName={`${replacement.assigned_first_name} ${replacement.assigned_last_name}`}
+                      />
+                    )}
                     {isAdmin && <DeleteReplacementButton replacementId={replacement.id} />}
                   </div>
                 </div>
