@@ -165,14 +165,16 @@ function getFallbackTemplate(type: string, variables: Record<string, string>) {
           ${
             variables.deadlineLabel
               ? variables.deadlineLabel === "Sans délai"
-                ? `<p style="margin: 10px 0; padding: 12px; background-color: #fee2e2; border: 2px solid #dc2626; border-radius: 5px; color: #dc2626; font-weight: bold; font-size: 16px; text-align: center;">
-                     ⚠️ SANS DÉLAI - Postulez immédiatement ⚠️
+                ? `<p style="margin: 10px 0 5px 0; padding: 10px; background-color: #fee2e2; border: 2px solid #dc2626; border-radius: 5px; color: #dc2626; font-weight: bold; font-size: 15px;">
+                     ⚠️ <strong>Sans délai</strong> - Postulez immédiatement ⚠️
                    </p>`
-                : `<p style="margin: 5px 0;"><strong>Délai pour postuler :</strong> ${variables.deadlineLabel}</p>`
+                : `<p style="margin: 5px 0;"><strong>Délai :</strong> ${variables.deadlineLabel}</p>`
               : ""
           }
         </div>
-        <a href="${appUrl}/dashboard/replacements" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Voir les remplacements</a>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="${appUrl}/dashboard/replacements" style="display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Voir les remplacements</a>
+        </div>
       `,
     },
     application_approved: {
