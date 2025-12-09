@@ -358,12 +358,14 @@ export async function getReplacementAvailableEmail(
 
   const translatedShiftType = translateShiftType(shiftType)
 
-  const subject =
-    deadlineLabel === "Sans délai"
-      ? "🚨 SANS DÉLAI - Remplacement"
-      : deadlineLabel
-        ? `Remplacement - Délai: ${deadlineLabel}`
-        : "Remplacement disponible"
+  const isNoDeadline = deadlineLabel === "Sans délai"
+  const normalDeadline = deadlineLabel && !isNoDeadline ? "true" : ""
+
+  const subject = isNoDeadline
+    ? "🚨 SANS DÉLAI - Remplacement"
+    : deadlineLabel
+      ? `Remplacement - Délai: ${deadlineLabel}`
+      : "Remplacement disponible"
 
   console.log("[v0] Email subject generated:", subject)
 
@@ -376,6 +378,8 @@ export async function getReplacementAvailableEmail(
     partialHours: partialHours || "",
     applyToken: applyToken || "",
     deadlineLabel: deadlineLabel || "",
+    isNoDeadline: isNoDeadline ? "true" : "",
+    normalDeadline,
   })
 
   console.log("[v0] Email content generated with deadlineLabel in variables:", deadlineLabel)
