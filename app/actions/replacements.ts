@@ -10,8 +10,8 @@ import { createAuditLog } from "./audit"
 import { checkConsecutiveHours } from "@/lib/consecutive-hours"
 
 const getDeadlineLabel = (deadlineSeconds: number | null | undefined): string | null => {
-  if (deadlineSeconds === 900) return "15 minutes"
-  if (deadlineSeconds === 86400) return "24 heures"
+  if (deadlineSeconds === 900) return "Délai: 15 minutes"
+  if (deadlineSeconds === 86400) return "Délai: 24 heures"
   if (deadlineSeconds === -1) return "Sans délai"
   // Don't send notifications for other deadline types (-2 or any other values)
   return null
