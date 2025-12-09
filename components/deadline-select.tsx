@@ -3,8 +3,6 @@
 import { useState } from "react"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Calendar } from "lucide-react"
 import { calculateEndOfShiftDeadline } from "@/lib/date-utils"
 
 interface DeadlineSelectProps {
@@ -26,19 +24,17 @@ export function DeadlineSelect({
   isPartial,
   shift,
 }: DeadlineSelectProps) {
-  const [deadlineType, setDeadlineType] = useState<"none" | "preset" | "manual" | "first-come" | "summer-vacation">(
+  const [deadlineType, setDeadlineType] = useState<"none" | "preset" | "first-come" | "summer-vacation">(
     value === null
       ? "none"
       : value instanceof Date
-        ? "manual"
+        ? "none" // If existing manual deadline, show as "none" (can't create new ones)
         : value === -1
           ? "first-come"
           : value === -2
             ? "summer-vacation"
             : "preset",
   )
-  const [manualDate, setManualDate] = useState<string>("")
-  const [manualTime, setManualTime] = useState<string>("17:00")
 
   const stringValue =
     value === null
@@ -48,11 +44,11 @@ export function DeadlineSelect({
         : value === -2
           ? "summer-vacation"
           : value instanceof Date
-            ? "manual"
+            ? "none" // Existing manual deadlines display as "none"
             : value.toString()
 
   const handleTypeChange = (newType: string) => {
-    setDeadlineType(newType as "none" | "preset" | "manual" | "first-come" | "summer-vacation")
+    setDeadlineType(newType as "none" | "preset" | "first-come" | "summer-vacation")
 
     if (newType === "none") {
       onValueChange(null)
@@ -60,8 +56,6 @@ export function DeadlineSelect({
       onValueChange(-1)
     } else if (newType === "summer-vacation") {
       onValueChange(-2)
-    } else if (newType === "manual") {
-      // Don't change value yet, wait for date selection
     }
   }
 
@@ -74,26 +68,8 @@ export function DeadlineSelect({
     } else if (newValue === "summer-vacation") {
       setDeadlineType("summer-vacation")
       onValueChange(-2)
-    } else if (newValue === "manual") {
-      setDeadlineType("manual")
     } else {
       onValueChange(Number.parseInt(newValue, 10))
-    }
-  }
-
-  const handleManualDateChange = (date: string) => {
-    setManualDate(date)
-    if (date) {
-      const deadline = new Date(date + "T" + manualTime)
-      onValueChange(deadline)
-    }
-  }
-
-  const handleManualTimeChange = (time: string) => {
-    setManualTime(time)
-    if (manualDate) {
-      const deadline = new Date(manualDate + "T" + time)
-      onValueChange(deadline)
     }
   }
 
@@ -134,60 +110,22 @@ export function DeadlineSelect({
     <div className="space-y-2">
       <Label htmlFor="deadline">Délai pour postuler</Label>
       <Select
-        value={
-          deadlineType === "manual" || deadlineType === "first-come" || deadlineType === "summer-vacation"
-            ? deadlineType
-            : stringValue
-        }
+        value={deadlineType === "first-come" || deadlineType === "summer-vacation" ? deadlineType : stringValue}
         onValueChange={
-          deadlineType === "manual" || deadlineType === "first-come" || deadlineType === "summer-vacation"
-            ? handleTypeChange
-            : handlePresetChange
+          deadlineType === "first-come" || deadlineType === "summer-vacation" ? handleTypeChange : handlePresetChange
         }
       >
         <SelectTrigger id="deadline">
-          <SelectValue placeholder="Lundi 17h (automatique)" />
+          <SelectValue placeholder="Lundi 17h" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">Lundi 17h (automatique)</SelectItem>
-          <SelectItem value="first-come">{getFirstComeDisplayText()}</SelectItem>
-          <SelectItem value="summer-vacation">Vacance estivale (16 mai minuit)</SelectItem>
+          <SelectItem value="none">Lundi 17h</SelectItem>
           <SelectItem value="900">15 minutes</SelectItem>
           <SelectItem value="86400">24 heures</SelectItem>
-          <SelectItem value="manual">Deadline manuel</SelectItem>
+          <SelectItem value="first-come">{getFirstComeDisplayText()}</SelectItem>
+          <SelectItem value="summer-vacation">Vacance estivale (16 mai minuit)</SelectItem>
         </SelectContent>
       </Select>
-
-      {deadlineType === "manual" && (
-        <div className="space-y-2 rounded-md border p-3">
-          <div className="space-y-2">
-            <Label htmlFor="manual-date" className="text-sm">
-              Date limite
-            </Label>
-            <div className="relative">
-              <Input
-                id="manual-date"
-                type="date"
-                value={manualDate}
-                onChange={(e) => handleManualDateChange(e.target.value)}
-                className="pl-9"
-              />
-              <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="manual-time" className="text-sm">
-              Heure limite (optionnelle, par défaut 17h00)
-            </Label>
-            <Input
-              id="manual-time"
-              type="time"
-              value={manualTime}
-              onChange={(e) => handleManualTimeChange(e.target.value)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
