@@ -352,6 +352,8 @@ export async function getReplacementAvailableEmail(
   applyToken?: string,
   deadlineLabel?: string,
 ) {
+  console.log("[v0] getReplacementAvailableEmail called with deadlineLabel:", deadlineLabel)
+
   const translatedShiftType = translateShiftType(shiftType)
 
   const subject =
@@ -360,6 +362,8 @@ export async function getReplacementAvailableEmail(
       : deadlineLabel
         ? `Remplacement - Délai: ${deadlineLabel}`
         : "Remplacement disponible"
+
+  console.log("[v0] Email subject generated:", subject)
 
   const emailContent = await getEmailFromTemplate("replacement_available", {
     name,
@@ -371,6 +375,8 @@ export async function getReplacementAvailableEmail(
     applyToken: applyToken || "",
     deadlineLabel: deadlineLabel || "",
   })
+
+  console.log("[v0] Email content generated with deadlineLabel in variables:", deadlineLabel)
 
   return {
     subject,
