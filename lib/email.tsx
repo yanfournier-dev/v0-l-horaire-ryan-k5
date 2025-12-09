@@ -150,6 +150,8 @@ function getAppUrl(): string {
 function getFallbackTemplate(type: string, variables: Record<string, string>) {
   const appUrl = getAppUrl()
 
+  console.log("[v0] getFallbackTemplate called with type:", type, "variables:", variables)
+
   const templates: Record<string, { subject: string; body: string }> = {
     replacement_available: {
       subject: "Remplacement disponible",
