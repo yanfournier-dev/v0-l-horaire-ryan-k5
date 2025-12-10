@@ -1492,3 +1492,37 @@ export async function getDirectAssignments() {
     return []
   }
 }
+
+export async function getReplacementsAdminActionCount() {
+  try {
+    const user = await getSession()
+    if (!user || !user.is_admin) {
+      return 0
+    }
+
+    // Count pending requests
+    const pendingRequests = await sql`
+      SELECT COUNT(*) as count
+      FROM replacements r
+      LEFT JOIN leaves l ON r.leave_id = l.id
+      WHERE (r.status = 'pending' OR (r.status = 'open' AND l.status = 'pending'))
+        AND r.shift_date >= CURRENT_DATE
+    `
+
+    // Count expired replacements (ready to assign) - must match getExpiredReplacements()
+    const expiredReplacements = await sql`
+      SELECT COUNT(*) as count
+      FROM replacements
+      WHERE status = 'open'
+        AND application_deadline IS NOT NULL
+        AND application_deadline < CURRENT_TIMESTAMP
+        AND shift_date >= CURRENT_DATE - INTERVAL '7 days'
+    `
+
+    const totalCount = Number(pendingRequests[0]?.count || 0) + Number(expiredReplacements[0]?.count || 0)
+    return totalCount
+  } catch (error) {
+    console.error("getReplacementsAdminActionCount: Error", error)
+    return 0
+  }
+}

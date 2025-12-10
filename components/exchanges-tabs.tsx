@@ -15,6 +15,7 @@ interface ExchangesTabsProps {
   userExchanges: any[]
   pendingExchanges: any[]
   allExchanges?: any[]
+  nonPastExchangesCount?: number
   isAdmin: boolean
   userId: number
   exchangeCount: number
@@ -25,13 +26,14 @@ export function ExchangesTabs({
   userExchanges,
   pendingExchanges,
   allExchanges = [],
+  nonPastExchangesCount = 0,
   isAdmin,
   userId,
   exchangeCount,
   allFirefighters = [],
 }: ExchangesTabsProps) {
   const [showRequestDialog, setShowRequestDialog] = useState(false)
-  const [activeTab, setActiveTab] = useState("my-exchanges")
+  const [activeTab, setActiveTab] = useState(isAdmin ? "all" : "my-exchanges")
 
   const canRequestExchange = exchangeCount < 8
 
@@ -60,9 +62,10 @@ export function ExchangesTabs({
       )}
 
       <TabsList>
-        <TabsTrigger value="my-exchanges">Mes échanges ({userExchanges.length})</TabsTrigger>
         {isAdmin && (
           <>
+            <TabsTrigger value="all">Tous les échanges ({nonPastExchangesCount})</TabsTrigger>
+            <TabsTrigger value="my-exchanges">Mes échanges ({userExchanges.length})</TabsTrigger>
             <TabsTrigger
               value="pending"
               className={
@@ -73,24 +76,29 @@ export function ExchangesTabs({
             >
               En attente ({pendingExchanges.length})
             </TabsTrigger>
-            <TabsTrigger value="all">Tous les échanges ({allExchanges.length})</TabsTrigger>
           </>
         )}
+        {!isAdmin && <TabsTrigger value="my-exchanges">Mes échanges ({userExchanges.length})</TabsTrigger>}
       </TabsList>
-
-      <TabsContent value="my-exchanges">
-        <MyExchangesTab exchanges={userExchanges} userId={userId} />
-      </TabsContent>
 
       {isAdmin && (
         <>
-          <TabsContent value="pending">
-            <PendingExchangesTab exchanges={pendingExchanges} />
-          </TabsContent>
           <TabsContent value="all">
             <AllExchangesTab exchanges={allExchanges} isAdmin={isAdmin} />
           </TabsContent>
+          <TabsContent value="my-exchanges">
+            <MyExchangesTab exchanges={userExchanges} userId={userId} />
+          </TabsContent>
+          <TabsContent value="pending">
+            <PendingExchangesTab exchanges={pendingExchanges} />
+          </TabsContent>
         </>
+      )}
+
+      {!isAdmin && (
+        <TabsContent value="my-exchanges">
+          <MyExchangesTab exchanges={userExchanges} userId={userId} />
+        </TabsContent>
       )}
 
       <RequestExchangeDialog open={showRequestDialog} onOpenChange={setShowRequestDialog} userId={userId} />

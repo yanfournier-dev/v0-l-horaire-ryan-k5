@@ -5,13 +5,16 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { Badge } from "@/components/ui/badge"
 
 interface MobileNavProps {
   userName: string
   isAdmin?: boolean
+  replacementsBadgeCount?: number
+  exchangesBadgeCount?: number
 }
 
-export function MobileNav({ userName, isAdmin }: MobileNavProps) {
+export function MobileNav({ userName, isAdmin, replacementsBadgeCount = 0, exchangesBadgeCount = 0 }: MobileNavProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -20,7 +23,6 @@ export function MobileNav({ userName, isAdmin }: MobileNavProps) {
     { href: "/dashboard/calendar?scrollToToday=true", label: "Calendrier" },
     { href: "/dashboard/replacements", label: "Remplacements" },
     { href: "/dashboard/exchanges", label: "Échanges" },
-    { href: "/dashboard/notifications", label: "Notifications" },
     { href: "/dashboard/settings", label: "Paramètres" },
     ...(isAdmin
       ? [
@@ -66,7 +68,19 @@ export function MobileNav({ userName, isAdmin }: MobileNavProps) {
                 className="w-full justify-start"
                 size="sm"
               >
-                {item.label}
+                <span className="flex items-center justify-between w-full">
+                  <span>{item.label}</span>
+                  {item.label === "Remplacements" && replacementsBadgeCount > 0 && (
+                    <Badge className="ml-2 bg-red-600 text-white">
+                      {replacementsBadgeCount > 99 ? "99+" : replacementsBadgeCount}
+                    </Badge>
+                  )}
+                  {item.label === "Échanges" && exchangesBadgeCount > 0 && (
+                    <Badge className="ml-2 bg-red-600 text-white">
+                      {exchangesBadgeCount > 99 ? "99+" : exchangesBadgeCount}
+                    </Badge>
+                  )}
+                </span>
               </Button>
             </Link>
           ))}

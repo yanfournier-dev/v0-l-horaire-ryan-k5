@@ -3,7 +3,6 @@ import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { getUserApplications } from "@/app/actions/replacements"
-import { getUnreadCount } from "@/app/actions/notifications"
 import { Badge } from "@/components/ui/badge"
 import { getRoleLabel } from "@/lib/role-labels"
 
@@ -18,7 +17,6 @@ export default async function DashboardPage() {
 
   const applications = await getUserApplications(user.id)
   const pendingApplications = applications.filter((a: any) => a.status === "pending")
-  const unreadNotifications = await getUnreadCount(user.id)
 
   return (
     <div className="p-4 md:p-6">
@@ -81,13 +79,8 @@ export default async function DashboardPage() {
         <Link href="/dashboard/notifications">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
             <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg md:text-xl">Notifications</CardTitle>
-                  <CardDescription className="text-sm">Restez informé des mises à jour</CardDescription>
-                </div>
-                {unreadNotifications > 0 && <Badge className="bg-red-600 text-white">{unreadNotifications}</Badge>}
-              </div>
+              <CardTitle className="text-lg md:text-xl">Notifications</CardTitle>
+              <CardDescription className="text-sm">Restez informé des mises à jour</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-3xl md:text-4xl">🔔</div>

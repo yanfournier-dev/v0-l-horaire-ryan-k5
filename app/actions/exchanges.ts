@@ -1008,11 +1008,7 @@ export async function getAllExchanges() {
       return { error: "Non autorisé" }
     }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayStr = today.toISOString().split("T")[0]
-
-    console.log("[v0] Getting all exchanges for admin, filtering from date:", todayStr)
+    console.log("[v0] Getting all exchanges for admin (including past exchanges)")
 
     const exchanges = await sql`
       SELECT 
@@ -1031,9 +1027,7 @@ export async function getAllExchanges() {
       JOIN teams req_team ON se.requester_team_id = req_team.id
       JOIN teams tgt_team ON se.target_team_id = tgt_team.id
       LEFT JOIN users approver ON se.approved_by = approver.id
-      WHERE (se.requester_shift_date >= ${todayStr}::date
-      OR se.target_shift_date >= ${todayStr}::date)
-      AND se.status != 'cancelled'
+      WHERE se.status != 'cancelled'
       ORDER BY 
         CASE se.status 
           WHEN 'pending' THEN 1 
@@ -1341,5 +1335,25 @@ export async function createExchangeAsAdmin(data: {
   } catch (error) {
     console.error("[v0] Error creating exchange as admin:", error)
     return { error: "Erreur lors de la création de l'échange" }
+  }
+}
+
+export async function getPendingExchangesCount() {
+  try {
+    const user = await getSession()
+    if (!user || !user.is_admin) {
+      return 0
+    }
+
+    const result = await sql`
+      SELECT COUNT(*) as count
+      FROM shift_exchanges
+      WHERE status = 'pending'
+    `
+
+    return Number(result[0]?.count || 0)
+  } catch (error) {
+    console.error("getPendingExchangesCount: Error", error)
+    return 0
   }
 }

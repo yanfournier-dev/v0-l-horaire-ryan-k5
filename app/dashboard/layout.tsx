@@ -4,7 +4,8 @@ import { redirect } from "next/navigation"
 import { logout } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { NotificationBadge } from "@/components/notification-badge"
+import { ReplacementsBadge } from "@/components/replacements-badge"
+import { ExchangesBadge } from "@/components/exchanges-badge"
 import { MobileNav } from "@/components/mobile-nav"
 import { Suspense } from "react"
 
@@ -19,13 +20,24 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
+  const { getReplacementsAdminActionCount } = await import("@/app/actions/replacements")
+  const { getPendingExchangesCount } = await import("@/app/actions/exchanges")
+
+  const replacementsBadgeCount = user.is_admin ? await getReplacementsAdminActionCount() : 0
+  const exchangesBadgeCount = user.is_admin ? await getPendingExchangesCount() : 0
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 md:py-4">
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <div className="flex items-center gap-3">
-              <MobileNav userName={`${user.first_name} ${user.last_name}`} isAdmin={user.isAdmin} />
+              <MobileNav
+                userName={`${user.first_name} ${user.last_name}`}
+                isAdmin={user.isAdmin}
+                replacementsBadgeCount={replacementsBadgeCount}
+                exchangesBadgeCount={exchangesBadgeCount}
+              />
 
               <div className="w-8 h-8 md:w-10 md:h-10 bg-red-600 rounded-full flex items-center justify-center">
                 <svg className="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,21 +76,24 @@ export default async function DashboardLayout({
               </Button>
             </Link>
             <Link href="/dashboard/replacements" scroll={false}>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="relative">
                 Remplacements
+                <Suspense fallback={null}>
+                  <ReplacementsBadge />
+                </Suspense>
               </Button>
             </Link>
             <Link href="/dashboard/exchanges" scroll={false}>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="relative">
                 Échanges
+                <Suspense fallback={null}>
+                  <ExchangesBadge />
+                </Suspense>
               </Button>
             </Link>
             <Link href="/dashboard/notifications" scroll={false}>
-              <Button variant="ghost" size="sm" className="relative">
+              <Button variant="ghost" size="sm">
                 Notifications
-                <Suspense fallback={null}>
-                  <NotificationBadge />
-                </Suspense>
               </Button>
             </Link>
             <Link href="/dashboard/settings" scroll={false}>

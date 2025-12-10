@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { parseLocalDate } from "@/lib/date-utils"
 
 export const dynamic = "force-dynamic"
 
@@ -84,6 +85,14 @@ export default async function ExchangesPage() {
   const allExchanges = allExchangesResult.exchanges || []
   const exchangeCount = exchangeCountResult.count || 0
 
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const nonPastExchangesCount = allExchanges.filter((exchange: any) => {
+    const requesterDate = parseLocalDate(exchange.requester_shift_date)
+    const targetDate = parseLocalDate(exchange.target_shift_date)
+    return requesterDate >= today || targetDate >= today
+  }).length
+
   return (
     <div className="p-4 md:p-6">
       <div className="mb-6">
@@ -98,6 +107,7 @@ export default async function ExchangesPage() {
         userExchanges={userExchanges}
         pendingExchanges={pendingExchanges}
         allExchanges={allExchanges}
+        nonPastExchangesCount={nonPastExchangesCount}
         isAdmin={user.is_admin}
         userId={user.id}
         exchangeCount={exchangeCount}
