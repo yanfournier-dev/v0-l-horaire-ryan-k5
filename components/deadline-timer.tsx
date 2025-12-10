@@ -60,7 +60,7 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
     }
 
     const date = effectiveDeadline
-    const day = date.getDate()
+    const day = date.getUTCDate()
     const monthNames = [
       "janv.",
       "févr.",
@@ -75,9 +75,9 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
       "nov.",
       "déc.",
     ]
-    const month = monthNames[date.getMonth()]
-    const hour = date.getHours()
-    const minute = date.getMinutes()
+    const month = monthNames[date.getUTCMonth()]
+    const hour = date.getUTCHours()
+    const minute = date.getUTCMinutes()
     const timeStr = minute > 0 ? `${hour}h${minute.toString().padStart(2, "0")}` : `${hour}h`
     setDisplayDeadline(`${day} ${month}. ${timeStr}`)
 
