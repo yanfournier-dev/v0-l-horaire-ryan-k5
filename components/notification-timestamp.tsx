@@ -7,22 +7,20 @@ export function NotificationTimestamp({ timestamp }: { timestamp: string }) {
 
   useEffect(() => {
     const date = new Date(timestamp)
-    const correctedTimestamp = date.getTime() - 5 * 60 * 60 * 1000
-    const correctedDate = new Date(correctedTimestamp)
 
     const dateStr = new Intl.DateTimeFormat("fr-CA", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       timeZone: "America/Toronto",
-    }).format(correctedDate)
+    }).format(date)
 
     const timeStr = new Intl.DateTimeFormat("fr-CA", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
       timeZone: "America/Toronto",
-    }).format(correctedDate)
+    }).format(date)
 
     const [year, month, day] = dateStr.split("-")
     // timeStr is like "20 h 07" in French locale

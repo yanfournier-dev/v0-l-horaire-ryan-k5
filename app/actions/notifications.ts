@@ -727,13 +727,45 @@ export async function sendBatchReplacementEmails(
         SELECT id FROM users WHERE is_admin = true
       `
 
+      // Format shift date
+      const shiftDateStr = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+
+      // Translate shift type
+      const shiftTypeMap: Record<string, string> = {
+        day: "Jour",
+        night: "Nuit",
+        "24h": "24h",
+      }
+      const shiftTypeLabel = shiftTypeMap[r.shift_type] || r.shift_type
+
+      // Format partial hours if applicable
+      const partialInfo = r.is_partial && partialHours ? ` (${partialHours})` : ""
+
+      // Get list of failed emails
+      const failedEmails = result.results
+        ?.map((res: any, index: number) => {
+          if (!res.success) {
+            return `${emails[index].name} (${emails[index].to})${res.error ? ": " + res.error : ""}`
+          }
+          return null
+        })
+        .filter(Boolean)
+
+      const failedEmailsList = failedEmails && failedEmails.length > 0 ? failedEmails.join(", ") : "Tous les emails"
+
+      const detailedMessage = `Les emails de notification pour le remplacement #${replacementId} ont échoué.\n\nDétails du remplacement:\n• Pompier à remplacer: ${firefighterToReplaceName}\n• Date: ${shiftDateStr}\n• Type de quart: ${shiftTypeLabel}${partialInfo}\n\nEmails échoués (${result.failed}/${emails.length}):\n${failedEmailsList}`
+
       for (const admin of admins) {
         await sql`
           INSERT INTO notifications (user_id, title, message, type)
           VALUES (
             ${admin.id}, 
             ${"Échec d'envoi d'emails"}, 
-            ${"Les emails de notification pour le remplacement #" + replacementId + " ont échoué."},
+            ${detailedMessage},
             ${"system"}
           )
         `
