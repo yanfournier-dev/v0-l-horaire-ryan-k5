@@ -164,6 +164,15 @@ export function ShiftAssignmentDrawer({
 
   const [extraRequestMode, setExtraRequestMode] = useState<"request" | "assign" | null>("request")
 
+  const translateShiftType = (type: string): string => {
+    const translations: Record<string, string> = {
+      day: "Jour",
+      night: "Nuit",
+      "24h": "24h",
+    }
+    return translations[type.toLowerCase()] || type
+  }
+
   const handleExtraDeadlineChange = (value: string) => {
     console.log("[v0] handleExtraDeadlineChange called with value:", value)
     if (value === "default") {
@@ -1352,6 +1361,7 @@ export function ShiftAssignmentDrawer({
 
                     let exchangePartner = null
                     let exchangePartialTimes = null
+                    let exchangeShiftInfo = ""
 
                     if (hasExchange) {
                       if (exchange.type === "requester") {
@@ -1360,12 +1370,30 @@ export function ShiftAssignmentDrawer({
                         if (exchange.is_partial && exchange.requester_start_time && exchange.requester_end_time) {
                           exchangePartialTimes = `${exchange.requester_start_time.slice(0, 5)}-${exchange.requester_end_time.slice(0, 5)}`
                         }
+                        // Format the date and type of the shift that will be worked
+                        const targetDate = new Date(exchange.target_shift_date)
+                        const formattedDate = targetDate
+                          .toLocaleDateString("fr-CA", {
+                            day: "numeric",
+                            month: "short",
+                          })
+                          .replace(".", "")
+                        exchangeShiftInfo = ` (${formattedDate} - ${translateShiftType(exchange.target_shift_type)})`
                       } else {
                         // Current firefighter IS the target → show the requester
                         exchangePartner = `${exchange.requester_first_name} ${exchange.requester_last_name}`
                         if (exchange.is_partial && exchange.target_start_time && exchange.target_end_time) {
                           exchangePartialTimes = `${exchange.target_start_time.slice(0, 5)}-${exchange.target_end_time.slice(0, 5)}`
                         }
+                        // Format the date and type of the shift that will be worked
+                        const requesterDate = new Date(exchange.requester_shift_date)
+                        const formattedDate = requesterDate
+                          .toLocaleDateString("fr-CA", {
+                            day: "numeric",
+                            month: "short",
+                          })
+                          .replace(".", "")
+                        exchangeShiftInfo = ` (${formattedDate} - ${translateShiftType(exchange.requester_shift_type)})`
                       }
                     }
 
@@ -1452,7 +1480,8 @@ export function ShiftAssignmentDrawer({
                                 <div className="mt-2">
                                   <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs">
                                     ↔ Échange avec {exchangePartner}
-                                    {exchangePartialTimes && ` (${exchangePartialTimes})`}
+                                    {exchangeShiftInfo}
+                                    {exchangePartialTimes && ` • ${exchangePartialTimes}`}
                                   </Badge>
                                 </div>
                               )}
