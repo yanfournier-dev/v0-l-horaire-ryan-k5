@@ -1355,11 +1355,13 @@ export function ShiftAssignmentDrawer({
 
                     if (hasExchange) {
                       if (exchange.type === "requester") {
-                        exchangePartner = `${exchange.requester_first_name} ${exchange.requester_last_name}`
+                        // Current firefighter IS the requester → show the target
+                        exchangePartner = `${exchange.target_first_name} ${exchange.target_last_name}`
                         if (exchange.is_partial && exchange.requester_start_time && exchange.requester_end_time) {
                           exchangePartialTimes = `${exchange.requester_start_time.slice(0, 5)}-${exchange.requester_end_time.slice(0, 5)}`
                         }
                       } else {
+                        // Current firefighter IS the target → show the requester
                         exchangePartner = `${exchange.requester_first_name} ${exchange.requester_last_name}`
                         if (exchange.is_partial && exchange.target_start_time && exchange.target_end_time) {
                           exchangePartialTimes = `${exchange.target_start_time.slice(0, 5)}-${exchange.target_end_time.slice(0, 5)}`

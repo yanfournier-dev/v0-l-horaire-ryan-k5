@@ -1357,3 +1357,24 @@ export async function getPendingExchangesCount() {
     return 0
   }
 }
+
+export async function getExchangesAdminActionCount(): Promise<number> {
+  try {
+    const user = await getSession()
+    if (!user || !user.is_admin) {
+      return 0
+    }
+
+    // Count pending exchanges that need admin approval
+    const result = await sql`
+      SELECT COUNT(*) as count
+      FROM shift_exchanges
+      WHERE status = 'pending'
+    `
+
+    return Number(result[0]?.count || 0)
+  } catch (error) {
+    console.error("getExchangesAdminActionCount: Error", error)
+    return 0
+  }
+}

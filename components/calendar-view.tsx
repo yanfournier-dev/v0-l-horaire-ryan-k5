@@ -136,6 +136,11 @@ export function CalendarView({
 
   const loadPreviousMonths = async () => {
     setLoading(true)
+
+    const scrollBeforeLoad = window.scrollY
+    const heightBeforeLoad = document.documentElement.scrollHeight
+    console.log("[v0] Before load - scroll:", scrollBeforeLoad, "height:", heightBeforeLoad)
+
     const firstMonth = months[0]
     scrollAnchorRef.current = `month-${firstMonth.year}-${firstMonth.month}`
 
@@ -160,91 +165,101 @@ export function CalendarView({
       const data = await getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
 
       const newReplacementMap = { ...replacementMap }
-      data.replacements.forEach((repl: any) => {
-        const dateOnly = formatLocalDate(repl.shift_date)
-        const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
-        if (!newReplacementMap[key]) {
-          newReplacementMap[key] = []
-        }
-        newReplacementMap[key].push(repl)
-      })
+      if (data.replacements && Array.isArray(data.replacements)) {
+        data.replacements.forEach((repl: any) => {
+          const dateOnly = formatLocalDate(repl.shift_date)
+          const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
+          if (!newReplacementMap[key]) {
+            newReplacementMap[key] = []
+          }
+          newReplacementMap[key].push(repl)
+        })
+      }
       setReplacementMap(newReplacementMap)
 
       const newExchangeMap = { ...exchangeMap }
-      data.exchanges.forEach((exchange: any) => {
-        const requesterDateOnly = formatLocalDate(exchange.requester_shift_date)
-        const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
-        if (!newExchangeMap[requesterKey]) {
-          newExchangeMap[requesterKey] = []
-        }
-        newExchangeMap[requesterKey].push({ ...exchange, type: "requester" })
+      if (data.exchanges && Array.isArray(data.exchanges)) {
+        data.exchanges.forEach((exchange: any) => {
+          const requesterDateOnly = formatLocalDate(exchange.requester_shift_date)
+          const requesterKey = `${requesterDateOnly}_${exchange.requester_shift_type}_${exchange.requester_team_id}`
+          if (!newExchangeMap[requesterKey]) {
+            newExchangeMap[requesterKey] = []
+          }
+          newExchangeMap[requesterKey].push({ ...exchange, type: "requester" })
 
-        const targetDateOnly = formatLocalDate(exchange.target_shift_date)
-        const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
-        if (!newExchangeMap[targetKey]) {
-          newExchangeMap[targetKey] = []
-        }
-        newExchangeMap[targetKey].push({ ...exchange, type: "target" })
-      })
+          const targetDateOnly = formatLocalDate(exchange.target_shift_date)
+          const targetKey = `${targetDateOnly}_${exchange.target_shift_type}_${exchange.target_team_id}`
+          if (!newExchangeMap[targetKey]) {
+            newExchangeMap[targetKey] = []
+          }
+          newExchangeMap[targetKey].push({ ...exchange, type: "target" })
+        })
+      }
       setExchangeMap(newExchangeMap)
 
       const newLeaveMap = { ...leaveMap }
-      data.leaves.forEach((leave: any) => {
-        const startDate = new Date(leave.start_date)
-        const endDate = new Date(leave.end_date)
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          const dateStr = formatDateForDB(d)
-          const key = `${dateStr}_${leave.user_id}`
-          if (!newLeaveMap[key]) {
-            newLeaveMap[key] = []
+      if (data.leaves && Array.isArray(data.leaves)) {
+        data.leaves.forEach((leave: any) => {
+          const startDate = new Date(leave.start_date)
+          const endDate = new Date(leave.end_date)
+          for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateStr = formatDateForDB(d)
+            const key = `${dateStr}_${leave.user_id}`
+            if (!newLeaveMap[key]) {
+              newLeaveMap[key] = []
+            }
+            newLeaveMap[key].push(leave)
           }
-          newLeaveMap[key].push(leave)
-        }
-      })
-      setLeaves([...leaves, ...data.leaves])
+        })
+        setLeaves([...leaves, ...data.leaves])
+      }
       setLeaveMap(newLeaveMap)
 
-      const newNoteMap = { ...noteMap }
-      data.shiftNotes.forEach((note: any) => {
-        const dateOnly = formatLocalDate(note.shift_date)
-        const key = `${note.shift_id}_${dateOnly}`
-        newNoteMap[key] = true
-      })
-      setNoteMap(newNoteMap)
+      if (data.notes && Array.isArray(data.notes)) {
+        const newNoteMap = { ...noteMap }
+        data.notes.forEach((note: any) => {
+          const dateOnly = formatLocalDate(note.shift_date)
+          const key = `${dateOnly}_${note.shift_type}_${note.team_id}`
+          newNoteMap[key] = true
+        })
+        setNoteMap(newNoteMap)
+      }
 
       const newDirectAssignmentMap = { ...directAssignmentMap }
-      data.directAssignments.forEach((assignment: any) => {
-        const dateOnly = formatLocalDate(assignment.shift_date)
-        const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
-        if (!newDirectAssignmentMap[key]) {
-          newDirectAssignmentMap[key] = []
-        }
-        newDirectAssignmentMap[key].push(assignment)
-      })
+      if (data.direct_assignments && Array.isArray(data.direct_assignments)) {
+        data.direct_assignments.forEach((assignment: any) => {
+          const dateOnly = formatLocalDate(assignment.shift_date)
+          const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
+          if (!newDirectAssignmentMap[key]) {
+            newDirectAssignmentMap[key] = []
+          }
+          newDirectAssignmentMap[key].push(assignment)
+        })
+      }
       setDirectAssignmentMap(newDirectAssignmentMap)
 
       const newActingDesignationMap = { ...actingDesignationMap }
-      if (data.actingDesignations) {
-        data.actingDesignations.forEach((ad: any) => {
-          const dateOnly = formatLocalDate(ad.shift_date)
-          const key = `${dateOnly}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+      if (data.acting_designations && Array.isArray(data.acting_designations)) {
+        data.acting_designations.forEach((designation: any) => {
+          const dateOnly = formatLocalDate(designation.shift_date)
+          const key = `${dateOnly}_${designation.shift_type}_${designation.team_id}`
           newActingDesignationMap[key] = {
-            isActingLieutenant: ad.is_acting_lieutenant,
-            isActingCaptain: ad.is_acting_captain,
+            isActingLieutenant: designation.is_acting_lieutenant || false,
+            isActingCaptain: designation.is_acting_captain || false,
           }
         })
       }
       setActingDesignationMap(newActingDesignationMap)
 
       const newExtraFirefighterMap = { ...extraFirefighterMap }
-      if (data.extraFirefighters) {
-        data.extraFirefighters.forEach((firefighter: any) => {
-          const dateOnly = formatLocalDate(firefighter.shift_date)
-          const key = `${dateOnly}_${firefighter.shift_type}_${firefighter.team_id}`
+      if (data.extra_firefighters && Array.isArray(data.extra_firefighters)) {
+        data.extra_firefighters.forEach((extra: any) => {
+          const dateOnly = formatLocalDate(extra.shift_date)
+          const key = `${dateOnly}_${extra.shift_type}_${extra.team_id}`
           if (!newExtraFirefighterMap[key]) {
             newExtraFirefighterMap[key] = []
           }
-          newExtraFirefighterMap[key].push(firefighter)
+          newExtraFirefighterMap[key].push(extra)
         })
       }
       setExtraFirefighterMap(newExtraFirefighterMap)
@@ -254,16 +269,14 @@ export function CalendarView({
     setLoading(false)
 
     setTimeout(() => {
-      if (scrollAnchorRef.current) {
-        const anchorElement = document.getElementById(scrollAnchorRef.current)
-        if (anchorElement) {
-          anchorElement.scrollIntoView({
-            behavior: "instant",
-            block: "start",
-          })
-        }
-        scrollAnchorRef.current = null
-      }
+      const heightAfterLoad = document.documentElement.scrollHeight
+      const addedHeight = heightAfterLoad - heightBeforeLoad
+      const newScrollPosition = scrollBeforeLoad + addedHeight
+
+      console.log("[v0] After load - added height:", addedHeight, "new scroll:", newScrollPosition)
+      window.scrollTo(0, newScrollPosition)
+
+      scrollAnchorRef.current = null
     }, 50)
   }
 

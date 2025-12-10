@@ -2,7 +2,8 @@ import { getSession } from "@/app/actions/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { getUserApplications } from "@/app/actions/replacements"
+import { getUserApplications, getReplacementsAdminActionCount } from "@/app/actions/replacements"
+import { getExchangesAdminActionCount } from "@/app/actions/exchanges"
 import { Badge } from "@/components/ui/badge"
 import { getRoleLabel } from "@/lib/role-labels"
 
@@ -17,6 +18,14 @@ export default async function DashboardPage() {
 
   const applications = await getUserApplications(user.id)
   const pendingApplications = applications.filter((a: any) => a.status === "pending")
+
+  let replacementsAdminCount = 0
+  let exchangesAdminCount = 0
+
+  if (user.is_admin) {
+    replacementsAdminCount = await getReplacementsAdminActionCount()
+    exchangesAdminCount = await getExchangesAdminActionCount()
+  }
 
   return (
     <div className="p-4 md:p-6">
@@ -51,11 +60,16 @@ export default async function DashboardPage() {
                   <CardTitle className="text-lg md:text-xl">Remplacements</CardTitle>
                   <CardDescription className="text-sm">Postulez pour des remplacements</CardDescription>
                 </div>
-                {pendingApplications.length > 0 && (
-                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    {pendingApplications.length}
-                  </Badge>
-                )}
+                <div className="flex gap-2">
+                  {user.is_admin && replacementsAdminCount > 0 && (
+                    <Badge className="bg-red-500 text-white hover:bg-red-600">{replacementsAdminCount}</Badge>
+                  )}
+                  {!user.is_admin && pendingApplications.length > 0 && (
+                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {pendingApplications.length}
+                    </Badge>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -67,8 +81,15 @@ export default async function DashboardPage() {
         <Link href="/dashboard/exchanges">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Échanges</CardTitle>
-              <CardDescription className="text-sm">Proposez et gérez vos échanges de quarts</CardDescription>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="text-lg md:text-xl">Échanges</CardTitle>
+                  <CardDescription className="text-sm">Proposez et gérez vos échanges de quarts</CardDescription>
+                </div>
+                {user.is_admin && exchangesAdminCount > 0 && (
+                  <Badge className="bg-red-500 text-white hover:bg-red-600">{exchangesAdminCount}</Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-3xl md:text-4xl">🔁</div>
