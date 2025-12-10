@@ -745,17 +745,19 @@ export async function sendBatchReplacementEmails(
       // Format partial hours if applicable
       const partialInfo = r.is_partial && partialHours ? ` (${partialHours})` : ""
 
-      // Get list of failed emails
-      const failedEmails = result.results
-        ?.map((res: any, index: number) => {
-          if (!res.success) {
-            return `${emails[index].name} (${emails[index].to})${res.error ? ": " + res.error : ""}`
-          }
-          return null
-        })
-        .filter(Boolean)
+      // Get list of failed emails from the errors array
+      const failedEmails = result.errors?.map((errorItem: any) => {
+        // Find the corresponding user by email
+        const failedEmail = emails.find((e) => e.to === errorItem.to)
+        if (failedEmail) {
+          const errorMsg = errorItem.error?.message || errorItem.error || "Erreur inconnue"
+          return `${failedEmail.name} (${failedEmail.to}): ${errorMsg}`
+        }
+        return `${errorItem.to}: ${errorItem.error?.message || errorItem.error || "Erreur inconnue"}`
+      })
 
-      const failedEmailsList = failedEmails && failedEmails.length > 0 ? failedEmails.join(", ") : "Tous les emails"
+      const failedEmailsList =
+        failedEmails && failedEmails.length > 0 ? failedEmails.join("\n") : "Erreur générale lors de l'envoi"
 
       const detailedMessage = `Les emails de notification pour le remplacement #${replacementId} ont échoué.\n\nDétails du remplacement:\n• Pompier à remplacer: ${firefighterToReplaceName}\n• Date: ${shiftDateStr}\n• Type de quart: ${shiftTypeLabel}${partialInfo}\n\nEmails échoués (${result.failed}/${emails.length}):\n${failedEmailsList}`
 
@@ -776,13 +778,19 @@ export async function sendBatchReplacementEmails(
       success: result.success,
       sent: result.sent || 0,
       failed: result.failed || 0,
-      recipients: emails.map((email, index) => ({
-        userId: email.userId,
-        name: email.name,
-        email: email.to,
-        success: result.results?.[index]?.success ?? false,
-        error: result.results?.[index]?.error,
-      })),
+      recipients: emails.map((email) => {
+        // Check if this email is in the errors array
+        const hasError = result.errors?.some((e: any) => e.to === email.to)
+        const errorItem = result.errors?.find((e: any) => e.to === email.to)
+
+        return {
+          userId: email.userId,
+          name: email.name,
+          email: email.to,
+          success: !hasError,
+          error: errorItem?.error?.message || errorItem?.error,
+        }
+      }),
     }
   } catch (error) {
     console.error("[v0] PRODUCTION: sendBatchReplacementEmails error:", error)
