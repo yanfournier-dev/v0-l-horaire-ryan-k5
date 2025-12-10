@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface TimePickerInputProps {
@@ -10,6 +11,12 @@ interface TimePickerInputProps {
 }
 
 export function TimePickerInput({ value, onChange, id, required }: TimePickerInputProps) {
+  const [internalValue, setInternalValue] = useState(value)
+
+  useEffect(() => {
+    setInternalValue(value)
+  }, [value])
+
   const timeOptions: string[] = []
   for (let hour = 0; hour < 24; hour++) {
     for (let minute = 0; minute < 60; minute += 15) {
@@ -18,8 +25,13 @@ export function TimePickerInput({ value, onChange, id, required }: TimePickerInp
     }
   }
 
+  const handleChange = (newValue: string) => {
+    setInternalValue(newValue)
+    onChange(newValue)
+  }
+
   return (
-    <Select key={value || "empty"} value={value} onValueChange={onChange} required={required}>
+    <Select value={internalValue || undefined} onValueChange={handleChange} required={required}>
       <SelectTrigger id={id} className="w-full">
         <SelectValue placeholder="Sélectionner l'heure" />
       </SelectTrigger>

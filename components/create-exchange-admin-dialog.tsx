@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { TimePickerInput } from "@/components/time-picker-input"
+import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 import { Plus, AlertTriangle } from "lucide-react"
 import {
   createExchangeAsAdmin,
@@ -33,26 +35,26 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [autoApprove, setAutoApprove] = useState(true)
+  const [showConsecutiveHoursAlert, setShowConsecutiveHoursAlert] = useState(false)
+  const [consecutiveHoursData, setConsecutiveHoursData] = useState<{ message: string; maxHours: number } | null>(null)
 
   // Step 1: Select requester
   const [requesterId, setRequesterId] = useState<number | null>(null)
   const [requesterDate, setRequesterDate] = useState("")
   const [requesterShifts, setRequesterShifts] = useState<any[]>([])
   const [selectedRequesterShift, setSelectedRequesterShift] = useState<any>(null)
+  const [isRequesterPartial, setIsRequesterPartial] = useState(false)
+  const [requesterStartTime, setRequesterStartTime] = useState("")
+  const [requesterEndTime, setRequesterEndTime] = useState("")
 
   // Step 2: Select target
   const [targetDate, setTargetDate] = useState("")
   const [availableFirefighters, setAvailableFirefighters] = useState<any[]>([])
   const [selectedTarget, setSelectedTarget] = useState<any>(null)
-
-  // Step 3: Options
-  const [autoApprove, setAutoApprove] = useState(true)
-
-  const [showConsecutiveHoursAlert, setShowConsecutiveHoursAlert] = useState(false)
-  const [consecutiveHoursData, setConsecutiveHoursData] = useState<{
-    message: string
-    maxHours: number
-  } | null>(null)
+  const [isTargetPartial, setIsTargetPartial] = useState(false)
+  const [targetStartTime, setTargetStartTime] = useState("")
+  const [targetEndTime, setTargetEndTime] = useState("")
 
   const handleRequesterDateChange = async (date: string) => {
     setRequesterDate(date)
@@ -95,7 +97,11 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
       targetShiftDate: targetDate,
       targetShiftType: selectedTarget.shift_type,
       targetTeamId: selectedTarget.team_id,
-      isPartial: false,
+      isPartial: isRequesterPartial || isTargetPartial,
+      requesterStartTime: isRequesterPartial ? requesterStartTime : undefined,
+      requesterEndTime: isRequesterPartial ? requesterEndTime : undefined,
+      targetStartTime: isTargetPartial ? targetStartTime : undefined,
+      targetEndTime: isTargetPartial ? targetEndTime : undefined,
       autoApprove,
       forceConsecutiveHours,
     })
@@ -139,11 +145,33 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
     setRequesterDate("")
     setRequesterShifts([])
     setSelectedRequesterShift(null)
+    setIsRequesterPartial(false)
+    setRequesterStartTime("")
+    setRequesterEndTime("")
     setTargetDate("")
     setAvailableFirefighters([])
     setSelectedTarget(null)
+    setIsTargetPartial(false)
+    setTargetStartTime("")
+    setTargetEndTime("")
     setAutoApprove(true)
   }
+
+  useEffect(() => {
+    if (isRequesterPartial && selectedRequesterShift) {
+      const defaultTimes = getDefaultReplacementTimes(selectedRequesterShift.shift_type)
+      setRequesterStartTime(defaultTimes.startTime)
+      setRequesterEndTime(defaultTimes.endTime)
+    }
+  }, [isRequesterPartial, selectedRequesterShift])
+
+  useEffect(() => {
+    if (isTargetPartial && selectedTarget) {
+      const defaultTimes = getDefaultReplacementTimes(selectedTarget.shift_type)
+      setTargetStartTime(defaultTimes.startTime)
+      setTargetEndTime(defaultTimes.endTime)
+    }
+  }, [isTargetPartial, selectedTarget])
 
   const sortedFirefighters = [...allFirefighters].sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
 
@@ -224,6 +252,38 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
                 </div>
               )}
 
+              {selectedRequesterShift && (
+                <>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="requesterPartial"
+                      checked={isRequesterPartial}
+                      onCheckedChange={(checked) => setIsRequesterPartial(checked as boolean)}
+                    />
+                    <Label htmlFor="requesterPartial" className="text-sm font-normal cursor-pointer">
+                      Échange partiel (préciser les heures)
+                    </Label>
+                  </div>
+
+                  {isRequesterPartial && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Heure de début</Label>
+                        <TimePickerInput
+                          id="requester-start"
+                          value={requesterStartTime}
+                          onChange={setRequesterStartTime}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Heure de fin</Label>
+                        <TimePickerInput id="requester-end" value={requesterEndTime} onChange={setRequesterEndTime} />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               <div className="flex justify-end gap-2">
                 <Button onClick={() => setStep(2)} disabled={!selectedRequesterShift}>
                   Suivant
@@ -270,6 +330,34 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
                 </div>
               )}
 
+              {selectedTarget && (
+                <>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="targetPartial"
+                      checked={isTargetPartial}
+                      onCheckedChange={(checked) => setIsTargetPartial(checked as boolean)}
+                    />
+                    <Label htmlFor="targetPartial" className="text-sm font-normal cursor-pointer">
+                      Échange partiel (préciser les heures)
+                    </Label>
+                  </div>
+
+                  {isTargetPartial && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Heure de début</Label>
+                        <TimePickerInput id="target-start" value={targetStartTime} onChange={setTargetStartTime} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Heure de fin</Label>
+                        <TimePickerInput id="target-end" value={targetEndTime} onChange={setTargetEndTime} />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               <div className="flex justify-between gap-2">
                 <Button variant="outline" onClick={() => setStep(1)}>
                   Retour
@@ -292,12 +380,14 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
                   </p>
                   <p>
                     <strong>Quart à échanger:</strong> {requesterDate} - {selectedRequesterShift?.shift_type}
+                    {isRequesterPartial && ` (${requesterStartTime} - ${requesterEndTime})`}
                   </p>
                   <p className="mt-2">
                     <strong>Avec:</strong> {selectedTarget?.last_name} {selectedTarget?.first_name}
                   </p>
                   <p>
                     <strong>Quart souhaité:</strong> {targetDate} - {selectedTarget?.shift_type}
+                    {isTargetPartial && ` (${targetStartTime} - ${targetEndTime})`}
                   </p>
                 </div>
               </div>
@@ -326,44 +416,46 @@ export function CreateExchangeAdminDialog({ allFirefighters }: CreateExchangeAdm
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showConsecutiveHoursAlert} onOpenChange={setShowConsecutiveHoursAlert}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
-              <AlertTriangle className="h-5 w-5" />
-              Avertissement: Heures consécutives élevées
-            </DialogTitle>
-            <DialogDescription>
-              <div className="space-y-2 mt-2">
-                <div className="text-foreground font-medium">{consecutiveHoursData?.message}</div>
-                <div className="text-sm">
-                  Le pompier sélectionné travaillerait{" "}
-                  <span className="font-bold text-orange-600 dark:text-orange-400">
-                    {consecutiveHoursData?.maxHours.toFixed(1)}h consécutives
-                  </span>
-                  , ce qui dépasse la limite recommandée de 38 heures.
+      {showConsecutiveHoursAlert && (
+        <Dialog open={showConsecutiveHoursAlert} onOpenChange={setShowConsecutiveHoursAlert}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                <AlertTriangle className="h-5 w-5" />
+                Avertissement: Heures consécutives élevées
+              </DialogTitle>
+              <DialogDescription>
+                <div className="space-y-2 mt-2">
+                  <div className="text-foreground font-medium">{consecutiveHoursData?.message}</div>
+                  <div className="text-sm">
+                    Le pompier sélectionné travaillerait{" "}
+                    <span className="font-bold text-orange-600 dark:text-orange-400">
+                      {consecutiveHoursData?.maxHours.toFixed(1)}h consécutives
+                    </span>
+                    , ce qui dépasse la limite recommandée de 38 heures.
+                  </div>
+                  <div className="text-sm font-medium mt-4">Voulez-vous quand même créer cet échange?</div>
                 </div>
-                <div className="text-sm font-medium mt-4">Voulez-vous quand même créer cet échange?</div>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowConsecutiveHoursAlert(false)
-                setConsecutiveHoursData(null)
-                setLoading(false)
-              }}
-            >
-              Annuler
-            </Button>
-            <Button onClick={handleForceConsecutiveHours} className="bg-orange-600 hover:bg-orange-700 text-white">
-              Créer quand même
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowConsecutiveHoursAlert(false)
+                  setConsecutiveHoursData(null)
+                  setLoading(false)
+                }}
+              >
+                Annuler
+              </Button>
+              <Button onClick={handleForceConsecutiveHours} className="bg-orange-600 hover:bg-orange-700 text-white">
+                Créer quand même
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }
