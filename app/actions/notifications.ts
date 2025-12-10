@@ -639,27 +639,36 @@ export async function sendBatchReplacementEmails(
         ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
         : null
 
-    // Get all users who should receive emails
+    // Get all users who should receive emails - properly checking notification preferences
     const eligibleUsers = await sql`
       SELECT 
         u.id,
         u.email,
         u.first_name,
         u.last_name,
-        np.enable_email,
-        np.notify_replacement_available
+        COALESCE(np.enable_email, true) as enable_email,
+        COALESCE(np.notify_replacement_available, true) as notify_replacement_available
       FROM users u
       LEFT JOIN notification_preferences np ON u.id = np.user_id
-      WHERE (np.enable_email IS NULL OR np.enable_email = true)
-        AND (np.notify_replacement_available IS NULL OR np.notify_replacement_available = true)
-        AND u.email IS NOT NULL
+      WHERE u.email IS NOT NULL
+        AND u.email != ''
     `
 
-    console.log("[v0] PRODUCTION: Found", eligibleUsers.length, "eligible users for batch emails")
+    const filteredUsers = eligibleUsers.filter(
+      (user: any) => user.enable_email === true && user.notify_replacement_available === true,
+    )
 
-    console.log("[v0] PRODUCTION: Recipient emails:", eligibleUsers.map((u) => u.email).join(", "))
+    console.log(
+      "[v0] PRODUCTION: Found",
+      filteredUsers.length,
+      "eligible users for batch emails (out of",
+      eligibleUsers.length,
+      "total users)",
+    )
 
-    if (eligibleUsers.length === 0) {
+    console.log("[v0] PRODUCTION: Recipient emails:", filteredUsers.map((u: any) => u.email).join(", "))
+
+    if (filteredUsers.length === 0) {
       console.log("[v0] PRODUCTION: No eligible users, skipping emails")
       return { success: true, sent: 0, failed: 0, recipients: [] }
     }
@@ -669,7 +678,7 @@ export async function sendBatchReplacementEmails(
 
     // Generate all email contents
     const emails = await Promise.all(
-      eligibleUsers.map(async (user) => {
+      filteredUsers.map(async (user: any) => {
         const fullName = `${user.first_name} ${user.last_name}`
 
         // Generate token for this user
