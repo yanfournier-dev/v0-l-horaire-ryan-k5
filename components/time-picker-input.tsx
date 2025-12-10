@@ -10,7 +10,6 @@ interface TimePickerInputProps {
 }
 
 export function TimePickerInput({ value, onChange, id, required }: TimePickerInputProps) {
-  // Generate time options in 15-minute increments
   const timeOptions: string[] = []
   for (let hour = 0; hour < 24; hour++) {
     for (let minute = 0; minute < 60; minute += 15) {
@@ -20,7 +19,7 @@ export function TimePickerInput({ value, onChange, id, required }: TimePickerInp
   }
 
   return (
-    <Select value={value} onValueChange={onChange} required={required}>
+    <Select key={value || "empty"} value={value} onValueChange={onChange} required={required}>
       <SelectTrigger id={id} className="w-full">
         <SelectValue placeholder="Sélectionner l'heure" />
       </SelectTrigger>

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { TimePickerInput } from "@/components/time-picker-input"
 import { requestReplacement } from "@/app/actions/replacements"
 import { getUserAssignedShifts } from "@/app/actions/shift-assignments"
 import { useRouter } from "next/navigation"
@@ -70,11 +71,15 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
   useEffect(() => {
     if (isPartial && selectedShiftId) {
       const selectedShift = assignedShifts.find((s) => s.id.toString() === selectedShiftId)
+
       if (selectedShift) {
         const { startTime: defaultStart, endTime: defaultEnd } = getDefaultReplacementTimes(selectedShift.shift_type)
         setStartTime(defaultStart)
         setEndTime(defaultEnd)
       }
+    } else if (!isPartial) {
+      setStartTime("")
+      setEndTime("")
     }
   }, [isPartial, selectedShiftId, assignedShifts])
 
@@ -180,23 +185,11 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="start-time">Heure de début</Label>
-                <Input
-                  id="start-time"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  required={isPartial}
-                />
+                <TimePickerInput id="start-time" value={startTime} onChange={setStartTime} required={isPartial} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="end-time">Heure de fin</Label>
-                <Input
-                  id="end-time"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  required={isPartial}
-                />
+                <TimePickerInput id="end-time" value={endTime} onChange={setEndTime} required={isPartial} />
               </div>
             </div>
           )}
