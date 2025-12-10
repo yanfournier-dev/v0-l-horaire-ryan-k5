@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 import { parseLocalDate } from "@/lib/date-utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
+import { TimePickerInput } from "@/components/time-picker-input"
 import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 
 interface CreateReplacementButtonProps {
@@ -45,19 +45,12 @@ export function CreateReplacementButton({
   const [startTime, setStartTime] = useState(defaultTimes.startTime)
   const [endTime, setEndTime] = useState(defaultTimes.endTime)
 
-  console.log("[v0] CreateReplacementButton - shiftType:", shiftType)
-  console.log("[v0] CreateReplacementButton - defaultTimes:", defaultTimes)
-  console.log("[v0] CreateReplacementButton - current startTime:", startTime)
-  console.log("[v0] CreateReplacementButton - current endTime:", endTime)
-
   useEffect(() => {
-    console.log("[v0] useEffect triggered - isPartial:", isPartial)
     if (isPartial) {
-      console.log("[v0] useEffect - setting times to:", defaultTimes)
       setStartTime(defaultTimes.startTime)
       setEndTime(defaultTimes.endTime)
     }
-  }, [isPartial])
+  }, [isPartial, defaultTimes.startTime, defaultTimes.endTime])
 
   const handleCreate = async () => {
     if (isLoading) return
@@ -111,7 +104,6 @@ export function CreateReplacementButton({
         router.refresh()
       }
     } catch (error) {
-      console.error("[v0] Unexpected error:", error)
       toast({
         title: "Erreur",
         description: "Une erreur inattendue s'est produite",
@@ -146,7 +138,6 @@ export function CreateReplacementButton({
               id="partial"
               checked={isPartial}
               onCheckedChange={(checked) => {
-                console.log("[v0] Checkbox changed - isPartial:", checked)
                 setIsPartial(checked as boolean)
               }}
             />
@@ -164,25 +155,13 @@ export function CreateReplacementButton({
                 <Label htmlFor="start-time" className="text-sm">
                   Heure de début
                 </Label>
-                <Input
-                  id="start-time"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full"
-                />
+                <TimePickerInput id="start-time" value={startTime} onChange={setStartTime} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="end-time" className="text-sm">
                   Heure de fin
                 </Label>
-                <Input
-                  id="end-time"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full"
-                />
+                <TimePickerInput id="end-time" value={endTime} onChange={setEndTime} />
               </div>
             </div>
           )}

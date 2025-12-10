@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle } from "lucide-react"
+import { getDefaultReplacementTimes } from "@/lib/shift-utils"
+import { TimePickerInput } from "@/components/time-picker-input"
 import {
   getUserShiftsForExchange,
   getAvailableFirefightersForExchange,
@@ -93,6 +95,22 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
       })
     }
   }, [targetDate, selectedMyShift, userId])
+
+  useEffect(() => {
+    if (myIsPartial && selectedMyShift) {
+      const defaultTimes = getDefaultReplacementTimes(selectedMyShift.shift_type)
+      setMyStartTime(defaultTimes.startTime)
+      setMyEndTime(defaultTimes.endTime)
+    }
+  }, [myIsPartial, selectedMyShift])
+
+  useEffect(() => {
+    if (targetIsPartial && selectedFirefighter) {
+      const defaultTimes = getDefaultReplacementTimes(selectedFirefighter.shift_type)
+      setTargetStartTime(defaultTimes.startTime)
+      setTargetEndTime(defaultTimes.endTime)
+    }
+  }, [targetIsPartial, selectedFirefighter])
 
   const handleNext = () => {
     if (step === 1 && selectedMyShift) {
@@ -232,23 +250,11 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="my-start">Heure de début</Label>
-                      <Input
-                        id="my-start"
-                        type="time"
-                        value={myStartTime}
-                        onChange={(e) => setMyStartTime(e.target.value)}
-                        required
-                      />
+                      <TimePickerInput id="my-start" value={myStartTime} onChange={setMyStartTime} required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="my-end">Heure de fin</Label>
-                      <Input
-                        id="my-end"
-                        type="time"
-                        value={myEndTime}
-                        onChange={(e) => setMyEndTime(e.target.value)}
-                        required
-                      />
+                      <TimePickerInput id="my-end" value={myEndTime} onChange={setMyEndTime} required />
                     </div>
                   </div>
                 )}
@@ -339,23 +345,16 @@ export function RequestExchangeDialog({ open, onOpenChange, userId }: RequestExc
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="target-start">Heure de début</Label>
-                      <Input
+                      <TimePickerInput
                         id="target-start"
-                        type="time"
                         value={targetStartTime}
-                        onChange={(e) => setTargetStartTime(e.target.value)}
+                        onChange={setTargetStartTime}
                         required
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="target-end">Heure de fin</Label>
-                      <Input
-                        id="target-end"
-                        type="time"
-                        value={targetEndTime}
-                        onChange={(e) => setTargetEndTime(e.target.value)}
-                        required
-                      />
+                      <TimePickerInput id="target-end" value={targetEndTime} onChange={setTargetEndTime} required />
                     </div>
                   </div>
                 )}
