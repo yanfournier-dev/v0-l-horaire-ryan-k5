@@ -477,16 +477,6 @@ export function CalendarCell({
                           return null
                         }
 
-                        const replacement = shiftReplacements.find(
-                          (r: any) =>
-                            firefighter &&
-                            firefighter.firstName &&
-                            firefighter.lastName &&
-                            r.replaced_first_name === firefighter.firstName &&
-                            r.replaced_last_name === firefighter.lastName &&
-                            r.replaced_role === firefighter.role,
-                        )
-
                         const exchange = shiftExchanges.find((ex: any) => {
                           if (!firefighter || !firefighter.firstName || !firefighter.lastName) return false
                           if (ex.type === "requester") {
@@ -503,6 +493,34 @@ export function CalendarCell({
                             )
                           }
                         })
+
+                        let actualWorkerFirstName = firefighter.firstName
+                        let actualWorkerLastName = firefighter.lastName
+                        let actualWorkerRole = firefighter.role
+
+                        if (exchange) {
+                          if (exchange.type === "requester") {
+                            // The target person is actually working this shift
+                            actualWorkerFirstName = exchange.target_first_name
+                            actualWorkerLastName = exchange.target_last_name
+                            actualWorkerRole = exchange.target_role
+                          } else {
+                            // The requester person is actually working this shift
+                            actualWorkerFirstName = exchange.requester_first_name
+                            actualWorkerLastName = exchange.requester_last_name
+                            actualWorkerRole = exchange.requester_role
+                          }
+                        }
+
+                        // Find replacement for the firefighter (check both actual worker and original firefighter for exchanges)
+                        const replacement = shiftReplacements.find(
+                          (r: any) =>
+                            (r.replaced_first_name === actualWorkerFirstName &&
+                              r.replaced_last_name === actualWorkerLastName) ||
+                            (exchange &&
+                              r.replaced_first_name === firefighter.firstName &&
+                              r.replaced_last_name === firefighter.lastName),
+                        )
 
                         const firefighterLeave = leaves.find(
                           (leave: any) =>
@@ -529,7 +547,28 @@ export function CalendarCell({
                         let isExchange = false
                         let exchangePartialTimes = null
 
-                        if (exchange) {
+                        if (isAssignedReplacement) {
+                          displayFirstName = replacement.replacement_first_name
+                          displayLastName = replacement.replacement_last_name
+                          isExchange = !!exchange
+                          if (exchange) {
+                            if (
+                              exchange.type === "requester" &&
+                              exchange.is_partial &&
+                              exchange.requester_start_time &&
+                              exchange.requester_end_time
+                            ) {
+                              exchangePartialTimes = `${exchange.requester_start_time.slice(0, 5)}-${exchange.requester_end_time.slice(0, 5)}`
+                            } else if (
+                              exchange.type === "target" &&
+                              exchange.is_partial &&
+                              exchange.target_start_time &&
+                              exchange.target_end_time
+                            ) {
+                              exchangePartialTimes = `${exchange.target_start_time.slice(0, 5)}-${exchange.target_end_time.slice(0, 5)}`
+                            }
+                          }
+                        } else if (exchange) {
                           isExchange = true
                           if (exchange.type === "requester") {
                             displayFirstName = exchange.target_first_name
@@ -544,9 +583,6 @@ export function CalendarCell({
                               exchangePartialTimes = `${exchange.target_start_time.slice(0, 5)}-${exchange.target_end_time.slice(0, 5)}`
                             }
                           }
-                        } else if (isAssignedReplacement) {
-                          displayFirstName = replacement.replacement_first_name
-                          displayLastName = replacement.replacement_last_name
                         }
 
                         const hasPartialReplacement =
@@ -651,12 +687,17 @@ export function CalendarCell({
                                 ↔
                               </span>
                             )}
-                            {isApprovedNotAssigned && !isExchange && (
+                            {isPendingReplacement && (
                               <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1 text-[6px] md:text-sm">
                                 ⏳
                               </span>
                             )}
-                            {isAssignedReplacement && !isExchange && !isDirectAssignment && (
+                            {isApprovedNotAssigned && !isAssignedReplacement && (
+                              <span className="text-gray-600 dark:text-gray-400 mr-0.5 md:mr-1 text-[6px] md:text-sm">
+                                ⏳
+                              </span>
+                            )}
+                            {isAssignedReplacement && !isDirectAssignment && (
                               <span className="text-green-700 dark:text-green-500 mr-0.5 md:mr-1 text-[6px] md:text-sm font-bold inline-block">
                                 ✓
                               </span>
