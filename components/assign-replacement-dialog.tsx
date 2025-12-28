@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -27,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { checkFirefighterAbsence } from "@/app/actions/leaves"
 
 interface AssignReplacementDialogProps {
   replacementId: number
@@ -44,6 +45,7 @@ interface AssignReplacementDialogProps {
     role: string
   }>
   shiftId?: number
+  shiftDate?: string
 }
 
 export function AssignReplacementDialog({
@@ -52,6 +54,7 @@ export function AssignReplacementDialog({
   replacedFirefighterRole,
   shiftFirefighters,
   shiftId,
+  shiftDate,
 }: AssignReplacementDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedFirefighterId, setSelectedFirefighterId] = useState<string>("")
@@ -60,11 +63,42 @@ export function AssignReplacementDialog({
   const [showWarning, setShowWarning] = useState(false)
   const [warningMessage, setWarningMessage] = useState("")
   const [warningHours, setWarningHours] = useState(0)
+  const [absenceWarning, setAbsenceWarning] = useState<{
+    show: boolean
+    firefighterName: string
+    absenceDates: string
+  } | null>(null)
   const router = useRouter()
 
   const isReplacingLieutenant = replacedFirefighterRole === "lieutenant"
 
   const sortedFirefighters = [...firefighters].sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
+
+  useEffect(() => {
+    const checkAbsence = async () => {
+      if (!selectedFirefighterId || !shiftDate) return
+
+      const firefighter = firefighters.find((f) => f.id.toString() === selectedFirefighterId)
+      if (!firefighter) return
+
+      const absenceCheck = await checkFirefighterAbsence(firefighter.id, shiftDate)
+
+      if (absenceCheck.isAbsent && absenceCheck.absence) {
+        const startDate = new Date(absenceCheck.absence.start_date).toLocaleDateString("fr-CA")
+        const endDate = new Date(absenceCheck.absence.end_date).toLocaleDateString("fr-CA")
+
+        setAbsenceWarning({
+          show: true,
+          firefighterName: `${firefighter.first_name} ${firefighter.last_name}`,
+          absenceDates: `${startDate} au ${endDate}`,
+        })
+      } else {
+        setAbsenceWarning(null)
+      }
+    }
+
+    checkAbsence()
+  }, [selectedFirefighterId, shiftDate, firefighters])
 
   const handleAssign = async (force = false) => {
     if (!selectedFirefighterId) {
@@ -74,6 +108,10 @@ export function AssignReplacementDialog({
 
     if (isReplacingLieutenant && !selectedLieutenantId) {
       setSelectedLieutenantId(selectedFirefighterId)
+    }
+
+    if (absenceWarning?.show && !force) {
+      return
     }
 
     setIsSubmitting(true)
@@ -101,6 +139,7 @@ export function AssignReplacementDialog({
         setSelectedFirefighterId("")
         setSelectedLieutenantId("")
         setShowWarning(false)
+        setAbsenceWarning(null)
         router.refresh()
       } else {
         toast.error(result.error || "Erreur lors de l'assignation")
@@ -115,6 +154,11 @@ export function AssignReplacementDialog({
 
   const handleForceAssign = async () => {
     await handleAssign(true)
+  }
+
+  const handleForceAssignDespiteAbsence = async () => {
+    setAbsenceWarning(null)
+    await handleAssign(false)
   }
 
   const allShiftFirefighters =
@@ -192,6 +236,28 @@ export function AssignReplacementDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={absenceWarning?.show || false} onOpenChange={(open) => !open && setAbsenceWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-orange-600">⚠️ Attention</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <div className="text-foreground font-medium">
+                {absenceWarning?.firefighterName} est absent du {absenceWarning?.absenceDates}.
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Voulez-vous quand même l'assigner pour ce remplacement?
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleForceAssignDespiteAbsence} className="bg-orange-600 hover:bg-orange-700">
+              Assigner quand même
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showWarning} onOpenChange={setShowWarning}>
         <AlertDialogContent>

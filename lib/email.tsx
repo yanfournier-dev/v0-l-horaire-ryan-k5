@@ -292,7 +292,7 @@ function getFallbackTemplate(type: string, variables: Record<string, string>) {
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         ${template.body}
         <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px;">
-          <p>L'horaire Ryan - Gestion des horaires des pompiers</p>
+          <p>Horaire SSIV - Gestion des horaires des pompiers</p>
         </div>
       </body>
     </html>
@@ -325,7 +325,7 @@ async function getEmailFromTemplate(type: string, variables: Record<string, stri
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         ${body}
         <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px;">
-          <p>L'horaire Ryan - Gestion des horaires des pompiers</p>
+          <p>Horaire SSIV - Gestion des horaires des pompiers</p>
         </div>
       </body>
     </html>

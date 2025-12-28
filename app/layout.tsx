@@ -15,7 +15,7 @@ const geistMono = Roboto_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "L'horaire Ryan - Gestion des horaires de pompiers",
+  title: "Horaire SSIV - Gestion des horaires de pompiers",
   description: "Application de gestion des horaires pour les pompiers",
   generator: "v0.app",
   viewport: "width=device-width, initial-scale=1, maximum-scale=5",

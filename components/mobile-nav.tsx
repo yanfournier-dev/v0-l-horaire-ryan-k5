@@ -12,9 +12,16 @@ interface MobileNavProps {
   isAdmin?: boolean
   replacementsBadgeCount?: number
   exchangesBadgeCount?: number
+  absencesBadgeCount?: number
 }
 
-export function MobileNav({ userName, isAdmin, replacementsBadgeCount = 0, exchangesBadgeCount = 0 }: MobileNavProps) {
+export function MobileNav({
+  userName,
+  isAdmin,
+  replacementsBadgeCount = 0,
+  exchangesBadgeCount = 0,
+  absencesBadgeCount = 0,
+}: MobileNavProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -23,6 +30,7 @@ export function MobileNav({ userName, isAdmin, replacementsBadgeCount = 0, excha
     { href: "/dashboard/calendar?scrollToToday=true", label: "Calendrier" },
     { href: "/dashboard/replacements", label: "Remplacements" },
     { href: "/dashboard/exchanges", label: "Échanges" },
+    { href: "/dashboard/absences", label: "Absences" },
     { href: "/dashboard/settings", label: "Paramètres" },
     ...(isAdmin
       ? [
@@ -54,7 +62,7 @@ export function MobileNav({ userName, isAdmin, replacementsBadgeCount = 0, excha
                 />
               </svg>
             </div>
-            L'horaire Ryan
+            Horaire SSIV
           </SheetTitle>
         </SheetHeader>
 
@@ -78,6 +86,11 @@ export function MobileNav({ userName, isAdmin, replacementsBadgeCount = 0, excha
                   {item.label === "Échanges" && exchangesBadgeCount > 0 && (
                     <Badge className="ml-2 bg-red-600 text-white">
                       {exchangesBadgeCount > 99 ? "99+" : exchangesBadgeCount}
+                    </Badge>
+                  )}
+                  {item.label === "Absences" && absencesBadgeCount > 0 && (
+                    <Badge className="ml-2 bg-red-600 text-white">
+                      {absencesBadgeCount > 99 ? "99+" : absencesBadgeCount}
                     </Badge>
                   )}
                 </span>

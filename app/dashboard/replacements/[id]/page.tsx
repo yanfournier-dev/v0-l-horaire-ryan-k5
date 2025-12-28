@@ -14,6 +14,7 @@ import { formatReplacementTime } from "@/lib/replacement-utils"
 import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { getBatchFirefighterWeeklyHours } from "@/app/actions/weekly-hours"
 import { AddManualApplicationDialog } from "@/components/add-manual-application-dialog"
+import { checkFirefighterAbsence } from "@/app/actions/leaves"
 
 export const dynamic = "force-dynamic"
 
@@ -31,7 +32,6 @@ export default async function ReplacementDetailPage({
   const { returnTo, tab } = await searchParams
   const replacementId = Number.parseInt(id)
 
-  // If the ID is not a valid number, redirect back to replacements page
   if (isNaN(replacementId) || replacementId <= 0) {
     redirect("/dashboard/replacements")
   }
@@ -57,15 +57,7 @@ export default async function ReplacementDetailPage({
   }
 
   const replacement = replacementResult[0]
-
   const partTimeTeam = getPartTimeTeam(replacement.shift_date)
-
-  console.log("[v0] Replacement data:", {
-    id: replacement.id,
-    is_partial: replacement.is_partial,
-    start_time: replacement.start_time,
-    end_time: replacement.end_time,
-  })
 
   const applications = await sql`
     SELECT
@@ -179,66 +171,28 @@ export default async function ReplacementDetailPage({
       ra.id
   `
 
-  console.log("[v0] Candidates from database:")
-  applications.forEach((app: any, index: number) => {
-    console.log(
-      `[v0] ${index + 1}. ${app.first_name} ${app.last_name} - Team: ${app.team_name} (${app.team_type}) - Rank: ${app.team_rank} - Sort Priority: ${app.sort_priority}`,
-    )
-  })
-
-  const getShiftTypeLabel = (type: string) => {
-    switch (type) {
-      case "day":
-        return "Jour (7h-17h)"
-      case "night":
-        return "Nuit (17h-17h)"
-      case "full_24h":
-        return "24h (7h-7h)"
-      default:
-        return type
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "En attente"
-      case "approved":
-        return "Approuvée"
-      case "rejected":
-        return "Rejetée"
-      default:
-        return status
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-      case "approved":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-      case "rejected":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
   const userIds = applications.map((app: any) => app.user_id)
   const weeklyHoursMap = await getBatchFirefighterWeeklyHours(userIds, replacement.shift_date)
 
   const applicationsWithHours = applications.map((app: any) => {
     const calculatedHours = weeklyHoursMap.get(app.user_id) || 0
-    // For permanent firefighters, always display 42h
     const displayHours = app.team_type === "permanent" ? 42 : calculatedHours
 
     return {
       ...app,
       weeklyHours: displayHours,
-      actualWeeklyHours: calculatedHours, // Keep actual hours for warning calculation
+      actualWeeklyHours: calculatedHours,
     }
   })
+
+  const absenceChecks = await Promise.all(
+    applicationsWithHours.map((app: any) => checkFirefighterAbsence(app.user_id, replacement.shift_date)),
+  )
+
+  const applicationsWithAbsences = applicationsWithHours.map((app: any, index: number) => ({
+    ...app,
+    absenceInfo: absenceChecks[index],
+  }))
 
   const shiftResult = await sql`
     SELECT id FROM shifts
@@ -267,21 +221,14 @@ export default async function ReplacementDetailPage({
       u.last_name
   `
 
-  console.log("[v0] Replacement detail page data:", {
-    replacementId,
-    replacedRole: replacement.replaced_role,
-    shiftId,
-    teamFirefighters: teamFirefighters.length,
-  })
-
-  const priorityCandidates = applicationsWithHours.filter((app: any) => app.has_collective_agreement_priority)
-  const teamPriorityCandidates = applicationsWithHours.filter((app: any) => app.has_team_priority)
-  const regularCandidates = applicationsWithHours.filter(
+  const priorityCandidates = applicationsWithAbsences.filter((app: any) => app.has_collective_agreement_priority)
+  const teamPriorityCandidates = applicationsWithAbsences.filter((app: any) => app.has_team_priority)
+  const regularCandidates = applicationsWithAbsences.filter(
     (app: any) => !app.has_collective_agreement_priority && !app.has_team_priority,
   )
 
   const allFirefighters = await sql`
-    SELECT 
+    SELECT DISTINCT ON (u.id)
       u.id,
       u.first_name,
       u.last_name,
@@ -300,17 +247,16 @@ export default async function ReplacementDetailPage({
       JOIN teams t ON tm.team_id = t.id
     ) team_info ON team_info.user_id = u.id
     WHERE u.id != ${replacement.leave_user_id || replacement.user_id}
-    ORDER BY u.last_name, u.first_name
+    ORDER BY u.id, u.last_name, u.first_name
   `
 
-  const existingApplicantIds = applicationsWithHours.map((app: any) => app.user_id)
+  const existingApplicantIds = applicationsWithAbsences.map((app: any) => app.user_id)
 
   const partTimeCandidates = regularCandidates.filter((app: any) => app.team_type === "part_time")
   const temporaryCandidates = regularCandidates.filter((app: any) => app.team_type === "temporary")
   const permanentCandidates = regularCandidates.filter((app: any) => app.team_type === "permanent")
   const noTeamCandidates = regularCandidates.filter((app: any) => !app.team_type)
 
-  // Group part-time candidates by team number
   const partTimeByTeam = {
     1: partTimeCandidates.filter((app: any) => app.team_number === 1),
     2: partTimeCandidates.filter((app: any) => app.team_number === 2),
@@ -318,18 +264,17 @@ export default async function ReplacementDetailPage({
     4: partTimeCandidates.filter((app: any) => app.team_number === 4),
   }
 
-  // Calculate rotation order: team before current week has priority
-  // If É4 is on duty: É3, É2, É1, É4
   const rotationOrder = []
   for (let i = 0; i < 4; i++) {
     const teamNum = ((partTimeTeam - 1 + 3 - i) % 4) + 1
     rotationOrder.push(teamNum)
   }
 
-  // Render function for application card
   const renderApplicationCard = (application: any) => {
     const isAlreadyAssigned = application.is_already_assigned
     const cannotBeAssigned = application.has_team_priority
+    const isAbsent = application.absenceInfo?.isAbsent || false
+    const absenceData = application.absenceInfo?.absence
 
     return (
       <div
@@ -360,6 +305,14 @@ export default async function ReplacementDetailPage({
             <Badge variant="outline" className="text-blue-600 border-blue-600">
               {application.weeklyHours}h cette semaine
             </Badge>
+            {isAbsent && absenceData && (
+              <Badge variant="outline" className="text-red-600 border-red-600 bg-red-50 dark:bg-red-950">
+                Absent (
+                {parseLocalDate(absenceData.start_date).toLocaleDateString("fr-CA", { month: "short", day: "numeric" })}{" "}
+                - {parseLocalDate(absenceData.end_date).toLocaleDateString("fr-CA", { month: "short", day: "numeric" })}
+                )
+              </Badge>
+            )}
             {isAlreadyAssigned && (
               <Badge variant="outline" className="text-orange-600 border-orange-600 bg-orange-50 dark:bg-orange-950">
                 Déjà assigné à un autre remplacement
@@ -414,6 +367,45 @@ export default async function ReplacementDetailPage({
     )
   }
 
+  const getShiftTypeLabel = (type: string) => {
+    switch (type) {
+      case "day":
+        return "Jour (7h-17h)"
+      case "night":
+        return "Nuit (17h-17h)"
+      case "full_24h":
+        return "24h (7h-7h)"
+      default:
+        return type
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "En attente"
+      case "approved":
+        return "Approuvée"
+      case "rejected":
+        return "Rejetée"
+      default:
+        return status
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+      case "approved":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+      case "rejected":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -458,7 +450,7 @@ export default async function ReplacementDetailPage({
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-foreground">
-            Candidats pour ce remplacement ({applicationsWithHours.length})
+            Candidats pour ce remplacement ({applicationsWithAbsences.length})
           </h2>
           <AddManualApplicationDialog
             replacementId={replacementId}
@@ -467,7 +459,7 @@ export default async function ReplacementDetailPage({
           />
         </div>
 
-        {applicationsWithHours.length === 0 ? (
+        {applicationsWithAbsences.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">Aucun candidat disponible pour ce remplacement</p>
@@ -489,7 +481,7 @@ export default async function ReplacementDetailPage({
 
             {teamPriorityCandidates.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3 text-foreground">
+                <h3 className="text-lg font-semibold mb-3 text-foreground flex items-center gap-2">
                   Pompiers permanents de {replacement.team_name} (priorité pour rôle de lieutenant)
                   <Badge className="bg-blue-600 text-white hover:bg-blue-700 font-semibold">
                     {teamPriorityCandidates.length}

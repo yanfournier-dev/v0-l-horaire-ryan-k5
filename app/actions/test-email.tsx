@@ -7,7 +7,7 @@ export async function testEmailAction(email: string) {
 
   const result = await sendEmail({
     to: email,
-    subject: "Test - L'horaire Ryan",
+    subject: "Test - Horaire SSIV",
     html: `
       <!DOCTYPE html>
       <html>
@@ -24,7 +24,7 @@ export async function testEmailAction(email: string) {
             <p style="font-size: 16px; margin-bottom: 20px;">Bonjour,</p>
             
             <p style="font-size: 16px; margin-bottom: 20px;">
-              Ceci est un email de test du système L'horaire Ryan.
+              Ceci est un email de test du système Horaire SSIV.
             </p>
             
             <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
@@ -38,7 +38,7 @@ export async function testEmailAction(email: string) {
           </div>
           
           <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px;">
-            <p>L'horaire Ryan - Gestion des horaires des pompiers</p>
+            <p>Horaire SSIV - Gestion des horaires des pompiers</p>
           </div>
         </body>
       </html>

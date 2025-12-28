@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ReplacementsBadge } from "@/components/replacements-badge"
 import { ExchangesBadge } from "@/components/exchanges-badge"
+import { AbsencesBadge } from "@/components/absences-badge"
 import { MobileNav } from "@/components/mobile-nav"
 import { Suspense } from "react"
 
@@ -22,9 +23,11 @@ export default async function DashboardLayout({
 
   const { getReplacementsAdminActionCount } = await import("@/app/actions/replacements")
   const { getPendingExchangesCount } = await import("@/app/actions/exchanges")
+  const { getPendingLeavesCount } = await import("@/app/actions/leaves")
 
   const replacementsBadgeCount = user.is_admin ? await getReplacementsAdminActionCount() : 0
   const exchangesBadgeCount = user.is_admin ? await getPendingExchangesCount() : 0
+  const absencesBadgeCount = user.is_admin ? await getPendingLeavesCount() : 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -37,6 +40,7 @@ export default async function DashboardLayout({
                 isAdmin={user.isAdmin}
                 replacementsBadgeCount={replacementsBadgeCount}
                 exchangesBadgeCount={exchangesBadgeCount}
+                absencesBadgeCount={absencesBadgeCount}
               />
 
               <div className="w-8 h-8 md:w-10 md:h-10 bg-red-600 rounded-full flex items-center justify-center">
@@ -49,7 +53,7 @@ export default async function DashboardLayout({
                   />
                 </svg>
               </div>
-              <h1 className="text-lg md:text-xl font-bold text-foreground">L'horaire Ryan</h1>
+              <h1 className="text-lg md:text-xl font-bold text-foreground">Horaire SSIV</h1>
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
@@ -88,6 +92,14 @@ export default async function DashboardLayout({
                 Échanges
                 <Suspense fallback={null}>
                   <ExchangesBadge />
+                </Suspense>
+              </Button>
+            </Link>
+            <Link href="/dashboard/absences" scroll={false}>
+              <Button variant="ghost" size="sm" className="relative">
+                Absences
+                <Suspense fallback={null}>
+                  <AbsencesBadge />
                 </Suspense>
               </Button>
             </Link>

@@ -47,7 +47,7 @@ export default function LoginPage() {
               </svg>
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">L'horaire Ryan</CardTitle>
+          <CardTitle className="text-2xl text-center">Horaire SSIV</CardTitle>
           <CardDescription className="text-center">Connectez-vous à votre compte</CardDescription>
         </CardHeader>
         <CardContent>

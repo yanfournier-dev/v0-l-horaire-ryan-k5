@@ -23,7 +23,7 @@ export default function RegisterPage() {
             </div>
           </div>
           <CardTitle className="text-2xl text-center">Créer un compte</CardTitle>
-          <CardDescription className="text-center">Rejoignez L'horaire Ryan</CardDescription>
+          <CardDescription className="text-center">Rejoignez Horaire SSIV</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={register} className="space-y-4">
