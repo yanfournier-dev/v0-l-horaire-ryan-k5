@@ -690,7 +690,7 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
-    const result = await setActingLieutenant(shift.id, userId)
+    const result = await setActingLieutenant(shift.id, userId, dateStr)
 
     if (result.error) {
       toast.error(result.error)
@@ -728,7 +728,7 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
-    const result = await setActingCaptain(shift.id, userId)
+    const result = await setActingCaptain(shift.id, userId, dateStr)
 
     if (result.error) {
       toast.error(result.error)

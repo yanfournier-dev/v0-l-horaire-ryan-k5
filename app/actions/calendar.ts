@@ -250,13 +250,13 @@ export async function getDirectAssignmentsForRange(startDate: string, endDate: s
 
 export async function getActingDesignationsForRange(startDate: string, endDate: string) {
   try {
-    // Simply get all acting designations - we'll filter by date in the frontend
     const designations = await sql`
       SELECT 
         sa.shift_id,
         sa.user_id,
         sa.is_acting_lieutenant,
         sa.is_acting_captain,
+        sa.shift_date,
         s.shift_type,
         s.team_id,
         s.cycle_day,
@@ -266,12 +266,15 @@ export async function getActingDesignationsForRange(startDate: string, endDate: 
       JOIN shifts s ON sa.shift_id = s.id
       JOIN users u ON sa.user_id = u.id
       WHERE (sa.is_acting_lieutenant = true OR sa.is_acting_captain = true)
+        AND sa.shift_date IS NOT NULL
+        AND sa.shift_date >= ${startDate}
+        AND sa.shift_date <= ${endDate}
     `
 
     console.log("[v0] getActingDesignationsForRange - Found designations:", designations.length)
     designations.forEach((d: any) => {
       console.log(
-        `[v0]   - ${d.first_name} ${d.last_name} (userId: ${d.user_id}) on shift ${d.shift_id} (cycle_day: ${d.cycle_day}, team: ${d.team_id}) - Cpt: ${d.is_acting_captain}, Lt: ${d.is_acting_lieutenant}`,
+        `[v0]   - ${d.first_name} ${d.last_name} (userId: ${d.user_id}) on shift ${d.shift_id} (date: ${d.shift_date}, cycle_day: ${d.cycle_day}, team: ${d.team_id}) - Cpt: ${d.is_acting_captain}, Lt: ${d.is_acting_lieutenant}`,
       )
     })
 
@@ -283,6 +286,7 @@ export async function getActingDesignationsForRange(startDate: string, endDate: 
       shift_type: row.shift_type,
       team_id: row.team_id,
       cycle_day: row.cycle_day,
+      shift_date: row.shift_date,
     }))
   } catch (error: any) {
     console.error("[v0] getActingDesignationsForRange: Query failed", error.message)

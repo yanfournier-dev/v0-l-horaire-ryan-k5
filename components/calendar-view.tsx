@@ -238,17 +238,20 @@ export function CalendarView({
       }
       setDirectAssignmentMap(newDirectAssignmentMap)
 
-      const newActingDesignationMap = { ...actingDesignationMap }
+      const newActingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
       if (data.acting_designations && Array.isArray(data.acting_designations)) {
-        data.acting_designations.forEach((designation: any) => {
-          const dateOnly = formatLocalDate(designation.shift_date)
-          const key = `${dateOnly}_${designation.shift_type}_${designation.team_id}`
-          newActingDesignationMap[key] = {
-            isActingLieutenant: designation.is_acting_lieutenant || false,
-            isActingCaptain: designation.is_acting_captain || false,
+        data.acting_designations.forEach((ad: any) => {
+          const dateStr = ad.shift_date ? formatLocalDate(ad.shift_date) : null
+          if (dateStr) {
+            const key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+            newActingDesignationMap[key] = {
+              isActingLieutenant: ad.is_acting_lieutenant,
+              isActingCaptain: ad.is_acting_captain,
+            }
           }
         })
       }
+      console.log("[v0] handleShiftUpdated - new actingDesignationMap keys:", Object.keys(newActingDesignationMap))
       setActingDesignationMap(newActingDesignationMap)
 
       const newExtraFirefighterMap = { ...extraFirefighterMap }
@@ -377,17 +380,20 @@ export function CalendarView({
       }
       setDirectAssignmentMap(newDirectAssignmentMap)
 
-      const newActingDesignationMap = { ...actingDesignationMap }
+      const newActingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
       if (data.actingDesignations) {
         data.actingDesignations.forEach((ad: any) => {
-          const dateOnly = formatLocalDate(ad.shift_date)
-          const key = `${dateOnly}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
-          newActingDesignationMap[key] = {
-            isActingLieutenant: ad.is_acting_lieutenant,
-            isActingCaptain: ad.is_acting_captain,
+          const dateStr = ad.shift_date ? formatLocalDate(ad.shift_date) : null
+          if (dateStr) {
+            const key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+            newActingDesignationMap[key] = {
+              isActingLieutenant: ad.is_acting_lieutenant,
+              isActingCaptain: ad.is_acting_captain,
+            }
           }
         })
       }
+      console.log("[v0] handleShiftUpdated - new actingDesignationMap keys:", Object.keys(newActingDesignationMap))
       setActingDesignationMap(newActingDesignationMap)
 
       const newExtraFirefighterMap = { ...extraFirefighterMap }
@@ -507,10 +513,13 @@ export function CalendarView({
       const newActingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
       if (data.actingDesignations) {
         data.actingDesignations.forEach((ad: any) => {
-          const key = `${ad.cycle_day}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
-          newActingDesignationMap[key] = {
-            isActingLieutenant: ad.is_acting_lieutenant,
-            isActingCaptain: ad.is_acting_captain,
+          const dateStr = ad.shift_date ? formatLocalDate(ad.shift_date) : null
+          if (dateStr) {
+            const key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+            newActingDesignationMap[key] = {
+              isActingLieutenant: ad.is_acting_lieutenant,
+              isActingCaptain: ad.is_acting_captain,
+            }
           }
         })
       }

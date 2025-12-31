@@ -34,6 +34,7 @@ export async function createDirectAssignment(params: {
   endTime?: string
   replacementOrder?: number
   shiftDate?: string
+  override?: boolean
 }) {
   try {
     const user = await getSession()
@@ -41,8 +42,17 @@ export async function createDirectAssignment(params: {
       return { success: false, error: "Non autorisé" }
     }
 
-    const { shiftId, replacedUserId, assignedUserId, isPartial, startTime, endTime, replacementOrder, shiftDate } =
-      params
+    const {
+      shiftId,
+      replacedUserId,
+      assignedUserId,
+      isPartial,
+      startTime,
+      endTime,
+      replacementOrder,
+      shiftDate,
+      override,
+    } = params
 
     const finalShiftDate = shiftDate || null
 
@@ -54,7 +64,7 @@ export async function createDirectAssignment(params: {
       return { success: false, error: "Quart non trouvé" }
     }
 
-    if (finalShiftDate) {
+    if (finalShiftDate && !override) {
       const consecutiveCheck = await checkConsecutiveHours(
         assignedUserId,
         finalShiftDate,

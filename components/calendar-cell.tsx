@@ -240,7 +240,7 @@ export function CalendarCell({
               const allFirefighters = [...baseFirefighters, ...directAssignmentFirefighters]
 
               const processedFirefighters = allFirefighters.map((firefighter) => {
-                const actingKey = `${shift.cycle_day}_${shift.shift_type}_${shift.team_id}_${firefighter.userId}`
+                const actingKey = `${dateStr}_${shift.shift_type}_${shift.team_id}_${firefighter.userId}`
                 const actingDesignation = actingDesignationMap[actingKey]
 
                 if (actingDesignation) {

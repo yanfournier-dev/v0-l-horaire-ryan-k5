@@ -16,7 +16,8 @@ export async function getShiftAssignments(shiftId: number) {
       u.role,
       u.email,
       sa.is_acting_lieutenant,
-      sa.is_acting_captain
+      sa.is_acting_captain,
+      sa.shift_date
     FROM shift_assignments sa
     JOIN users u ON sa.user_id = u.id
     WHERE sa.shift_id = ${shiftId}
@@ -392,14 +393,14 @@ export async function isUserAssignedToShift(userId: number, shiftId: number, tar
   }
 }
 
-export async function setActingLieutenant(shiftId: number, userId: number) {
+export async function setActingLieutenant(shiftId: number, userId: number, shiftDate?: string) {
   const user = await getSession()
   if (!user?.is_admin) {
     return { error: "Non autorisé" }
   }
 
   try {
-    console.log("[v0] setActingLieutenant called with:", { shiftId, userId })
+    console.log("[v0] setActingLieutenant called with:", { shiftId, userId, shiftDate })
 
     // Get the shift details to find the team
     const shiftDetails = await sql`
@@ -425,52 +426,89 @@ export async function setActingLieutenant(shiftId: number, userId: number) {
       teamLieutenants.map((l) => l.id),
     )
 
-    console.log("[v0] setActingLieutenant - Setting is_acting_lieutenant = false for all assignments")
-    await sql`
-      UPDATE shift_assignments
-      SET is_acting_lieutenant = false
-      WHERE shift_id = ${shiftId}
-    `
+    console.log("[v0] setActingLieutenant - Setting is_acting_lieutenant = false for all assignments on this date")
+    if (shiftDate) {
+      await sql`
+        UPDATE shift_assignments
+        SET is_acting_lieutenant = false
+        WHERE shift_id = ${shiftId} AND shift_date = ${shiftDate}
+      `
+    } else {
+      await sql`
+        UPDATE shift_assignments
+        SET is_acting_lieutenant = false
+        WHERE shift_id = ${shiftId}
+      `
+    }
 
     // For each permanent lieutenant, ensure they have a shift_assignments record with is_acting_lieutenant = false
     for (const lieutenant of teamLieutenants) {
       if (lieutenant.id !== userId) {
-        // Check if they already have a shift_assignments record
-        const existing = await sql`
-          SELECT id FROM shift_assignments
-          WHERE shift_id = ${shiftId} AND user_id = ${lieutenant.id}
-        `
+        const existing = shiftDate
+          ? await sql`
+              SELECT id FROM shift_assignments
+              WHERE shift_id = ${shiftId} AND user_id = ${lieutenant.id} AND shift_date = ${shiftDate}
+            `
+          : await sql`
+              SELECT id FROM shift_assignments
+              WHERE shift_id = ${shiftId} AND user_id = ${lieutenant.id}
+            `
 
         if (existing.length === 0) {
           console.log("[v0] setActingLieutenant - Creating shift_assignments for permanent lieutenant:", lieutenant.id)
-          // Create a record with is_acting_lieutenant = false to override their permanent lieutenant role
-          await sql`
-            INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant)
-            VALUES (${shiftId}, ${lieutenant.id}, false, false)
-          `
+          if (shiftDate) {
+            await sql`
+              INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant, shift_date)
+              VALUES (${shiftId}, ${lieutenant.id}, false, false, ${shiftDate})
+            `
+          } else {
+            await sql`
+              INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant)
+              VALUES (${shiftId}, ${lieutenant.id}, false, false)
+            `
+          }
         }
       }
     }
 
-    // Now set the new acting lieutenant
-    const existing = await sql`
-      SELECT id FROM shift_assignments
-      WHERE shift_id = ${shiftId} AND user_id = ${userId}
-    `
+    const existing = shiftDate
+      ? await sql`
+          SELECT id FROM shift_assignments
+          WHERE shift_id = ${shiftId} AND user_id = ${userId} AND shift_date = ${shiftDate}
+        `
+      : await sql`
+          SELECT id FROM shift_assignments
+          WHERE shift_id = ${shiftId} AND user_id = ${userId}
+        `
 
     if (existing.length > 0) {
       console.log("[v0] setActingLieutenant - Updating existing shift_assignments record for userId:", userId)
-      await sql`
-        UPDATE shift_assignments
-        SET is_acting_lieutenant = true
-        WHERE shift_id = ${shiftId} AND user_id = ${userId}
-      `
+      if (shiftDate) {
+        await sql`
+          UPDATE shift_assignments
+          SET is_acting_lieutenant = true
+          WHERE shift_id = ${shiftId} AND user_id = ${userId} AND shift_date = ${shiftDate}
+        `
+      } else {
+        await sql`
+          UPDATE shift_assignments
+          SET is_acting_lieutenant = true
+          WHERE shift_id = ${shiftId} AND user_id = ${userId}
+        `
+      }
     } else {
       console.log("[v0] setActingLieutenant - Creating new shift_assignments record for userId:", userId)
-      await sql`
-        INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant)
-        VALUES (${shiftId}, ${userId}, false, true)
-      `
+      if (shiftDate) {
+        await sql`
+          INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant, shift_date)
+          VALUES (${shiftId}, ${userId}, false, true, ${shiftDate})
+        `
+      } else {
+        await sql`
+          INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_lieutenant)
+          VALUES (${shiftId}, ${userId}, false, true)
+        `
+      }
     }
 
     console.log("[v0] setActingLieutenant - Success")
@@ -488,14 +526,14 @@ export async function setActingLieutenant(shiftId: number, userId: number) {
   }
 }
 
-export async function setActingCaptain(shiftId: number, userId: number) {
+export async function setActingCaptain(shiftId: number, userId: number, shiftDate?: string) {
   const user = await getSession()
   if (!user?.is_admin) {
     return { error: "Non autorisé" }
   }
 
   try {
-    console.log("[v0] setActingCaptain called with:", { shiftId, userId })
+    console.log("[v0] setActingCaptain called with:", { shiftId, userId, shiftDate })
 
     // Get the shift details to find the team
     const shiftDetails = await sql`
@@ -521,52 +559,89 @@ export async function setActingCaptain(shiftId: number, userId: number) {
       teamCaptains.map((c) => c.id),
     )
 
-    console.log("[v0] setActingCaptain - Setting is_acting_captain = false for all assignments")
-    await sql`
-      UPDATE shift_assignments
-      SET is_acting_captain = false
-      WHERE shift_id = ${shiftId}
-    `
+    console.log("[v0] setActingCaptain - Setting is_acting_captain = false for all assignments on this date")
+    if (shiftDate) {
+      await sql`
+        UPDATE shift_assignments
+        SET is_acting_captain = false
+        WHERE shift_id = ${shiftId} AND shift_date = ${shiftDate}
+      `
+    } else {
+      await sql`
+        UPDATE shift_assignments
+        SET is_acting_captain = false
+        WHERE shift_id = ${shiftId}
+      `
+    }
 
     // For each permanent captain, ensure they have a shift_assignments record with is_acting_captain = false
     for (const captain of teamCaptains) {
       if (captain.id !== userId) {
-        // Check if they already have a shift_assignments record
-        const existing = await sql`
-          SELECT id FROM shift_assignments
-          WHERE shift_id = ${shiftId} AND user_id = ${captain.id}
-        `
+        const existing = shiftDate
+          ? await sql`
+              SELECT id FROM shift_assignments
+              WHERE shift_id = ${shiftId} AND user_id = ${captain.id} AND shift_date = ${shiftDate}
+            `
+          : await sql`
+              SELECT id FROM shift_assignments
+              WHERE shift_id = ${shiftId} AND user_id = ${captain.id}
+            `
 
         if (existing.length === 0) {
           console.log("[v0] setActingCaptain - Creating shift_assignments for permanent captain:", captain.id)
-          // Create a record with is_acting_captain = false to override their permanent captain role
-          await sql`
-            INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_captain)
-            VALUES (${shiftId}, ${captain.id}, false, false)
-          `
+          if (shiftDate) {
+            await sql`
+              INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_captain, shift_date)
+              VALUES (${shiftId}, ${captain.id}, false, false, ${shiftDate})
+            `
+          } else {
+            await sql`
+              INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_captain)
+              VALUES (${shiftId}, ${captain.id}, false, false)
+            `
+          }
         }
       }
     }
 
-    // Now set the new acting captain
-    const existing = await sql`
-      SELECT id FROM shift_assignments
-      WHERE shift_id = ${shiftId} AND user_id = ${userId}
-    `
+    const existing = shiftDate
+      ? await sql`
+          SELECT id FROM shift_assignments
+          WHERE shift_id = ${shiftId} AND user_id = ${userId} AND shift_date = ${shiftDate}
+        `
+      : await sql`
+          SELECT id FROM shift_assignments
+          WHERE shift_id = ${shiftId} AND user_id = ${userId}
+        `
 
     if (existing.length > 0) {
       console.log("[v0] setActingCaptain - Updating existing shift_assignments record for userId:", userId)
-      await sql`
-        UPDATE shift_assignments
-        SET is_acting_captain = true
-        WHERE shift_id = ${shiftId} AND user_id = ${userId}
-      `
+      if (shiftDate) {
+        await sql`
+          UPDATE shift_assignments
+          SET is_acting_captain = true
+          WHERE shift_id = ${shiftId} AND user_id = ${userId} AND shift_date = ${shiftDate}
+        `
+      } else {
+        await sql`
+          UPDATE shift_assignments
+          SET is_acting_captain = true
+          WHERE shift_id = ${shiftId} AND user_id = ${userId}
+        `
+      }
     } else {
       console.log("[v0] setActingCaptain - Creating new shift_assignments record for userId:", userId)
-      await sql`
-        INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_captain)
-        VALUES (${shiftId}, ${userId}, false, true)
-      `
+      if (shiftDate) {
+        await sql`
+          INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_captain, shift_date)
+          VALUES (${shiftId}, ${userId}, false, true, ${shiftDate})
+        `
+      } else {
+        await sql`
+          INSERT INTO shift_assignments (shift_id, user_id, is_extra, is_acting_captain)
+          VALUES (${shiftId}, ${userId}, false, true)
+        `
+      }
     }
 
     console.log("[v0] setActingCaptain - Success")

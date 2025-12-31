@@ -161,9 +161,45 @@ export function DirectAssignmentDialog({
   }
 
   const handleForceAssign = async () => {
-    // TODO: Implement force assign logic with override flag
-    toast.info("Fonction de forçage en développement")
+    if (!shift || !preSelectedFirefighter || !assignedFirefighter) {
+      toast.error("Veuillez remplir tous les champs requis")
+      return
+    }
+
+    setIsLoading(true)
     setShowWarning(false)
+
+    try {
+      const shiftDateStr = `${shift.date.getFullYear()}-${String(shift.date.getMonth() + 1).padStart(2, "0")}-${String(shift.date.getDate()).padStart(2, "0")}`
+
+      const result = await createDirectAssignment({
+        shiftId: shift.id,
+        replacedUserId: preSelectedFirefighter.id,
+        assignedUserId: assignedFirefighter,
+        isPartial,
+        startTime: isPartial ? startTime : undefined,
+        endTime: isPartial ? endTime : undefined,
+        shiftDate: shiftDateStr,
+        override: true, // Force assign despite warnings
+      })
+
+      if (result.error) {
+        toast.error(result.error)
+        setIsLoading(false)
+        return
+      }
+
+      toast.success("Pompier assigné directement avec succès")
+      onOpenChange(false)
+      setIsLoading(false)
+      setTimeout(() => {
+        onSuccess()
+      }, 100)
+    } catch (error) {
+      console.error("[v0] DirectAssignmentDialog - Error during force assign:", error)
+      toast.error("Erreur lors de l'assignation")
+      setIsLoading(false)
+    }
   }
 
   const sortedAllFirefighters = [...allFirefighters].sort((a, b) => {
