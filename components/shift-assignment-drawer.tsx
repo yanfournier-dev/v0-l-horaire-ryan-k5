@@ -954,6 +954,10 @@ export function ShiftAssignmentDrawer({
       replaced_first_name: replacedFF?.first_name || r.first_name,
       replaced_last_name: replacedFF?.last_name || r.last_name,
       replaced_position_code: replacedFF?.position_code || "", // Store position_code for sorting
+      leave_bank_1: r.leave_bank_1,
+      leave_hours_1: r.leave_hours_1,
+      leave_bank_2: r.leave_bank_2,
+      leave_hours_2: r.leave_hours_2,
     })
   })
 
