@@ -173,6 +173,10 @@ export async function createReplacementFromShift(
   deadlineSeconds?: number | null,
   shiftStartTime?: string | null,
   shiftEndTime?: string | null,
+  leaveBank1?: string | null,
+  leaveHours1?: string | null,
+  leaveBank2?: string | null,
+  leaveHours2?: string | null,
 ) {
   const user = await getSession()
   if (!user?.is_admin) {
@@ -215,12 +219,12 @@ export async function createReplacementFromShift(
     const result = await db`
       INSERT INTO replacements (
         shift_date, shift_type, team_id, status, is_partial, start_time, end_time, user_id,
-        application_deadline, deadline_duration
+        application_deadline, deadline_duration, leave_bank_1, leave_hours_1, leave_bank_2, leave_hours_2
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
         ${isPartial}, ${isPartial ? startTime : null}, ${isPartial ? endTime : null}, ${userId},
-        ${applicationDeadline}, ${deadlineDuration}
+        ${applicationDeadline}, ${deadlineDuration}, ${leaveBank1}, ${leaveHours1}, ${leaveBank2}, ${leaveHours2}
       )
       RETURNING id
     `

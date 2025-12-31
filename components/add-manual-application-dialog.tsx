@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,19 +28,23 @@ interface AddManualApplicationDialogProps {
     team_name?: string
   }>
   existingApplicantIds: number[]
+  trigger?: React.ReactNode
+  onSuccess?: () => void
 }
 
 export function AddManualApplicationDialog({
   replacementId,
   availableFirefighters,
   existingApplicantIds,
+  trigger,
+  onSuccess,
 }: AddManualApplicationDialogProps) {
   const [open, setOpen] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
 
-  const eligibleFirefighters = availableFirefighters
+  const eligibleFirefighters = (availableFirefighters || [])
     .filter((ff) => !existingApplicantIds.includes(ff.id))
     .sort((a, b) => a.last_name.localeCompare(b.last_name, "fr"))
 
@@ -53,6 +59,7 @@ export function AddManualApplicationDialog({
       } else {
         setOpen(false)
         router.refresh()
+        onSuccess?.()
       }
     } catch (error) {
       console.error("[v0] Error applying for myself:", error)
@@ -75,6 +82,7 @@ export function AddManualApplicationDialog({
         setOpen(false)
         setSelectedFirefighter("")
         router.refresh()
+        onSuccess?.()
       }
     } catch (error) {
       console.error("[v0] Error adding manual application:", error)
@@ -87,10 +95,12 @@ export function AddManualApplicationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Ajouter une candidature
-        </Button>
+        {trigger || (
+          <Button size="sm" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Ajouter une candidature
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>

@@ -20,30 +20,39 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { TimePickerInput } from "@/components/time-picker-input"
 import { getDefaultReplacementTimes } from "@/lib/shift-utils"
+import { LeaveBankSelector } from "@/components/leave-bank-selector"
 
-interface CreateReplacementButtonProps {
-  userId: number
-  userName: string
-  shiftDate: string
-  shiftType: string
+interface Shift {
+  id: number
+  date: string
+  type: string
   teamId: number
 }
 
-export function CreateReplacementButton({
-  userId,
-  userName,
-  shiftDate,
-  shiftType,
-  teamId,
-}: CreateReplacementButtonProps) {
+interface CreateReplacementButtonProps {
+  shift: Shift
+  userId: number
+  userName: string
+}
+
+export function CreateReplacementButton({ shift, userId, userName }: CreateReplacementButtonProps) {
+  console.log("[v0] ======= CreateReplacementButton MOUNTED =======", { shift, userName, userId })
+
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [isPartial, setIsPartial] = useState(false)
-  const defaultTimes = getDefaultReplacementTimes(shiftType)
+  const defaultTimes = getDefaultReplacementTimes(shift.type)
   const [startTime, setStartTime] = useState(defaultTimes.startTime)
   const [endTime, setEndTime] = useState(defaultTimes.endTime)
+
+  const [leaveBank1, setLeaveBank1] = useState("")
+  const [leaveHours1, setLeaveHours1] = useState("")
+  const [leaveBank2, setLeaveBank2] = useState("")
+  const [leaveHours2, setLeaveHours2] = useState("")
+
+  console.log("[v0] CreateReplacementButton state:", { leaveBank1, leaveHours1, leaveBank2, leaveHours2 })
 
   useEffect(() => {
     if (isPartial) {
@@ -73,17 +82,33 @@ export function CreateReplacementButton({
       return
     }
 
+    if (!leaveBank1) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner au moins une banque de congé",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
       const result = await createReplacementFromShift(
         userId,
-        shiftDate,
-        shiftType,
-        teamId,
+        shift.date,
+        shift.type,
+        shift.teamId,
         isPartial,
         isPartial ? startTime : undefined,
         isPartial ? endTime : undefined,
+        undefined, // deadlineSeconds
+        undefined, // shiftStartTime
+        undefined, // shiftEndTime
+        leaveBank1,
+        leaveHours1 || null,
+        leaveBank2 || null,
+        leaveHours2 || null,
       )
 
       if (result.error) {
@@ -101,6 +126,10 @@ export function CreateReplacementButton({
         setIsPartial(false)
         setStartTime(defaultTimes.startTime)
         setEndTime(defaultTimes.endTime)
+        setLeaveBank1("")
+        setLeaveHours1("")
+        setLeaveBank2("")
+        setLeaveHours2("")
         router.refresh()
       }
     } catch (error) {
@@ -126,13 +155,24 @@ export function CreateReplacementButton({
           <AlertDialogTitle>Créer une demande de remplacement</AlertDialogTitle>
           <AlertDialogDescription>
             Voulez-vous créer une demande de remplacement pour <strong>{userName}</strong> pour le quart du{" "}
-            <strong>{parseLocalDate(shiftDate).toLocaleDateString("fr-CA")}</strong> (
-            {shiftType === "day" ? "Jour" : shiftType === "full_24h" ? "24h" : "Nuit"} (
-            {shiftType === "day" ? "7h-17h" : shiftType === "full_24h" ? "7h-7h" : "17h-7h"})) ?
+            <strong>{parseLocalDate(shift.date).toLocaleDateString("fr-CA")}</strong> (
+            {shift.type === "day" ? "Jour" : shift.type === "full_24h" ? "24h" : "Nuit"} (
+            {shift.type === "day" ? "7h-17h" : shift.type === "full_24h" ? "7h-7h" : "17h-7h"})) ?
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-4 py-4">
+          <LeaveBankSelector
+            bank1={leaveBank1}
+            hours1={leaveHours1}
+            bank2={leaveBank2}
+            hours2={leaveHours2}
+            onBank1Change={setLeaveBank1}
+            onHours1Change={setLeaveHours1}
+            onBank2Change={setLeaveBank2}
+            onHours2Change={setLeaveHours2}
+          />
+
           <div className="flex items-center space-x-2">
             <Checkbox
               id="partial"
