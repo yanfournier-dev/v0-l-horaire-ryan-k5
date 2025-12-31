@@ -687,6 +687,7 @@ export async function getReplacementsForDateRange(startDate: string, endDate: st
       LEFT JOIN shift_assignments sa ON 
         sa.shift_id = s.id 
         AND sa.user_id = repl_user.id
+        AND sa.shift_date = r.shift_date
       WHERE r.shift_date >= ${startDate}
         AND r.shift_date <= ${endDate}
         AND r.status != 'cancelled'
