@@ -244,6 +244,10 @@ export function CalendarView({
           const dateStr = ad.shift_date ? formatLocalDate(ad.shift_date) : null
           if (dateStr) {
             const key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+            console.log("[v0] actingDesignationMap adding key:", key, "with values:", {
+              isActingLieutenant: ad.is_acting_lieutenant,
+              isActingCaptain: ad.is_acting_captain,
+            })
             newActingDesignationMap[key] = {
               isActingLieutenant: ad.is_acting_lieutenant,
               isActingCaptain: ad.is_acting_captain,
@@ -386,6 +390,10 @@ export function CalendarView({
           const dateStr = ad.shift_date ? formatLocalDate(ad.shift_date) : null
           if (dateStr) {
             const key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+            console.log("[v0] actingDesignationMap adding key:", key, "with values:", {
+              isActingLieutenant: ad.is_acting_lieutenant,
+              isActingCaptain: ad.is_acting_captain,
+            })
             newActingDesignationMap[key] = {
               isActingLieutenant: ad.is_acting_lieutenant,
               isActingCaptain: ad.is_acting_captain,
@@ -516,6 +524,10 @@ export function CalendarView({
           const dateStr = ad.shift_date ? formatLocalDate(ad.shift_date) : null
           if (dateStr) {
             const key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+            console.log("[v0] actingDesignationMap adding key:", key, "with values:", {
+              isActingLieutenant: ad.is_acting_lieutenant,
+              isActingCaptain: ad.is_acting_captain,
+            })
             newActingDesignationMap[key] = {
               isActingLieutenant: ad.is_acting_lieutenant,
               isActingCaptain: ad.is_acting_captain,

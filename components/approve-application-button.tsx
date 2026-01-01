@@ -41,6 +41,7 @@ interface ApproveApplicationButtonProps {
     last_name: string
     team_rank: number
   }>
+  shiftDate?: string
 }
 
 export function ApproveApplicationButton({
@@ -56,6 +57,7 @@ export function ApproveApplicationButton({
   actualWeeklyHours = 0,
   shiftType,
   teamPriorityCandidates = [],
+  shiftDate,
 }: ApproveApplicationButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [showRoleSelectionDialog, setShowRoleSelectionDialog] = useState(false)
@@ -173,14 +175,30 @@ export function ApproveApplicationButton({
     }
 
     if (result.success && result.shiftId) {
+      const dateForDesignation = result.shiftDate || shiftDate
+
       if (isReplacingCaptain && captainId) {
-        console.log("[v0] Calling setActingCaptain with shiftId:", result.shiftId, "captainId:", captainId)
-        await setActingCaptain(result.shiftId, captainId)
+        console.log(
+          "[v0] Calling setActingCaptain with shiftId:",
+          result.shiftId,
+          "captainId:",
+          captainId,
+          "shiftDate:",
+          dateForDesignation,
+        )
+        await setActingCaptain(result.shiftId, captainId, dateForDesignation)
       }
 
       if ((isReplacingLieutenant || isReplacingCaptain) && lieutenantId) {
-        console.log("[v0] Calling setActingLieutenant with shiftId:", result.shiftId, "lieutenantId:", lieutenantId)
-        await setActingLieutenant(result.shiftId, lieutenantId)
+        console.log(
+          "[v0] Calling setActingLieutenant with shiftId:",
+          result.shiftId,
+          "lieutenantId:",
+          lieutenantId,
+          "shiftDate:",
+          dateForDesignation,
+        )
+        await setActingLieutenant(result.shiftId, lieutenantId, dateForDesignation)
       }
 
       toast.success("Pompier assigné avec succès")

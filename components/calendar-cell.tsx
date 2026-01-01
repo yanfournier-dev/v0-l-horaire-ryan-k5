@@ -602,12 +602,20 @@ export function CalendarCell({
                         const showCptBadge =
                           firefighter.isActingCaptain === true ||
                           (!hasActingCaptain && firefighter.role === "captain") ||
-                          (isAssignedReplacement && !hasActingCaptain && replacement?.replaced_role === "captain") ||
+                          (isAssignedReplacement &&
+                            !hasActingCaptain &&
+                            !replacementIsActingLieutenant && // Don't show Cpt if replacement is acting Lt
+                            !firefighter.isActingLieutenant && // Don't show Cpt if firefighter is acting Lt
+                            replacement?.replaced_role === "captain") ||
                           (isAssignedReplacement && replacementIsActingCaptain)
 
                         const showGreenCptBadge =
                           firefighter.isActingCaptain === true ||
-                          (isAssignedReplacement && !hasActingCaptain && replacement?.replaced_role === "captain") ||
+                          (isAssignedReplacement &&
+                            !hasActingCaptain &&
+                            !replacementIsActingLieutenant && // Don't show green Cpt if replacement is acting Lt
+                            !firefighter.isActingLieutenant && // Don't show green Cpt if firefighter is acting Lt
+                            replacement?.replaced_role === "captain") ||
                           (isAssignedReplacement && replacementIsActingCaptain)
 
                         const isDirectAssignment = firefighter.isDirectAssignment === true
@@ -623,6 +631,8 @@ export function CalendarCell({
                           (!hasActingLieutenant && firefighter.role === "lieutenant" && !isDirectAssignment) ||
                           (isAssignedReplacement &&
                             !hasActingLieutenant &&
+                            !replacementIsActingCaptain && // Don't show Lt if replacement is acting Cpt
+                            !firefighter.isActingCaptain && // Don't show Lt if firefighter is acting Cpt
                             replacement?.replaced_role === "lieutenant") ||
                           (isAssignedReplacement && replacementIsActingLieutenant)
 
@@ -630,6 +640,8 @@ export function CalendarCell({
                           firefighter.isActingLieutenant === true ||
                           (isAssignedReplacement &&
                             !hasActingLieutenant &&
+                            !replacementIsActingCaptain && // Don't show green Lt if replacement is acting Cpt
+                            !firefighter.isActingCaptain && // Don't show green Lt if firefighter is acting Cpt
                             replacement?.replaced_role === "lieutenant") ||
                           (isAssignedReplacement && replacementIsActingLieutenant)
 

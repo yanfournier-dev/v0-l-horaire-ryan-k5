@@ -203,11 +203,13 @@ export default async function CalendarPage({
 
     const actingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
     actingDesignations.forEach((ad: any) => {
-      // Use cycle_day, shift_type, team_id, and user_id as key
-      const key = `${ad.cycle_day}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
-      actingDesignationMap[key] = {
-        isActingLieutenant: ad.is_acting_lieutenant,
-        isActingCaptain: ad.is_acting_captain,
+      const dateStr = ad.shift_date ? formatDateForDB(new Date(ad.shift_date)) : null
+      if (dateStr) {
+        const key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+        actingDesignationMap[key] = {
+          isActingLieutenant: ad.is_acting_lieutenant,
+          isActingCaptain: ad.is_acting_captain,
+        }
       }
     })
 

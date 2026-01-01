@@ -355,6 +355,13 @@ export default async function ReplacementDetailPage({
                   last_name: c.last_name,
                   team_rank: c.team_rank,
                 }))}
+                shiftDate={
+                  replacement.shift_date instanceof Date
+                    ? replacement.shift_date.toISOString().split("T")[0]
+                    : typeof replacement.shift_date === "string"
+                      ? replacement.shift_date.split("T")[0]
+                      : undefined
+                }
               />
               <RejectApplicationButton applicationId={application.id} />
             </>

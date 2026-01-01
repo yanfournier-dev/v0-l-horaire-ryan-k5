@@ -550,6 +550,9 @@ export async function approveApplication(
         AND user_id = ${applicantId}
     `
 
+    // Format shift_date for the INSERT
+    const shiftDateStr = new Date(shift_date).toISOString().split("T")[0]
+
     // Then insert the new assignment
     await db`
       INSERT INTO shift_assignments (
@@ -561,7 +564,8 @@ export async function approveApplication(
         is_partial,
         start_time,
         end_time,
-        replacement_order
+        replacement_order,
+        shift_date
       )
       VALUES (
         ${shiftId}, 
@@ -572,7 +576,8 @@ export async function approveApplication(
         ${is_partial || false},
         ${start_time || null},
         ${end_time || null},
-        1
+        1,
+        ${shiftDateStr}
       )
     `
 
@@ -600,7 +605,7 @@ export async function approveApplication(
       console.error("Error invalidating cache:", cacheError)
     }
 
-    return { success: true, shiftId }
+    return { success: true, shiftId, shiftDate: shiftDateStr }
   } catch (error) {
     console.error("approveApplication: Error", error)
     return { error: "Erreur lors de l'assignation" }
