@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -377,7 +377,7 @@ export function ShiftAssignmentDrawer({
         const assignmentResult = await fetch("/api/get-shift-assignment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: JSON.JSON.stringify({
             shiftId: shift.id,
             userId: approvedApp.applicant_id,
           }),
@@ -947,64 +947,6 @@ export function ShiftAssignmentDrawer({
     }
   })
 
-  const displayedAssignments = (currentAssignments || [])
-    .filter((assignment) => !removedExtraFirefighters.includes(assignment.user_id))
-    .filter((assignment) => {
-      // Filter out replacements from applications
-      if (assignment.is_replacement) return false
-      // Filter out direct assignments that are replacing someone
-      if (assignment.is_direct_assignment && assignment.replaced_user_id) return false
-      return true
-    })
-    .map((assignment) => {
-      return {
-        ...assignment,
-        name: `${assignment.first_name} ${assignment.last_name}`,
-        // replacement_order is already in assignment from SQL query (12th field)
-      }
-    })
-    .concat(
-      assignedReplacements.map((r: any) => {
-        const approvedApp = r.applications.find((app: any) => app.status === "approved")
-        return {
-          id: `replacement-${r.id}`,
-          user_id: approvedApp.applicant_id,
-          first_name: approvedApp.first_name,
-          last_name: approvedApp.last_name,
-          role: approvedApp.role,
-          email: approvedApp.email,
-          is_extra: false,
-          is_replacement: true,
-          replacement_id: r.id,
-          replaced_user_id: r.user_id,
-          replaced_first_name: r.first_name,
-          replaced_last_name: r.last_name,
-          is_partial: r.is_partial,
-          start_time: r.start_time,
-          end_time: r.end_time,
-          is_acting_lieutenant: r.is_acting_lieutenant || false,
-          is_acting_captain: r.is_acting_captain || false,
-          replacement_order: 1, // Replacements from applications are always order 1
-        }
-      }),
-    )
-
-  const getExchangeForFirefighter = (firefighterId: number, firstName: string, lastName: string, role: string) => {
-    if (!shift?.exchanges) return null
-
-    return shift.exchanges.find((ex: any) => {
-      if (ex.type === "requester") {
-        // This is the requester's original shift, so target is taking their place
-        return (
-          ex.requester_first_name === firstName && ex.requester_last_name === lastName && ex.requester_role === role
-        )
-      } else {
-        // This is the target's original shift, so requester is taking their place
-        return ex.target_first_name === firstName && ex.target_last_name === lastName && ex.target_role === role
-      }
-    })
-  }
-
   const groupedReplacements = new Map<number, Array<any>>()
 
   const existingReplacementKeys = new Set<string>()
@@ -1024,7 +966,6 @@ export function ShiftAssignmentDrawer({
 
       const replacedFromTeam = shift?.team_members?.find((tm: any) => tm.user_id === assignment.replaced_user_id)
 
-      // </CHANGE> Removed debug logs for replacement_id lookup
       let replacementId = assignment.replacement_id
 
       if (!replacementId && !assignment.is_direct_assignment) {
@@ -1048,7 +989,7 @@ export function ShiftAssignmentDrawer({
         is_partial: assignment.is_partial,
         is_direct_assignment: assignment.is_direct_assignment || false,
         is_replacement: assignment.is_replacement || false,
-        replacement_id: replacementId, // Use the found replacement_id
+        replacement_id: replacementId,
         replacement_order: assignment.replacement_order || 1,
         is_acting_lieutenant: assignment.is_acting_lieutenant || false,
         is_acting_captain: assignment.is_acting_captain || false,
@@ -1091,10 +1032,9 @@ export function ShiftAssignmentDrawer({
       replacement_order: 1,
       is_acting_lieutenant: r.is_acting_lieutenant || false,
       is_acting_captain: r.is_acting_captain || false,
-      // Store the real names from allFirefighters
       replaced_first_name: replacedFF?.first_name || r.first_name,
       replaced_last_name: replacedFF?.last_name || r.last_name,
-      replaced_position_code: replacedFF?.position_code || "", // Store position_code for sorting
+      replaced_position_code: replacedFF?.position_code || "",
       leave_bank_1: r.leave_bank_1,
       leave_hours_1: r.leave_hours_1,
       leave_bank_2: r.leave_bank_2,
@@ -1106,19 +1046,17 @@ export function ShiftAssignmentDrawer({
     // Skip if already processed (has approved application)
     const hasApprovedApp = r.applications?.some((app: any) => app.status === "approved")
     if (hasApprovedApp) {
-      return // Already handled by assignedReplacements loop above
+      return
     }
 
-    // Add pending/open replacements to show leave banks
     if (!groupedReplacements.has(r.user_id)) {
       groupedReplacements.set(r.user_id, [])
     }
 
     const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
 
-    // Add a placeholder entry for the replaced firefighter to show their leave banks
     groupedReplacements.get(r.user_id)!.push({
-      user_id: null, // No replacement assigned yet
+      user_id: null,
       first_name: null,
       last_name: null,
       role: null,
@@ -1129,7 +1067,7 @@ export function ShiftAssignmentDrawer({
       is_replacement: false,
       is_direct_assignment: false,
       replacement_id: r.id,
-      replacement_order: 0, // 0 means no replacement yet
+      replacement_order: 0,
       is_acting_lieutenant: false,
       is_acting_captain: false,
       replaced_first_name: replacedFF?.first_name || r.first_name,
@@ -1139,11 +1077,63 @@ export function ShiftAssignmentDrawer({
       leave_hours_1: r.leave_hours_1,
       leave_bank_2: r.leave_bank_2,
       leave_hours_2: r.leave_hours_2,
-      // Add applications to replacement0 for display in the dialog
       applications: r.applications,
       status: r.status,
     })
   })
+
+  const { replacementUserIds, displayedAssignments } = useMemo(() => {
+    const userIds = new Set<number>()
+
+    // Extract user_ids from groupedReplacements Map
+    groupedReplacements.forEach((replacements) => {
+      // These are the user IDs of the firefighters being replaced
+      if (replacements[0] && replacements[0].replaced_user_id) userIds.add(replacements[0].replaced_user_id)
+    })
+
+    // Also add user_ids from currentAssignments that have replaced_user_id
+    currentAssignments?.forEach((assignment) => {
+      if (assignment.replaced_user_id && assignment.user_id) {
+        userIds.add(assignment.user_id) // Add the user_id of the replacement
+      }
+    })
+
+    const assignments = (currentAssignments || [])
+      .filter((assignment) => !removedExtraFirefighters.includes(assignment.user_id))
+      .filter((assignment) => {
+        // Filter out replacements from applications
+        if (assignment.is_replacement) return false
+        // Filter out direct assignments that are replacing someone
+        if (assignment.is_direct_assignment && assignment.replaced_user_id) return false
+        // Filter out any assignment with a replaced_user_id (means they're replacing someone)
+        if (assignment.replaced_user_id) return false
+        // Filter out any user_id that appears as a replacement in groupedReplacements
+        if (userIds.has(assignment.user_id)) return false
+        return true
+      })
+      .map((assignment) => {
+        return {
+          ...assignment,
+          name: `${assignment.first_name} ${assignment.last_name}`,
+        }
+      })
+
+    return { replacementUserIds: userIds, displayedAssignments: assignments }
+  }, [currentAssignments, removedExtraFirefighters, groupedReplacements.size])
+
+  const getExchangeForFirefighter = (firefighterId: number, firstName: string, lastName: string, role: string) => {
+    if (!shift?.exchanges) return null
+
+    return shift.exchanges.find((ex: any) => {
+      if (ex.type === "requester") {
+        return (
+          ex.requester_first_name === firstName && ex.requester_last_name === lastName && ex.requester_role === role
+        )
+      } else {
+        return ex.target_first_name === firstName && ex.target_last_name === lastName && ex.target_role === role
+      }
+    })
+  }
 
   const handleDeadlineChange = (selectedValue: number | null | Date | null) => {
     if (selectedValue === -1) {
@@ -1219,10 +1209,18 @@ export function ShiftAssignmentDrawer({
               Array.from(
                 new Map(
                   currentAssignments
-                    .filter(
-                      (assignment) =>
-                        !assignment.is_replacement && !(assignment.is_direct_assignment && assignment.replaced_user_id),
-                    )
+                    .filter((assignment) => {
+                      // Check if this user_id appears as a replacement in groupedReplacements
+                      const isReplacement = Array.from(groupedReplacements.values()).some((replacements) =>
+                        replacements.some((r) => r.user_id === assignment.user_id),
+                      )
+
+                      return (
+                        !assignment.is_replacement &&
+                        !(assignment.is_direct_assignment && assignment.replaced_user_id) &&
+                        !isReplacement
+                      )
+                    })
                     .map((assignment) => [
                       assignment.user_id,
                       {
