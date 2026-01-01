@@ -462,8 +462,10 @@ export async function approveApplication(
 
     console.log("[v0] About to check consecutive hours for applicant:", applicantId, "forceAssign:", forceAssign)
 
+    let shiftDateStr = shift_date // Declare shiftDateStr here
+
     if (!forceAssign) {
-      const shiftDateStr = new Date(shift_date).toISOString().split("T")[0]
+      shiftDateStr = new Date(shift_date).toISOString().split("T")[0] // Assign to shiftDateStr here
       const consecutiveCheck = await checkConsecutiveHours(
         applicantId,
         shiftDateStr,
@@ -549,9 +551,6 @@ export async function approveApplication(
       WHERE shift_id = ${shiftId}
         AND user_id = ${applicantId}
     `
-
-    // Format shift_date for the INSERT
-    const shiftDateStr = new Date(shift_date).toISOString().split("T")[0]
 
     // Then insert the new assignment
     await db`
