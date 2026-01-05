@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache"
 import { formatISO } from "date-fns"
 import { neon } from "@neondatabase/serverless"
 import type { Shift } from "@/types/shift"
+import { unstable_noStore } from "next/cache"
 
 // Placeholder for getCycleInfo, as it's used in updates but not defined in existing code
 async function getCycleInfo() {
@@ -249,6 +250,8 @@ export async function getDirectAssignmentsForRange(startDate: string, endDate: s
 }
 
 export async function getActingDesignationsForRange(startDate: string, endDate: string) {
+  unstable_noStore()
+
   try {
     const designations = await sql`
       SELECT 
@@ -841,6 +844,8 @@ export async function getShiftNotesForDate(shiftId: number, date: string) {
 }
 
 export async function getCalendarDataForDateRange(startDate: string, endDate: string) {
+  unstable_noStore()
+
   const [replacements, exchanges, leaves, shiftNotes, actingDesignations, extraFirefighters] = await Promise.all([
     getReplacementsForDateRange(startDate, endDate),
     getExchangesForDateRange(startDate, endDate),

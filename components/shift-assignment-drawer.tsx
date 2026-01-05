@@ -740,7 +740,9 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
+    console.log("[v0] Calling setActingLieutenant for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
     const result = await setActingLieutenant(shift.id, userId, dateStr)
+    console.log("[v0] setActingLieutenant result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -751,6 +753,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
 
     setIsLoading(false)
+    console.log("[v0] Calling refreshShiftAndClose after setActingLieutenant")
     refreshShiftAndClose()
   }
 
@@ -778,7 +781,9 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
+    console.log("[v0] Calling setActingCaptain for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
     const result = await setActingCaptain(shift.id, userId, dateStr)
+    console.log("[v0] setActingCaptain result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -789,6 +794,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme capitaine`)
 
     setIsLoading(false)
+    console.log("[v0] Calling refreshShiftAndClose after setActingCaptain")
     refreshShiftAndClose()
   }
 
