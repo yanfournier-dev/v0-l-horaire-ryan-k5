@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Trash2 } from "lucide-react"
-import { deleteReplacement } from "@/app/actions/replacements"
+import { deleteReplacement, unassignReplacement } from "@/app/actions/replacements"
 import { useRouter } from "next/navigation"
 import {
   AlertDialog,
@@ -19,9 +19,11 @@ import {
 
 export function DeleteReplacementButton({
   replacementId,
+  hasAssignedCandidate = false,
   onSuccess,
 }: {
   replacementId: number
+  hasAssignedCandidate?: boolean
   onSuccess?: () => void
 }) {
   const [isDeleting, setIsDeleting] = useState(false)
@@ -35,11 +37,13 @@ export function DeleteReplacementButton({
     setIsOpen(false)
 
     try {
-      const result = await deleteReplacement(replacementId)
+      const result = hasAssignedCandidate
+        ? await unassignReplacement(replacementId)
+        : await deleteReplacement(replacementId)
 
       if (result.error) {
         if (result.isRateLimit) {
-          alert("Trop de requêtes. Veuillez attendre 5 secondes avant de supprimer un autre remplacement.")
+          alert("Trop de requêtes. Veuillez attendre 5 secondes avant de réessayer.")
           setTimeout(() => {
             setIsDeleting(false)
           }, 5000)
@@ -62,12 +66,12 @@ export function DeleteReplacementButton({
       const errorMessage = error instanceof Error ? error.message : String(error)
 
       if (errorMessage.includes("Too Many")) {
-        alert("Trop de requêtes. Veuillez attendre 5 secondes avant de supprimer un autre remplacement.")
+        alert("Trop de requêtes. Veuillez attendre 5 secondes avant de réessayer.")
         setTimeout(() => {
           setIsDeleting(false)
         }, 5000)
       } else {
-        alert("Une erreur est survenue lors de la suppression")
+        alert("Une erreur est survenue")
         setIsDeleting(false)
       }
     }
@@ -76,16 +80,22 @@ export function DeleteReplacementButton({
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !isDeleting && setIsOpen(open)}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" size="sm" disabled={isDeleting} className="h-8 text-xs px-2 gap-1 leading-none">
+        <Button
+          variant={hasAssignedCandidate ? "outline" : "destructive"}
+          size="sm"
+          disabled={isDeleting}
+          className="h-8 text-xs px-2 gap-1 leading-none"
+        >
           <Trash2 className="h-3 w-3" />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+          <AlertDialogTitle>Confirmer {hasAssignedCandidate ? "la désassignation" : "la suppression"}</AlertDialogTitle>
           <AlertDialogDescription>
-            Êtes-vous sûr de vouloir supprimer ce remplacement? Cette action est irréversible et supprimera également
-            toutes les candidatures associées.
+            {hasAssignedCandidate
+              ? "Êtes-vous sûr de vouloir retirer le candidat assigné? Le remplacement restera en attente avec la même banque de candidats."
+              : "Êtes-vous sûr de vouloir supprimer ce remplacement? Cette action est irréversible et supprimera également toutes les candidatures associées."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -98,7 +108,13 @@ export function DeleteReplacementButton({
             disabled={isDeleting}
             className="bg-destructive text-white hover:bg-destructive/90"
           >
-            {isDeleting ? "Suppression..." : "Supprimer"}
+            {isDeleting
+              ? hasAssignedCandidate
+                ? "Retrait..."
+                : "Suppression..."
+              : hasAssignedCandidate
+                ? "Retirer"
+                : "Supprimer"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

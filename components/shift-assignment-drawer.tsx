@@ -1296,7 +1296,7 @@ export function ShiftAssignmentDrawer({
               variant="outline"
               size="sm"
             >
-              <UserPlus className="h-4 w-4 mr-2" />
+              <UserPlus className="h-4 w-4 mr-1" />
               Ajouter un pompier supplémentaire
             </Button>
           </div>
@@ -1478,10 +1478,10 @@ export function ShiftAssignmentDrawer({
 
                                   <DeleteReplacementButton
                                     replacementId={replacement0.replacement_id}
+                                    hasAssignedCandidate={
+                                      replacement0.applications?.some((app: any) => app.status === "approved") || false
+                                    }
                                     onSuccess={loadData}
-                                    variant="destructive"
-                                    size="icon"
-                                    className="h-8 w-8"
                                   />
                                 </div>
                               )}
