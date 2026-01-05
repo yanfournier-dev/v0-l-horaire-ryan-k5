@@ -541,7 +541,7 @@ export async function approveApplication(
 
     await db`
       UPDATE replacements
-      SET status = 'assigned', replacement_user_id = ${applicantId} -- Add this line to set the replacement_user_id
+      SET status = 'assigned'
       WHERE id = ${replacementId}
     `
 
@@ -761,64 +761,6 @@ export async function deleteReplacement(replacementId: number) {
   }
 }
 
-export async function unassignReplacement(replacementId: number) {
-  const user = await getSession()
-  if (!user?.is_admin) {
-    return { error: "Non autorisé" }
-  }
-
-  try {
-    const db = neon(process.env.DATABASE_URL!, {
-      fetchConnectionCache: true,
-      disableWarningInBrowsers: true,
-    })
-
-    const replacementDetails = await db`
-      SELECT r.*, u.first_name, u.last_name, ru.first_name as replacement_first_name, ru.last_name as replacement_last_name
-      FROM replacements r
-      LEFT JOIN users u ON r.user_id = u.id
-      LEFT JOIN users ru ON r.replacement_user_id = ru.id
-      WHERE r.id = ${replacementId}
-    `
-
-    if (replacementDetails.length === 0) {
-      return { error: "Remplacement introuvable" }
-    }
-
-    const replacement = replacementDetails[0]
-
-    // Update the replacement to set replacement_user_id to null and status back to pending
-    await db`
-      UPDATE replacements
-      SET replacement_user_id = NULL,
-          status = 'pending',
-          updated_at = NOW()
-      WHERE id = ${replacementId}
-    `
-
-    await createAuditLog({
-      userId: user.id,
-      actionType: "REPLACEMENT_UPDATED",
-      tableName: "replacements",
-      recordId: replacementId,
-      description: `Assignation retirée: ${replacement.replacement_first_name || ""} ${replacement.replacement_last_name || ""} n'est plus assigné pour remplacer ${replacement.first_name || ""} ${replacement.last_name || ""} le ${new Date(replacement.shift_date).toLocaleDateString("fr-CA")} (${replacement.shift_type === "day" ? "Jour" : "Nuit"})`,
-      oldValues: replacement,
-    })
-
-    try {
-      invalidateCache()
-      revalidatePath("/dashboard/calendar")
-    } catch (cacheError) {
-      console.error("unassignReplacement - Error invalidating cache:", cacheError)
-    }
-
-    return { success: true }
-  } catch (error) {
-    console.error("unassignReplacement: Error", error)
-    return { error: "Erreur lors de la désassignation" }
-  }
-}
-
 export async function createExtraFirefighterReplacement(
   shiftDate: string,
   shiftType: "day" | "night" | "full_24h",
@@ -986,7 +928,7 @@ export async function updateReplacementAssignment(replacementId: number, assigne
 
       await db`
         UPDATE replacements
-        SET status = 'assigned', replacement_user_id = ${assignedTo} -- Add this line to set the replacement_user_id
+        SET status = 'assigned'
         WHERE id = ${replacementId}
       `
     } else {
@@ -1004,7 +946,7 @@ export async function updateReplacementAssignment(replacementId: number, assigne
 
       await db`
         UPDATE replacements
-        SET status = 'open', replacement_user_id = NULL -- Add this line to set replacement_user_id to null
+        SET status = 'open'
         WHERE id = ${replacementId}
       `
     }
@@ -1306,7 +1248,7 @@ export async function removeReplacementAssignment(replacementId: number) {
 
     await db`
       UPDATE replacements
-      SET status = 'open', replacement_user_id = NULL -- Ensure replacement_user_id is cleared
+      SET status = 'open'
       WHERE id = ${replacementId}
     `
 
