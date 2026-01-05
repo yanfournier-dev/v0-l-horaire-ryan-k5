@@ -205,7 +205,14 @@ export default async function CalendarPage({
     actingDesignations.forEach((ad: any) => {
       const dateStr = ad.shift_date ? formatDateForDB(new Date(ad.shift_date)) : null
       if (dateStr) {
-        const key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}`
+        // Direct assignment key includes replaced_user_id to differentiate
+        // Original position key uses "original" suffix
+        let key: string
+        if (ad.is_direct_assignment && ad.replaced_user_id) {
+          key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}_direct_${ad.replaced_user_id}`
+        } else {
+          key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}_original`
+        }
         actingDesignationMap[key] = {
           isActingLieutenant: ad.is_acting_lieutenant,
           isActingCaptain: ad.is_acting_captain,

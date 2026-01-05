@@ -68,6 +68,7 @@ interface ShiftAssignmentDrawerProps {
     date: Date
     exchanges?: Array<any> // Add exchanges to shift type
     team_members?: Array<any> // Added for direct assignments fallback
+    assigned_firefighters?: string // Added for sorting by rank
   } | null
   teamFirefighters: Array<{
     id: number
@@ -861,7 +862,11 @@ export function ShiftAssignmentDrawer({
 
     if (replacement1.is_direct_assignment) {
       console.log("[v0] Drawer - calling handleRemoveDirectAssignment")
-      await handleRemoveDirectAssignment(shift.id, replacement1.user_id, replacement1.replacement_order || 1)
+      await handleRemoveDirectAssignment(
+        replacement1.shift_id,
+        replacement1.user_id,
+        replacement1.replacement_order || 1,
+      )
     } else if (isReplacementViaApplication) {
       console.log(
         "[v0] Drawer - calling handleRemoveReplacementAssignment with replacement_id:",
@@ -938,12 +943,45 @@ export function ShiftAssignmentDrawer({
     return numA - numB
   })
 
+  const permanentTeamMemberIds = useMemo(() => {
+    const ids = new Set<number>()
+    // Add all user_ids from currentAssignments - these are the permanent team members
+    currentAssignments?.forEach((assignment) => {
+      ids.add(assignment.user_id)
+    })
+    return ids
+  }, [currentAssignments])
+
   const originalOrderMap = new Map<number, number>()
+
+  // Format: "FirstName|LastName|role|user_id|rank|..."
+  if (shift?.assigned_firefighters) {
+    const firefighterEntries = shift.assigned_firefighters.split(";")
+    firefighterEntries.forEach((entry: string) => {
+      const parts = entry.split("|")
+      if (parts.length >= 5) {
+        const userId = Number.parseInt(parts[3], 10)
+        const rank = Number.parseInt(parts[4], 10)
+        if (!isNaN(userId) && !isNaN(rank)) {
+          originalOrderMap.set(userId, rank)
+        }
+      }
+    })
+  }
+
+  // Fallback: if assigned_firefighters doesn't have this user, use currentAssignments index
   currentAssignments.forEach((assignment, index) => {
-    originalOrderMap.set(assignment.user_id, index)
+    if (!originalOrderMap.has(assignment.user_id)) {
+      // Use a high number to put them at the end
+      originalOrderMap.set(assignment.user_id, 1000 + index)
+    }
+  })
+
+  currentAssignments.forEach((assignment) => {
     if (assignment.replaced_user_id && !originalOrderMap.has(assignment.replaced_user_id)) {
       // Replaced firefighters get the same position as their replacement
-      originalOrderMap.set(assignment.replaced_user_id, index)
+      const replacerRank = originalOrderMap.get(assignment.user_id) ?? 1000
+      originalOrderMap.set(assignment.replaced_user_id, replacerRank)
     }
   })
 
@@ -1000,6 +1038,7 @@ export function ShiftAssignmentDrawer({
         leave_hours_1: assignment.leave_hours_1,
         leave_bank_2: assignment.leave_bank_2,
         leave_hours_2: assignment.leave_hours_2,
+        shift_id: shift.id, // Added shift_id for handleRemoveDirectAssignment
       })
     }
   })
@@ -1039,6 +1078,7 @@ export function ShiftAssignmentDrawer({
       leave_hours_1: r.leave_hours_1,
       leave_bank_2: r.leave_bank_2,
       leave_hours_2: r.leave_hours_2,
+      shift_id: shift.id, // Added shift_id for handleRemoveDirectAssignment
     })
   })
 
@@ -1079,36 +1119,70 @@ export function ShiftAssignmentDrawer({
       leave_hours_2: r.leave_hours_2,
       applications: r.applications,
       status: r.status,
+      shift_id: shift.id, // Added shift_id for handleRemoveDirectAssignment
     })
   })
 
-  const { replacementUserIds, displayedAssignments } = useMemo(() => {
-    const userIds = new Set<number>()
-
-    // Extract user_ids from groupedReplacements Map
+  // BUT only if they are NOT permanent team members
+  const replacementUserIdsToHide = useMemo(() => {
+    const ids = new Set<number>()
     groupedReplacements.forEach((replacements) => {
-      // These are the user IDs of the firefighters being replaced
-      if (replacements[0] && replacements[0].replaced_user_id) userIds.add(replacements[0].replaced_user_id)
+      replacements.forEach((r) => {
+        if (r.user_id && !permanentTeamMemberIds.has(r.user_id)) {
+          ids.add(r.user_id)
+        }
+      })
     })
+    return ids
+  }, [groupedReplacements.size, permanentTeamMemberIds])
 
-    // Also add user_ids from currentAssignments that have replaced_user_id
+  const { displayedAssignments } = useMemo(() => {
+    const permanentMemberIds = new Set<number>()
     currentAssignments?.forEach((assignment) => {
-      if (assignment.replaced_user_id && assignment.user_id) {
-        userIds.add(assignment.user_id) // Add the user_id of the replacement
-      }
+      permanentMemberIds.add(assignment.user_id)
     })
 
     const assignments = (currentAssignments || [])
-      .filter((assignment) => !removedExtraFirefighters.includes(assignment.user_id))
       .filter((assignment) => {
-        // Filter out replacements from applications
-        if (assignment.is_replacement) return false
-        // Filter out direct assignments that are replacing someone
-        if (assignment.is_direct_assignment && assignment.replaced_user_id) return false
-        // Filter out any assignment with a replaced_user_id (means they're replacing someone)
-        if (assignment.replaced_user_id) return false
-        // Filter out any user_id that appears as a replacement in groupedReplacements
-        if (userIds.has(assignment.user_id)) return false
+        // Skip manually removed extra firefighters
+        if (removedExtraFirefighters.includes(assignment.user_id)) {
+          return false
+        }
+
+        // Skip if this is a placeholder created for removed firefighter
+        if (assignment.replaced_user_id) {
+          return false
+        }
+
+        // BUT only hide them if they are NOT a permanent team member
+        let isReplacementOnly = false
+        for (const replacements of groupedReplacements.values()) {
+          // Check against all possible replacement orders (0, 1, 2)
+          const replacement0 = replacements.find((r) => r.replacement_order === 0)
+          const replacement1 = replacements.find((r) => r.replacement_order === 1)
+          const replacement2 = replacements.find((r) => r.replacement_order === 2)
+
+          if (
+            replacement0?.user_id === assignment.user_id ||
+            replacement1?.user_id === assignment.user_id ||
+            replacement2?.user_id === assignment.user_id
+          ) {
+            if (!permanentMemberIds.has(assignment.user_id)) {
+              isReplacementOnly = true
+              break
+            }
+          }
+        }
+
+        if (isReplacementOnly) {
+          return false
+        }
+
+        // Exclude extra firefighters who were removed (this might be redundant with removedExtraFirefighters)
+        if (replacementUserIdsToHide.has(assignment.user_id)) {
+          return false
+        }
+
         return true
       })
       .map((assignment) => {
@@ -1117,9 +1191,22 @@ export function ShiftAssignmentDrawer({
           name: `${assignment.first_name} ${assignment.last_name}`,
         }
       })
+      .sort((a, b) => {
+        // Position code sorting
+        const posA = a.position_code || ""
+        const posB = b.position_code || ""
+        return posA.localeCompare(posB)
+      })
 
-    return { replacementUserIds: userIds, displayedAssignments: assignments }
-  }, [currentAssignments, removedExtraFirefighters, groupedReplacements.size])
+    return { displayedAssignments: assignments }
+  }, [
+    currentAssignments,
+    removedExtraFirefighters,
+    groupedReplacements.size,
+    shift?.team_members,
+    replacementUserIdsToHide,
+    // permanentMemberIds, // Removed permanentMemberIds from dependency array since it's a local variable
+  ]) // Added shift.team_members to dependency array
 
   const getExchangeForFirefighter = (firefighterId: number, firstName: string, lastName: string, role: string) => {
     if (!shift?.exchanges) return null
@@ -1210,15 +1297,13 @@ export function ShiftAssignmentDrawer({
                 new Map(
                   currentAssignments
                     .filter((assignment) => {
-                      // Check if this user_id appears as a replacement in groupedReplacements
-                      const isReplacement = Array.from(groupedReplacements.values()).some((replacements) =>
-                        replacements.some((r) => r.user_id === assignment.user_id),
-                      )
+                      // Permanent team members are NOT filtered out even if they replace someone
+                      const isExternalReplacement = replacementUserIdsToHide.has(assignment.user_id)
 
                       return (
                         !assignment.is_replacement &&
                         !(assignment.is_direct_assignment && assignment.replaced_user_id) &&
-                        !isReplacement
+                        !isExternalReplacement
                       )
                     })
                     .map((assignment) => [
@@ -1888,7 +1973,7 @@ export function ShiftAssignmentDrawer({
                                     variant="outline"
                                     onClick={() =>
                                       handleRemoveDirectAssignment(
-                                        shift.id,
+                                        assignment.shift_id, // Use assignment.shift_id
                                         assignment.user_id,
                                         assignment.replacement_order,
                                       )

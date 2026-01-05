@@ -240,7 +240,23 @@ export function CalendarCell({
               const allFirefighters = [...baseFirefighters, ...directAssignmentFirefighters]
 
               const processedFirefighters = allFirefighters.map((firefighter) => {
-                const actingKey = `${dateStr}_${shift.shift_type}_${shift.team_id}_${firefighter.userId}`
+                // Build the correct key based on whether this is a direct assignment
+                let actingKey: string
+                if (firefighter.isDirectAssignment) {
+                  // For direct assignments, find the replaced_user_id from shiftDirectAssignments
+                  const directAssignment = shiftDirectAssignments.find(
+                    (da) => da.replacement_user_id?.toString() === firefighter.userId,
+                  )
+                  if (directAssignment && directAssignment.replaced_user_id) {
+                    actingKey = `${dateStr}_${shift.shift_type}_${shift.team_id}_${firefighter.userId}_direct_${directAssignment.replaced_user_id}`
+                  } else {
+                    actingKey = `${dateStr}_${shift.shift_type}_${shift.team_id}_${firefighter.userId}_original`
+                  }
+                } else {
+                  // For original position firefighters
+                  actingKey = `${dateStr}_${shift.shift_type}_${shift.team_id}_${firefighter.userId}_original`
+                }
+
                 const actingDesignation = actingDesignationMap[actingKey]
 
                 if (actingDesignation) {
@@ -513,14 +529,16 @@ export function CalendarCell({
                         }
 
                         // Find replacement for the firefighter (check both actual worker and original firefighter for exchanges)
-                        const replacement = shiftReplacements.find(
-                          (r: any) =>
-                            (r.replaced_first_name === actualWorkerFirstName &&
-                              r.replaced_last_name === actualWorkerLastName) ||
-                            (exchange &&
-                              r.replaced_first_name === firefighter.firstName &&
-                              r.replaced_last_name === firefighter.lastName),
-                        )
+                        const replacement = firefighter.isDirectAssignment
+                          ? null
+                          : shiftReplacements.find(
+                              (r: any) =>
+                                (r.replaced_first_name === actualWorkerFirstName &&
+                                  r.replaced_last_name === actualWorkerLastName) ||
+                                (exchange &&
+                                  r.replaced_first_name === firefighter.firstName &&
+                                  r.replaced_last_name === firefighter.lastName),
+                            )
 
                         const firefighterLeave = leaves.find(
                           (leave: any) =>

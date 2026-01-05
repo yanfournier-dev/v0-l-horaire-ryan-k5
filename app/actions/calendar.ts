@@ -261,7 +261,9 @@ export async function getActingDesignationsForRange(startDate: string, endDate: 
         s.team_id,
         s.cycle_day,
         u.first_name,
-        u.last_name
+        u.last_name,
+        sa.is_direct_assignment,
+        sa.replaced_user_id
       FROM shift_assignments sa
       JOIN shifts s ON sa.shift_id = s.id
       JOIN users u ON sa.user_id = u.id
@@ -274,7 +276,7 @@ export async function getActingDesignationsForRange(startDate: string, endDate: 
     console.log("[v0] getActingDesignationsForRange - Found designations:", designations.length)
     designations.forEach((d: any) => {
       console.log(
-        `[v0]   - ${d.first_name} ${d.last_name} (userId: ${d.user_id}) on shift ${d.shift_id} (date: ${d.shift_date}, cycle_day: ${d.cycle_day}, team: ${d.team_id}) - Cpt: ${d.is_acting_captain}, Lt: ${d.is_acting_lieutenant}`,
+        `[v0]   - ${d.first_name} ${d.last_name} (userId: ${d.user_id}) on shift ${d.shift_id} (date: ${d.shift_date}, cycle_day: ${d.cycle_day}, team: ${d.team_id}) - Cpt: ${d.is_acting_captain}, Lt: ${d.is_acting_lieutenant}, isDirect: ${d.is_direct_assignment}, replacedUserId: ${d.replaced_user_id}`,
       )
     })
 
@@ -287,6 +289,8 @@ export async function getActingDesignationsForRange(startDate: string, endDate: 
       team_id: row.team_id,
       cycle_day: row.cycle_day,
       shift_date: row.shift_date,
+      is_direct_assignment: row.is_direct_assignment || false,
+      replaced_user_id: row.replaced_user_id,
     }))
   } catch (error: any) {
     console.error("[v0] getActingDesignationsForRange: Query failed", error.message)
