@@ -349,13 +349,17 @@ export function ShiftAssignmentDrawer({
         const firefighters = await getAllFirefighters()
         setAllFirefighters(firefighters)
       }
+
+      if (onShiftUpdated) {
+        onShiftUpdated(shift)
+      }
     } catch (error) {
       console.error("Error fetching data:", error)
       toast.error("Erreur lors du chargement des données.")
     } finally {
       setLoadingReplacements(false)
     }
-  }, [open, shift, allFirefighters.length, allFirefighters]) // Include allFirefighters dependency
+  }, [open, shift, allFirefighters.length, allFirefighters, onShiftUpdated]) // Added onShiftUpdated dependency
 
   useEffect(() => {
     loadData()
