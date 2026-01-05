@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Trash2 } from "lucide-react"
-import { deleteReplacement } from "@/app/actions/replacements"
+import { deleteReplacement, removeReplacementAssignment } from "@/app/actions/replacements"
 import { useRouter } from "next/navigation"
 import {
   AlertDialog,
@@ -20,9 +20,17 @@ import {
 export function DeleteReplacementButton({
   replacementId,
   onSuccess,
+  hasAssignedCandidate = false,
+  variant,
+  size,
+  className,
 }: {
   replacementId: number
   onSuccess?: () => void
+  hasAssignedCandidate?: boolean
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+  size?: "default" | "sm" | "lg" | "icon"
+  className?: string
 }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
@@ -35,7 +43,15 @@ export function DeleteReplacementButton({
     setIsOpen(false)
 
     try {
-      const result = await deleteReplacement(replacementId)
+      let result
+
+      if (hasAssignedCandidate) {
+        // Unassign the candidate without deleting the replacement
+        result = await removeReplacementAssignment(replacementId)
+      } else {
+        // Delete the entire replacement
+        result = await deleteReplacement(replacementId)
+      }
 
       if (result.error) {
         if (result.isRateLimit) {
@@ -73,20 +89,34 @@ export function DeleteReplacementButton({
     }
   }
 
+  const dialogTitle = hasAssignedCandidate ? "Retirer l'assignation" : "Confirmer la suppression"
+  const dialogDescription = hasAssignedCandidate
+    ? "Êtes-vous sûr de vouloir retirer ce pompier de ce remplacement? Le remplacement restera disponible et toutes les candidatures seront conservées."
+    : "Êtes-vous sûr de vouloir supprimer ce remplacement? Cette action est irréversible et supprimera également toutes les candidatures associées."
+  const actionButtonText = hasAssignedCandidate
+    ? isDeleting
+      ? "Retrait..."
+      : "Retirer"
+    : isDeleting
+      ? "Suppression..."
+      : "Supprimer"
+
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !isDeleting && setIsOpen(open)}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" size="sm" disabled={isDeleting} className="h-8 text-xs px-2 gap-1 leading-none">
+        <Button
+          variant={variant || "destructive"}
+          size={size || "sm"}
+          disabled={isDeleting}
+          className={className || "h-8 text-xs px-2 gap-1 leading-none"}
+        >
           <Trash2 className="h-3 w-3" />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-          <AlertDialogDescription>
-            Êtes-vous sûr de vouloir supprimer ce remplacement? Cette action est irréversible et supprimera également
-            toutes les candidatures associées.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{dialogTitle}</AlertDialogTitle>
+          <AlertDialogDescription>{dialogDescription}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
@@ -98,7 +128,7 @@ export function DeleteReplacementButton({
             disabled={isDeleting}
             className="bg-destructive text-white hover:bg-destructive/90"
           >
-            {isDeleting ? "Suppression..." : "Supprimer"}
+            {actionButtonText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

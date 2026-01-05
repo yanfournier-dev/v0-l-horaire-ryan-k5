@@ -1296,8 +1296,8 @@ export function ShiftAssignmentDrawer({
               variant="outline"
               size="sm"
             >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Ajouter un pompier supplémentaire
+              <UserPlus className="h-4 w-4 mr-1" />
+              Demander un remplacement
             </Button>
           </div>
 
@@ -1479,6 +1479,7 @@ export function ShiftAssignmentDrawer({
                                   <DeleteReplacementButton
                                     replacementId={replacement0.replacement_id}
                                     onSuccess={loadData}
+                                    hasAssignedCandidate={!!replacement0.user_id}
                                     variant="destructive"
                                     size="icon"
                                     className="h-8 w-8"
@@ -1540,6 +1541,7 @@ export function ShiftAssignmentDrawer({
                                       <DeleteReplacementButton
                                         replacementId={replacement1.replacement_id}
                                         onSuccess={loadData}
+                                        hasAssignedCandidate={!!replacement1.user_id}
                                         variant="ghost"
                                         size="sm"
                                         className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -1650,6 +1652,7 @@ export function ShiftAssignmentDrawer({
                                     <DeleteReplacementButton
                                       replacementId={replacement2.replacement_id}
                                       onSuccess={loadData}
+                                      hasAssignedCandidate={!!replacement2.user_id}
                                       variant="ghost"
                                       size="sm"
                                       className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
