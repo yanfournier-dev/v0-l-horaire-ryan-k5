@@ -187,8 +187,6 @@ export async function addSecondReplacement(params: {
   shiftDate?: string
 }) {
   try {
-    console.log("[v0] addSecondReplacement called with:", params)
-
     const user = await getSession()
     if (!user) {
       return { success: false, error: "Non autorisé" }
@@ -224,11 +222,7 @@ export async function addSecondReplacement(params: {
         AND replacement_order = 1
     `
 
-    console.log("[v0] Replacement 1 info from database:", replacement1Info)
-
     if (replacement1Info.length === 0) {
-      console.log("[v0] No R1 found - Creating R2 as first replacement with replacement_order = 2")
-
       const existingSecond = await sql`
         SELECT id FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -271,8 +265,6 @@ export async function addSecondReplacement(params: {
         RETURNING *
       `
 
-      console.log("[v0] Insert result (R2 without R1):", result)
-
       revalidatePath("/dashboard")
       revalidatePath("/calendar")
 
@@ -283,8 +275,6 @@ export async function addSecondReplacement(params: {
     const r1IsDirectAssignment = replacement1Info[0].is_direct_assignment
     let adjustedEndTime = replacement1Info[0].end_time
     const originalStartTime = replacement1Info[0].start_time
-
-    console.log("[v0] Replacement 1 original hours:", { startTime: originalStartTime, endTime: adjustedEndTime })
 
     if (!adjustedEndTime) {
       const replacementInfo = await sql`
@@ -307,16 +297,12 @@ export async function addSecondReplacement(params: {
         LIMIT 1
       `
 
-      console.log("[v0] Replacement info from replacements table:", replacementInfo)
-
       if (replacementInfo.length > 0 && replacementInfo[0].end_time) {
         adjustedEndTime = replacementInfo[0].end_time
       } else {
         const shiftInfo = await sql`
           SELECT end_time FROM shifts WHERE id = ${shiftId}
         `
-
-        console.log("[v0] Shift info:", shiftInfo)
 
         if (shiftInfo.length === 0) {
           return { success: false, error: "Quart introuvable" }
@@ -326,16 +312,12 @@ export async function addSecondReplacement(params: {
       }
     }
 
-    console.log("[v0] Final adjustedEndTime:", adjustedEndTime)
-
     const existingSecond = await sql`
       SELECT id FROM shift_assignments
       WHERE shift_id = ${shiftId}
         AND replaced_user_id = ${replacedUserId}
         AND replacement_order = 2
     `
-
-    console.log("[v0] Existing second replacement:", existingSecond)
 
     if (existingSecond.length > 0) {
       return {
@@ -354,15 +336,7 @@ export async function addSecondReplacement(params: {
     const r2Start = normalizeTime(params.startTime)
     const r2End = normalizeTime(params.endTime)
 
-    console.log("[v0] Analyzing overlap:", {
-      r1Start,
-      r1End,
-      r2Start,
-      r2End,
-    })
-
     if (r2Start > r1Start && r2End < r1End) {
-      console.log("[v0] ERROR: R2 would be in middle - not supported")
       return {
         success: false,
         error:
@@ -404,7 +378,6 @@ export async function addSecondReplacement(params: {
           ${finalShiftDate || shiftDateFromShifts}
         )
       `
-      console.log("[v0] No overlap - R1 kept as is:", { r1Start, r1End })
     } else if (r2Start <= r1Start && r2End >= r1End) {
       await sql`
         DELETE FROM shift_assignments
@@ -412,7 +385,6 @@ export async function addSecondReplacement(params: {
           AND replaced_user_id = ${replacedUserId}
           AND replacement_order = 1
       `
-      console.log("[v0] R2 covers entire R1 - R1 deleted (no hours)")
     } else if (r2Start <= r1Start && r2End < r1End) {
       await sql`
         DELETE FROM shift_assignments
@@ -420,7 +392,6 @@ export async function addSecondReplacement(params: {
           AND replaced_user_id = ${replacedUserId}
           AND replacement_order = 1
       `
-
       await sql`
         INSERT INTO shift_assignments (
           shift_id, 
@@ -447,10 +418,6 @@ export async function addSecondReplacement(params: {
           ${finalShiftDate || shiftDateFromShifts}
         )
       `
-      console.log("[v0] R2 covers beginning - R1 adjusted:", {
-        newStart: r2End,
-        newEnd: r1End,
-      })
     } else if (r2Start > r1Start && r2End >= r1End) {
       await sql`
         DELETE FROM shift_assignments
@@ -458,7 +425,6 @@ export async function addSecondReplacement(params: {
           AND replaced_user_id = ${replacedUserId}
           AND replacement_order = 1
       `
-
       await sql`
         INSERT INTO shift_assignments (
           shift_id, 
@@ -485,13 +451,7 @@ export async function addSecondReplacement(params: {
           ${finalShiftDate || shiftDateFromShifts}
         )
       `
-      console.log("[v0] R2 covers end - R1 adjusted:", {
-        newStart: r1Start,
-        newEnd: r2Start,
-      })
     } else {
-      console.log("[v0] R2 in middle - Splitting R1 into two periods")
-
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -525,10 +485,6 @@ export async function addSecondReplacement(params: {
           ${finalShiftDate || shiftDateFromShifts}
         )
       `
-      console.log("[v0] R1 Period 1 (before R2):", {
-        start: r1Start,
-        end: r2Start,
-      })
 
       await sql`
         INSERT INTO shift_assignments (
@@ -556,10 +512,6 @@ export async function addSecondReplacement(params: {
           ${finalShiftDate || shiftDateFromShifts}
         )
       `
-      console.log("[v0] R1 Period 2 (after R2):", {
-        start: r2End,
-        end: r1End,
-      })
     }
 
     const verifyResult = await sql`
@@ -569,7 +521,6 @@ export async function addSecondReplacement(params: {
         AND replaced_user_id = ${replacedUserId}
         AND replacement_order = 1
     `
-    console.log("[v0] VERIFICATION - All R1 records after changes:", verifyResult)
 
     const result = await sql`
       INSERT INTO shift_assignments (
@@ -598,8 +549,6 @@ export async function addSecondReplacement(params: {
       )
       RETURNING *
     `
-
-    console.log("[v0] Insert result:", result)
 
     revalidatePath("/dashboard")
     revalidatePath("/calendar")
@@ -657,7 +606,58 @@ export async function updateReplacementHours(params: {
 
 export async function removeReplacement(shiftId: number, userId: number, replacementOrder: number) {
   try {
-    if (replacementOrder === 1) {
+    const shiftInfo = await sql`
+      SELECT shift_type, start_time, end_time FROM shifts WHERE id = ${shiftId}
+    `
+
+    if (shiftInfo.length === 0) {
+      return { success: false, error: "Quart non trouvé" }
+    }
+
+    const shift = shiftInfo[0]
+
+    const allReplacements = await sql`
+      SELECT id, user_id, replacement_order, is_partial, start_time, end_time, replaced_user_id
+      FROM shift_assignments
+      WHERE shift_id = ${shiftId}
+        AND is_direct_assignment = true
+        AND replaced_user_id IS NOT NULL
+      ORDER BY replacement_order ASC
+    `
+
+    const isDoubleReplacement = allReplacements.length === 2
+    const replacementToKeep = allReplacements.find((r: any) => r.user_id !== userId)
+
+    if (isDoubleReplacement && replacementToKeep) {
+      const r1 = allReplacements[0]
+      const r2 = allReplacements[1]
+
+      const minStartTime =
+        r1.start_time && r2.start_time
+          ? r1.start_time < r2.start_time
+            ? r1.start_time
+            : r2.start_time
+          : r1.start_time || r2.start_time
+
+      const maxEndTime =
+        r1.end_time && r2.end_time
+          ? r1.end_time > r2.end_time
+            ? r1.end_time
+            : r2.end_time
+          : r1.end_time || r2.end_time
+
+      const coversFullShift = minStartTime === shift.start_time && maxEndTime === shift.end_time
+
+      await sql`
+        UPDATE shift_assignments
+        SET 
+          replacement_order = 1,
+          start_time = ${minStartTime},
+          end_time = ${maxEndTime},
+          is_partial = ${!coversFullShift}
+        WHERE id = ${replacementToKeep.id}
+      `
+    } else if (replacementOrder === 1 && allReplacements.length === 2) {
       const secondReplacement = await sql`
         SELECT user_id FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -694,11 +694,78 @@ export async function removeReplacement(shiftId: number, userId: number, replace
   }
 }
 
-export async function removeDirectAssignment(shiftId: number, userId: number) {
+export async function removeDirectAssignment(shiftId: number, userId: number, replacementOrder?: number) {
   try {
     const user = await getSession()
     if (!user) {
       return { success: false, error: "Non autorisé" }
+    }
+
+    const shiftInfo = await sql`
+      SELECT shift_type, start_time, end_time FROM shifts WHERE id = ${shiftId}
+    `
+
+    if (shiftInfo.length === 0) {
+      return { success: false, error: "Quart non trouvé" }
+    }
+
+    const shift = shiftInfo[0]
+
+    const allReplacements = await sql`
+      SELECT id, user_id, replacement_order, is_partial, start_time, end_time, replaced_user_id, is_direct_assignment
+      FROM shift_assignments
+      WHERE shift_id = ${shiftId}
+        AND replaced_user_id IS NOT NULL
+      ORDER BY replacement_order ASC
+    `
+
+    const isDoubleReplacement = allReplacements.length === 2
+    const replacementToKeep = allReplacements.find((r: any) => r.user_id !== userId)
+
+    if (isDoubleReplacement && replacementToKeep) {
+      const r1 = allReplacements[0]
+      const r2 = allReplacements[1]
+
+      const minStartTime =
+        r1.start_time && r2.start_time
+          ? r1.start_time < r2.start_time
+            ? r1.start_time
+            : r2.start_time
+          : r1.start_time || r2.start_time
+
+      const maxEndTime =
+        r1.end_time && r2.end_time
+          ? r1.end_time > r2.end_time
+            ? r1.end_time
+            : r2.end_time
+          : r1.end_time || r2.end_time
+
+      const coversFullShift = minStartTime === shift.start_time && maxEndTime === shift.end_time
+
+      await sql`
+        UPDATE shift_assignments
+        SET 
+          replacement_order = 1,
+          start_time = ${minStartTime},
+          end_time = ${maxEndTime},
+          is_partial = ${!coversFullShift}
+        WHERE id = ${replacementToKeep.id}
+      `
+    } else if (replacementOrder === 1 && allReplacements.length === 2) {
+      const secondReplacement = await sql`
+        SELECT user_id FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replacement_order = 2
+      `
+
+      if (secondReplacement.length > 0) {
+        await sql`
+          UPDATE shift_assignments
+          SET replacement_order = 1
+          WHERE shift_id = ${shiftId}
+            AND replacement_order = 2
+        `
+      }
     }
 
     const assignmentDetails = await sql`
@@ -734,6 +801,7 @@ export async function removeDirectAssignment(shiftId: number, userId: number) {
 
     return { success: true }
   } catch (error) {
+    console.error("[v0] removeDirectAssignment error:", error)
     return {
       success: false,
       error: "Erreur lors du retrait de l'assignation",

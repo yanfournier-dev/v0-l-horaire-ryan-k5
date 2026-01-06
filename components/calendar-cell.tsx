@@ -345,16 +345,6 @@ export function CalendarCell({
 
                 const key = `${replacedFirefighter.firstName}|${replacedFirefighter.lastName}|${replacedFirefighter.role}`
 
-                // Debug: Check if this is Michel Ruel
-                if (replacedFirefighter.firstName === "Michel" && replacedFirefighter.lastName === "Ruel") {
-                  console.log("[v0] Calendar - Adding direct assignment for Michel Ruel:", {
-                    key,
-                    replacement_first_name: da.replacement_first_name,
-                    replacement_last_name: da.replacement_last_name,
-                    replacement_order: da.replacement_order,
-                  })
-                }
-
                 if (!replacementsByReplacedFirefighter.has(key)) {
                   replacementsByReplacedFirefighter.set(key, [])
                 }
@@ -367,19 +357,6 @@ export function CalendarCell({
                   replacement_order: da.replacement_order,
                 })
               })
-
-              // Debug: Check Michel Ruel replacements
-              const michelRuelKey = "Michel|Ruel|lieutenant"
-              if (replacementsByReplacedFirefighter.has(michelRuelKey)) {
-                console.log("[v0] Calendar - Michel Ruel replacements:", {
-                  shift_id: shift.id,
-                  shift_date: dateStr,
-                  shift_type: shift.shift_type,
-                  team_id: shift.team_id,
-                  count: replacementsByReplacedFirefighter.get(michelRuelKey)!.length,
-                  replacements: replacementsByReplacedFirefighter.get(michelRuelKey),
-                })
-              }
 
               const firefightersToHide = new Set<string>()
               replacementsByReplacedFirefighter.forEach((replacements, key) => {
@@ -521,11 +498,6 @@ export function CalendarCell({
                         if (item.type === "double-replacement") {
                           const { key, replacements } = item.data
 
-                          console.log("[v0] Calendar - Rendering double-replacement:", {
-                            key,
-                            replacements,
-                          })
-
                           const sortedReplacements = [...replacements].sort((a: any, b: any) => {
                             if (a.start_time && b.start_time) {
                               return a.start_time.localeCompare(b.start_time)
@@ -537,12 +509,6 @@ export function CalendarCell({
 
                           const replacement1 = sortedReplacements[0]
                           const replacement2 = sortedReplacements[1]
-
-                          console.log("[v0] Calendar - Double-replacement check:", {
-                            replacement1_first_name: replacement1?.replacement_first_name,
-                            replacement2_first_name: replacement2?.replacement_first_name,
-                            hasNames: replacement1?.replacement_first_name && replacement2?.replacement_first_name,
-                          })
 
                           if (replacement1?.replacement_first_name && replacement2?.replacement_first_name) {
                             const initials1 = `${replacement1.replacement_first_name.charAt(0)}${replacement1.replacement_last_name.charAt(0)}`
@@ -559,7 +525,6 @@ export function CalendarCell({
                             )
                           }
 
-                          console.log("[v0] Calendar - Double-replacement check failed, returning null")
                           return null
                         }
 

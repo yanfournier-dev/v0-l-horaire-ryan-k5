@@ -213,23 +213,23 @@ export function ShiftAssignmentDrawer({
 
   useEffect(() => {
     if (open && shift) {
-      console.log("[v0] ShiftAssignmentDrawer opened")
-      console.log("[v0] teamFirefighters:", teamFirefighters)
-      console.log("[v0] currentAssignments:", currentAssignments)
+      // console.log("[v0] ShiftAssignmentDrawer opened")
+      // console.log("[v0] teamFirefighters:", teamFirefighters)
+      // console.log("[v0] currentAssignments:", currentAssignments)
 
       // Log direct assignments with acting flags
       const directAssignments = currentAssignments.filter((a) => a.is_direct_assignment)
-      console.log(
-        "[v0] Direct assignments:",
-        directAssignments.map((da) => ({
-          name: `${da.first_name} ${da.last_name}`,
-          user_id: da.user_id,
-          is_acting_lt: da.is_acting_lieutenant,
-          is_acting_cpt: da.is_acting_captain,
-        })),
-      )
+      // console.log(
+      //   "[v0] Direct assignments:",
+      //   directAssignments.map((da) => ({
+      //     name: `${da.first_name} ${da.last_name}`,
+      //     user_id: da.user_id,
+      //     is_acting_lt: da.is_acting_lieutenant,
+      //     is_acting_cpt: da.is_acting_captain,
+      //   })),
+      // )
 
-      console.log("[v0] shift:", shift)
+      // console.log("[v0] shift:", shift)
     }
   }, [open, shift, teamFirefighters, currentAssignments])
 
@@ -273,50 +273,50 @@ export function ShiftAssignmentDrawer({
   }, [open, shift, dateStr])
 
   const refreshAndClose = useCallback(() => {
-    console.log("[v0] Drawer - refreshAndClose called")
+    // console.log("[v0] Drawer - refreshAndClose called")
     if (onReplacementCreated) {
-      console.log("[v0] Drawer - Calling onReplacementCreated callback")
+      // console.log("[v0] Drawer - Calling onReplacementCreated callback")
       onReplacementCreated()
     } else {
-      console.log("[v0] Drawer - No onReplacementCreated callback available")
+      // console.log("[v0] Drawer - No onReplacementCreated callback available")
     }
-    console.log("[v0] Drawer - Closing drawer")
+    // console.log("[v0] Drawer - Closing drawer")
     onOpenChange(false)
   }, [onReplacementCreated, onOpenChange])
 
   const refreshShiftAndClose = useCallback(async () => {
-    console.log("[v0] Drawer - refreshShiftAndClose called")
+    // console.log("[v0] Drawer - refreshShiftAndClose called")
 
     if (onShiftUpdated) {
-      console.log("[v0] Drawer - Calling onShiftUpdated callback")
+      // console.log("[v0] Drawer - Calling onShiftUpdated callback")
       await onShiftUpdated(shift)
     } else {
-      console.log("[v0] Drawer - No onShiftUpdated callback available")
+      // console.log("[v0] Drawer - No onShiftUpdated callback available")
     }
 
-    console.log("[v0] Drawer - Closing drawer")
+    // console.log("[v0] Drawer - Closing drawer")
     onOpenChange(false)
   }, [onShiftUpdated, shift, onOpenChange])
 
   const loadData = useCallback(async () => {
     if (!open || !shift) return
 
-    console.log("[v0] Drawer - loadData called")
+    // console.log("[v0] Drawer - loadData called")
     setLoadingReplacements(true)
     const shiftDate = formatDateForDB(shift.date)
 
     try {
-      console.log("[v0] Drawer - fetching replacements for shift")
+      // console.log("[v0] Drawer - fetching replacements for shift")
       const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
       setReplacements(data)
-      console.log("[v0] Drawer - got replacements:", data.length)
+      // console.log("[v0] Drawer - got replacements:", data.length)
 
       const assigned = data.filter(
         (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
       )
-      console.log("[v0] Drawer - assigned replacements:", assigned.length)
+      // console.log("[v0] Drawer - assigned replacements:", assigned.length)
 
-      console.log("[v0] Drawer - fetching shift assignments for assigned replacements")
+      // console.log("[v0] Drawer - fetching shift assignments for assigned replacements")
       const assignedWithAssignments = await Promise.all(
         assigned.map(async (r: any) => {
           const approvedApp = r.applications.find((app: any) => app.status === "approved")
@@ -349,8 +349,8 @@ export function ShiftAssignmentDrawer({
       )
       setAssignedReplacements(assignedWithAssignments)
 
-      console.log("[v0] Drawer - about to call getAllFirefighters()")
-      console.log("[v0] Drawer - current allFirefighters.length:", allFirefighters.length)
+      // console.log("[v0] Drawer - about to call getAllFirefighters()")
+      // console.log("[v0] Drawer - current allFirefighters.length:", allFirefighters.length)
       const firefighters = await getAllFirefighters()
       setAllFirefighters(firefighters)
 
@@ -362,7 +362,7 @@ export function ShiftAssignmentDrawer({
       toast.error("Erreur lors du chargement des données.")
     } finally {
       setLoadingReplacements(false)
-      console.log("[v0] Drawer - loadData completed")
+      // console.log("[v0] Drawer - loadData completed")
     }
   }, [open, shift, onShiftUpdated, allFirefighters.length])
 
@@ -418,7 +418,7 @@ export function ShiftAssignmentDrawer({
   const handleCreateReplacement = async () => {
     if (typeof window !== "undefined") {
       const scrollPos = window.scrollY
-      console.log("[v0] Drawer - saving scroll at start of handleCreateReplacement:", scrollPos)
+      // console.log("[v0] Drawer - saving scroll at start of handleCreateReplacement:", scrollPos)
       sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
       sessionStorage.setItem("skip-scroll-to-today", "true")
     }
@@ -576,11 +576,11 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleAddExtraFirefighter = async () => {
-    console.log("[v0] handleAddExtraFirefighter called!")
-    console.log("[v0] extraRequestMode:", extraRequestMode)
-    console.log("[v0] selectedExtraFirefighter:", selectedExtraFirefighter)
-    console.log("[v0] extraDeadlineSeconds:", extraDeadlineSeconds)
-    console.log("[v0] isExtraPartial:", isExtraPartial)
+    // console.log("[v0] handleAddExtraFirefighter called!")
+    // console.log("[v0] extraRequestMode:", extraRequestMode)
+    // console.log("[v0] selectedExtraFirefighter:", selectedExtraFirefighter)
+    // console.log("[v0] extraDeadlineSeconds:", extraDeadlineSeconds)
+    // console.log("[v0] isExtraPartial:", isExtraPartial)
 
     await handleCreateExtraRequest()
     return
@@ -613,15 +613,15 @@ export function ShiftAssignmentDrawer({
 
     const shiftDate = formatDateForDB(shift.date)
 
-    console.log("[v0] Drawer - executeCreateExtraRequest with params:", {
-      shiftDate,
-      shift_type: shift.shift_type,
-      team_id: shift.team_id,
-      isExtraPartial,
-      extraStartTime,
-      extraEndTime,
-      extraDeadlineSeconds,
-    })
+    // console.log("[v0] Drawer - executeCreateExtraRequest with params:", {
+    //   shiftDate,
+    //   shift_type: shift.shift_type,
+    //   team_id: shift.team_id,
+    //   isExtraPartial,
+    //   extraStartTime,
+    //   extraEndTime,
+    //   extraDeadlineSeconds,
+    // })
 
     const result = await createExtraFirefighterReplacement(
       shiftDate,
@@ -634,13 +634,13 @@ export function ShiftAssignmentDrawer({
     )
 
     if (result.error) {
-      console.log("[v0] Drawer - executeCreateExtraRequest failed:", result.error)
+      // console.log("[v0] Drawer - executeCreateExtraRequest failed:", result.error)
       toast.error(result.error)
       setIsLoading(false)
       return
     }
 
-    console.log("[v0] Drawer - executeCreateExtraRequest success, replacement ID:", result.id)
+    // console.log("[v0] Drawer - executeCreateExtraRequest success, replacement ID:", result.id)
     toast.success("Demande de pompier supplémentaire créée avec succès")
 
     setIsLoading(false)
@@ -680,7 +680,7 @@ export function ShiftAssignmentDrawer({
     // Added replacementName parameter for toast message
     if (typeof window !== "undefined") {
       const scrollPos = window.scrollY
-      console.log("[v0] Drawer - saving scroll before removeReplacementAssignment:", scrollPos)
+      // console.log("[v0] Drawer - saving scroll before removeReplacementAssignment:", scrollPos)
       sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
       sessionStorage.setItem("skip-scroll-to-today", "true")
     }
@@ -708,21 +708,18 @@ export function ShiftAssignmentDrawer({
 
   const handleRemoveDirectAssignment = async (shiftId: number, userId: number, replacementOrder?: number) => {
     // Added shiftId and replacementOrder parameters for consistency with removeReplacement
-    console.log("[v0] Drawer - handleRemoveDirectAssignment called for userId:", userId)
+    // console.log("[v0] Drawer - handleRemoveDirectAssignment called for userId:", userId)
 
     if (typeof window !== "undefined") {
       const scrollPos = window.scrollY
-      console.log("[v0] Drawer - saving scroll before removeDirectAssignment:", scrollPos)
+      // console.log("[v0] Drawer - saving scroll before removeDirectAssignment:", scrollPos)
       sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
       sessionStorage.setItem("skip-scroll-to-today", "true")
     }
 
     setIsLoading(true)
 
-    console.log("[v0] Drawer - Calling removeDirectAssignment action")
-    const result = await removeDirectAssignment(shiftId, userId, replacementOrder) // Pass replacementOrder
-
-    console.log("[v0] Drawer - removeDirectAssignment result:", result)
+    const result = await removeDirectAssignment(shiftId, userId, replacementOrder)
 
     if (result.error) {
       toast.error(result.error)
@@ -733,7 +730,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`Assignation directe retirée`) // Generic success message
 
     setIsLoading(false)
-    console.log("[v0] Drawer - Calling refreshShiftAndClose after removeDirectAssignment")
+    // console.log("[v0] Drawer - Calling refreshShiftAndClose after removeDirectAssignment")
     refreshShiftAndClose()
   }
 
@@ -742,16 +739,16 @@ export function ShiftAssignmentDrawer({
 
     if (typeof window !== "undefined") {
       const scrollPos = window.scrollY
-      console.log("[v0] Drawer - saving scroll before setActingLieutenant:", scrollPos)
+      // console.log("[v0] Drawer - saving scroll before setActingLieutenant:", scrollPos)
       sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
       sessionStorage.setItem("skip-scroll-to-today", "true")
     }
 
     setIsLoading(true)
 
-    console.log("[v0] Calling setActingLieutenant for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
+    // console.log("[v0] Calling setActingLieutenant for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
     const result = await setActingLieutenant(shift.id, userId, dateStr)
-    console.log("[v0] setActingLieutenant result:", result)
+    // console.log("[v0] setActingLieutenant result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -762,7 +759,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
 
     setIsLoading(false)
-    console.log("[v0] Calling refreshShiftAndClose after setActingLieutenant")
+    // console.log("[v0] Calling refreshShiftAndClose after setActingLieutenant")
     refreshShiftAndClose()
   }
 
@@ -790,9 +787,9 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
-    console.log("[v0] Calling setActingCaptain for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
+    // console.log("[v0] Calling setActingCaptain for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
     const result = await setActingCaptain(shift.id, userId, dateStr)
-    console.log("[v0] setActingCaptain result:", result)
+    // console.log("[v0] setActingCaptain result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -803,7 +800,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme capitaine`)
 
     setIsLoading(false)
-    console.log("[v0] Calling refreshShiftAndClose after setActingCaptain")
+    // console.log("[v0] Calling refreshShiftAndClose after setActingCaptain")
     refreshShiftAndClose()
   }
 
@@ -834,7 +831,7 @@ export function ShiftAssignmentDrawer({
   ) => {
     if (typeof window !== "undefined") {
       const scrollPos = window.scrollY
-      console.log("[v0] Drawer - saving scroll before removeReplacement:", scrollPos)
+      // console.log("[v0] Drawer - saving scroll before removeReplacement:", scrollPos)
       sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
       sessionStorage.setItem("skip-scroll-to-today", "true")
     }
@@ -863,38 +860,38 @@ export function ShiftAssignmentDrawer({
     const replacement1 = replacementsForUser.find((r) => r.replacement_order === 1)
     if (!replacement1) return
 
-    console.log("[v0] Drawer - removing replacement1:", {
-      userId: replacement1.user_id,
-      firstName: replacement1.first_name,
-      lastName: replacement1.last_name,
-      is_direct_assignment: replacement1.is_direct_assignment,
-      is_replacement: replacement1.is_replacement,
-      replacement_id: replacement1.replacement_id, // Log replacement_id
-      replacement_order: replacement1.replacement_order,
-    })
+    // console.log("[v0] Drawer - removing replacement1:", {
+    //   userId: replacement1.user_id,
+    //   firstName: replacement1.first_name,
+    //   lastName: replacement1.last_name,
+    //   is_direct_assignment: replacement1.is_direct_assignment,
+    //   is_replacement: replacement1.is_replacement,
+    //   replacement_id: replacement1.replacement_id, // Log replacement_id
+    //   replacement_order: replacement1.replacement_order,
+    // })
 
     const isReplacementViaApplication = replacement1.replacement_id && !replacement1.is_direct_assignment
 
     if (replacement1.is_direct_assignment) {
-      console.log("[v0] Drawer - calling handleRemoveDirectAssignment")
+      // console.log("[v0] Drawer - calling handleRemoveDirectAssignment")
       await handleRemoveDirectAssignment(
         replacement1.shift_id,
         replacement1.user_id,
         replacement1.replacement_order || 1,
       )
     } else if (isReplacementViaApplication) {
-      console.log(
-        "[v0] Drawer - calling handleRemoveReplacementAssignment with replacement_id:",
-        replacement1.replacement_id,
-      )
+      // console.log(
+      //   "[v0] Drawer - calling handleRemoveReplacementAssignment with replacement_id:",
+      //   replacement1.replacement_id,
+      // )
       await handleRemoveReplacementAssignment(
         replacement1.replacement_id,
         `${replacement1.first_name} ${replacement1.last_name}`,
       )
     } else {
-      console.log("[v0] Drawer - calling handleRemoveReplacement")
+      // console.log("[v0] Drawer - calling handleRemoveReplacement")
       await handleRemoveReplacement(
-        shift.id,
+        replacement1.shift_id,
         replacement1.user_id,
         replacement1.replacement_order || 1,
         `${replacement1.first_name} ${replacement1.last_name}`,
@@ -908,16 +905,6 @@ export function ShiftAssignmentDrawer({
 
     const replacement2 = replacementsForUser.find((r) => r.replacement_order === 2)
     if (!replacement2) return
-
-    console.log("[v0] Drawer - removing replacement2:", {
-      userId: replacement2.user_id, // Use user_id from the object
-      firstName: replacement2.first_name, // Use first_name from the object
-      lastName: replacement2.last_name, // Use last_name from the object
-      is_direct_assignment: replacement2.is_direct_assignment,
-      is_replacement: replacement2.is_replacement,
-      replacement_id: replacement2.replacement_id, // Log replacement_id
-      replacement_order: replacement2.replacement_order,
-    })
 
     const isReplacementViaApplication = replacement2.replacement_id && !replacement2.is_direct_assignment
 
@@ -1364,32 +1351,32 @@ export function ShiftAssignmentDrawer({
 
                   const { replacement0, replacement1, replacement2 } = getReplacementDetails(firefighter.id)
 
-                  console.log("[v0] Drawer - replacement details for firefighter", firefighter.id, {
-                    replacement0: replacement0
-                      ? {
-                          user_id: replacement0.user_id,
-                          first_name: replacement0.first_name,
-                          last_name: replacement0.last_name,
-                          replacement_order: replacement0.replacement_order,
-                        }
-                      : null,
-                    replacement1: replacement1
-                      ? {
-                          user_id: replacement1.user_id,
-                          first_name: replacement1.first_name,
-                          last_name: replacement1.last_name,
-                          replacement_order: replacement1.replacement_order,
-                        }
-                      : null,
-                    replacement2: replacement2
-                      ? {
-                          user_id: replacement2.user_id,
-                          first_name: replacement2.first_name,
-                          last_name: replacement2.last_name,
-                          replacement_order: replacement2.replacement_order,
-                        }
-                      : null,
-                  })
+                  // console.log("[v0] Drawer - replacement details for firefighter", firefighter.id, {
+                  //   replacement0: replacement0
+                  //     ? {
+                  //         user_id: replacement0.user_id,
+                  //         first_name: replacement0.first_name,
+                  //         last_name: replacement0.last_name,
+                  //         replacement_order: replacement0.replacement_order,
+                  //       }
+                  //     : null,
+                  //   replacement1: replacement1
+                  //     ? {
+                  //         user_id: replacement1.user_id,
+                  //         first_name: replacement1.first_name,
+                  //         last_name: replacement1.last_name,
+                  //         replacement_order: replacement1.replacement_order,
+                  //       }
+                  //     : null,
+                  //   replacement2: replacement2
+                  //     ? {
+                  //         user_id: replacement2.user_id,
+                  //         first_name: replacement2.first_name,
+                  //         last_name: replacement2.last_name,
+                  //         replacement_order: replacement2.replacement_order,
+                  //       }
+                  //     : null,
+                  // })
 
                   if (hasReplacements) {
                     const bankInfo = replacement0 || replacement1 || replacement2
@@ -1955,10 +1942,10 @@ export function ShiftAssignmentDrawer({
                                       onSuccess={() => {
                                         if (typeof window !== "undefined") {
                                           const scrollPos = window.scrollY
-                                          console.log(
-                                            "[v0] Drawer - saving scroll before DeleteReplacementButton:",
-                                            scrollPos,
-                                          )
+                                          // console.log(
+                                          //   "[v0] Drawer - saving scroll before DeleteReplacementButton:",
+                                          //   scrollPos,
+                                          // )
                                           sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
                                           sessionStorage.setItem("skip-scroll-to-today", "true")
                                         }
