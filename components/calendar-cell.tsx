@@ -317,17 +317,69 @@ export function CalendarCell({
                 }
               })
 
+              // Build replacement map by replaced firefighter
               const replacementsByReplacedFirefighter = new Map<string, any[]>()
 
-              shiftReplacements.forEach((r: any) => {
-                if (r.status === "assigned" && r.replacement_first_name) {
-                  const key = `${r.replaced_first_name}|${r.replaced_last_name}|${r.replaced_role}`
-                  if (!replacementsByReplacedFirefighter.has(key)) {
-                    replacementsByReplacedFirefighter.set(key, [])
-                  }
-                  replacementsByReplacedFirefighter.get(key)!.push(r)
+              // Add regular replacements
+              shiftReplacements.forEach((replacement: any) => {
+                if (!replacement.replaced_first_name || !replacement.replaced_last_name) return
+
+                const key = `${replacement.replaced_first_name}|${replacement.replaced_last_name}|${replacement.replaced_role}`
+
+                if (!replacementsByReplacedFirefighter.has(key)) {
+                  replacementsByReplacedFirefighter.set(key, [])
                 }
+                replacementsByReplacedFirefighter.get(key)!.push(replacement)
               })
+
+              // Add direct assignments that are replacements (have replaced_user_id)
+              shiftDirectAssignments.forEach((da: any) => {
+                if (!da.replaced_user_id) return
+
+                // Find the replaced firefighter in the firefighters list
+                const replacedFirefighter = firefighters.find(
+                  (ff) => Number.parseInt(ff.userId) === da.replaced_user_id,
+                )
+
+                if (!replacedFirefighter) return
+
+                const key = `${replacedFirefighter.firstName}|${replacedFirefighter.lastName}|${replacedFirefighter.role}`
+
+                // Debug: Check if this is Michel Ruel
+                if (replacedFirefighter.firstName === "Michel" && replacedFirefighter.lastName === "Ruel") {
+                  console.log("[v0] Calendar - Adding direct assignment for Michel Ruel:", {
+                    key,
+                    replacement_first_name: da.replacement_first_name,
+                    replacement_last_name: da.replacement_last_name,
+                    replacement_order: da.replacement_order,
+                  })
+                }
+
+                if (!replacementsByReplacedFirefighter.has(key)) {
+                  replacementsByReplacedFirefighter.set(key, [])
+                }
+                replacementsByReplacedFirefighter.get(key)!.push({
+                  replacement_first_name: da.replacement_first_name,
+                  replacement_last_name: da.replacement_last_name,
+                  start_time: da.start_time,
+                  end_time: da.end_time,
+                  is_partial: da.is_partial,
+                  replacement_order: da.replacement_order,
+                })
+              })
+
+              // Debug: Check Michel Ruel replacements
+              const michelRuelKey = "Michel|Ruel|lieutenant"
+              if (replacementsByReplacedFirefighter.has(michelRuelKey)) {
+                console.log("[v0] Calendar - Michel Ruel replacements:", {
+                  shift_id: shift.id,
+                  shift_date: dateStr,
+                  shift_type: shift.shift_type,
+                  team_id: shift.team_id,
+                  count: replacementsByReplacedFirefighter.get(michelRuelKey)!.length,
+                  replacements: replacementsByReplacedFirefighter.get(michelRuelKey),
+                })
+              }
 
               const firefightersToHide = new Set<string>()
               replacementsByReplacedFirefighter.forEach((replacements, key) => {
@@ -345,6 +397,29 @@ export function CalendarCell({
                 role: string
                 index: number
               }> = []
+
+              replacementsByReplacedFirefighter.forEach((replacements, replacedKey) => {
+                if (replacements.length === 2) {
+                  const [firstName, lastName, role] = replacedKey.split("|")
+
+                  // Find the replaced firefighter's original position
+                  const originalFirefighter = firefighters.find(
+                    (ff) => ff.firstName === firstName && ff.lastName === lastName,
+                  )
+
+                  if (originalFirefighter) {
+                    displayItems.push({
+                      type: "double-replacement",
+                      data: {
+                        key: replacedKey,
+                        replacements: replacements,
+                      },
+                      role: role,
+                      index: originalFirefighter.teamRank || 999,
+                    })
+                  }
+                }
+              })
 
               processedFirefighters.forEach((firefighter, index) => {
                 if (!firefighter) {
@@ -370,16 +445,6 @@ export function CalendarCell({
                     role: firefighter.role,
                     index,
                   })
-                } else if (hasDoubleReplacement) {
-                  displayItems.push({
-                    type: "double-replacement",
-                    data: {
-                      key: replacedKey,
-                      replacements: replacementsByReplacedFirefighter.get(replacedKey)!,
-                    },
-                    role: firefighter.role,
-                    index,
-                  })
                 }
               })
 
@@ -395,8 +460,8 @@ export function CalendarCell({
                     lastName: isAssigned ? extra.replacement_last_name : "supplémentaire",
                     role: "firefighter",
                     userId: "0",
-                    teamRank: 999,
-                    isExtra: false,
+                    teamRank: 9999,
+                    isExtra: true,
                     isPartial: extra.is_partial || false,
                     startTime: extra.start_time || null,
                     endTime: extra.end_time || null,
@@ -404,13 +469,13 @@ export function CalendarCell({
                     isActingCaptain: false,
                     isDirectAssignment: false,
                     replacementOrder: 0,
-                    isExtraFirefighterReplacement: true,
-                    extraReplacementStatus: extra.status,
                   },
-                  role: "firefighter",
+                  role: "extra",
                   index: 9999,
                 })
               })
+
+              displayItems.sort((a, b) => a.index - b.index)
 
               return (
                 <div
@@ -450,11 +515,16 @@ export function CalendarCell({
                       {getShiftTypeLabel(shift.shift_type).split(" ")[0]}
                     </Badge>
                   </div>
-                  {processedFirefighters.length > 0 || displayItems.length > 0 ? (
+                  {shifts.length > 0 ? (
                     <div className="text-[7px] md:text-xs leading-snug md:leading-relaxed text-foreground/80 space-y-0">
                       {displayItems.map((item, displayIndex) => {
                         if (item.type === "double-replacement") {
                           const { key, replacements } = item.data
+
+                          console.log("[v0] Calendar - Rendering double-replacement:", {
+                            key,
+                            replacements,
+                          })
 
                           const sortedReplacements = [...replacements].sort((a: any, b: any) => {
                             if (a.start_time && b.start_time) {
@@ -468,41 +538,32 @@ export function CalendarCell({
                           const replacement1 = sortedReplacements[0]
                           const replacement2 = sortedReplacements[1]
 
+                          console.log("[v0] Calendar - Double-replacement check:", {
+                            replacement1_first_name: replacement1?.replacement_first_name,
+                            replacement2_first_name: replacement2?.replacement_first_name,
+                            hasNames: replacement1?.replacement_first_name && replacement2?.replacement_first_name,
+                          })
+
                           if (replacement1?.replacement_first_name && replacement2?.replacement_first_name) {
+                            const initials1 = `${replacement1.replacement_first_name.charAt(0)}${replacement1.replacement_last_name.charAt(0)}`
+                            const initials2 = `${replacement2.replacement_first_name.charAt(0)}${replacement2.replacement_last_name.charAt(0)}`
+
                             return (
-                              <div key={`double-${key}-${displayIndex}`} className="space-y-0.5">
-                                <div className="firefighter-name truncate py-0 md:py-0.5">
-                                  <span className="text-orange-500 text-[6px] md:text-[10px] mr-0.5">●</span>
-                                  <span className="text-[8px] md:text-xs font-medium">
-                                    {replacement1.replacement_last_name.charAt(0)}.{" "}
-                                    {replacement1.replacement_first_name.charAt(0)}.
-                                    {replacement1.start_time && replacement1.end_time && (
-                                      <span className="text-[7px] md:text-[10px] ml-0.5 text-muted-foreground">
-                                        ({replacement1.start_time.slice(0, 5)}-{replacement1.end_time.slice(0, 5)})
-                                      </span>
-                                    )}
-                                  </span>
-                                </div>
-                                <div className="firefighter-name truncate py-0 md:py-0.5">
-                                  <span className="text-orange-500 text-[6px] md:text-[10px] mr-0.5">●</span>
-                                  <span className="text-[8px] md:text-xs font-medium">
-                                    {replacement2.replacement_last_name.charAt(0)}.{" "}
-                                    {replacement2.replacement_first_name.charAt(0)}.
-                                    {replacement2.start_time && replacement2.end_time && (
-                                      <span className="text-[7px] md:text-[10px] ml-0.5 text-muted-foreground">
-                                        ({replacement2.start_time.slice(0, 5)}-{replacement2.end_time.slice(0, 5)})
-                                      </span>
-                                    )}
-                                  </span>
-                                </div>
+                              <div
+                                key={`double-${key}-${displayIndex}`}
+                                className="firefighter-name truncate py-0 md:py-0.5 font-semibold"
+                              >
+                                <span className="text-[6px] md:text-sm mr-1">🧑‍🚒🧑‍🚒</span>
+                                {initials1} + {initials2}
                               </div>
                             )
                           }
 
+                          console.log("[v0] Calendar - Double-replacement check failed, returning null")
                           return null
                         }
 
-                        const firefighter = item.index === 9999 ? item.data : processedFirefighters[item.index]
+                        const firefighter = item.data // Use item.data directly now
                         const index = item.index
 
                         if (!firefighter) {
@@ -627,7 +688,7 @@ export function CalendarCell({
                         const hasExtraPartialTime =
                           isExtraFirefighter && firefighter.isPartial && firefighter.startTime && firefighter.endTime
 
-                        const isExtraFirefighterReplacement = firefighter.isExtraFirefighterReplacement
+                        const isExtraFirefighterReplacement = item.role === "extra" // Check role directly
                         const extraReplacementStatus = firefighter.extraReplacementStatus
 
                         const replacementIsActingLieutenant = replacement?.replacement_is_acting_lieutenant === true
@@ -681,7 +742,7 @@ export function CalendarCell({
 
                         return (
                           <div
-                            key={index}
+                            key={`${firefighter.userId}-${displayIndex}`} // Unique key for each displayed item
                             className={`firefighter-name truncate py-0 md:py-0.5 ${
                               isExchange
                                 ? "font-semibold"
@@ -808,7 +869,9 @@ export function CalendarCell({
                       })}
                     </div>
                   ) : (
-                    <p className="text-[7px] md:text-xs text-muted-foreground/60 italic">Aucun pompier assigné</p>
+                    <p className="text-[7px] md:text-xs text-muted-foreground/60 text-center py-2 md:py-4">
+                      Aucun pompier assigné
+                    </p>
                   )}
                   {shift.has_note && (
                     <Button

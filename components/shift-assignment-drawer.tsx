@@ -2463,20 +2463,22 @@ export function ShiftAssignmentDrawer({
         </AlertDialogContent>
       </AlertDialog>
 
-      <DirectAssignmentDialog
-        open={showDirectAssignmentDialog}
-        onOpenChange={(open) => {
-          setShowDirectAssignmentDialog(open)
-          if (!open) {
-            setSelectedFirefighter(null)
-          }
-        }}
-        shift={shift}
-        teamFirefighters={teamFirefighters}
-        allFirefighters={allFirefighters}
-        onSuccess={refreshShiftAndClose} // Use refreshShiftAndClose instead of refreshAndClose
-        preSelectedFirefighter={selectedFirefighter}
-      />
+      {shift && (
+        <DirectAssignmentDialog
+          open={showDirectAssignmentDialog}
+          onOpenChange={(open) => {
+            setShowDirectAssignmentDialog(open)
+            if (!open) {
+              setSelectedFirefighter(null)
+            }
+          }}
+          shift={shift}
+          teamFirefighters={teamFirefighters}
+          allFirefighters={allFirefighters}
+          onSuccess={refreshShiftAndClose} // Use refreshShiftAndClose instead of refreshAndClose
+          preSelectedFirefighter={selectedFirefighter}
+        />
+      )}
 
       {/* Direct Assignment Dialog for pending replacements */}
       {shift && selectedReplacementForAssignment && (
@@ -2511,7 +2513,7 @@ export function ShiftAssignmentDrawer({
           onSuccess={() => {
             setShowSecondReplacementDialog(false)
             setSelectedReplacementForSecond(null)
-            loadData()
+            refreshAndClose()
           }}
         />
       )}
