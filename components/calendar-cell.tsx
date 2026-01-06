@@ -469,16 +469,32 @@ export function CalendarCell({
                           const replacement2 = sortedReplacements[1]
 
                           if (replacement1?.replacement_first_name && replacement2?.replacement_first_name) {
-                            const initials1 = `${replacement1.replacement_first_name.charAt(0)}${replacement1.replacement_last_name.charAt(0)}`
-                            const initials2 = `${replacement2.replacement_first_name.charAt(0)}${replacement2.replacement_last_name.charAt(0)}`
-
                             return (
-                              <div
-                                key={`double-${key}-${displayIndex}`}
-                                className="firefighter-name truncate py-0 md:py-0.5 font-semibold"
-                              >
-                                <span className="text-[6px] md:text-sm mr-1">🧑‍🚒🧑‍🚒</span>
-                                {initials1} + {initials2}
+                              <div key={`double-${key}-${displayIndex}`} className="space-y-0.5">
+                                <div className="firefighter-name truncate py-0 md:py-0.5">
+                                  <span className="text-orange-500 text-[6px] md:text-[10px] mr-0.5">●</span>
+                                  <span className="text-[8px] md:text-xs font-medium">
+                                    {replacement1.replacement_last_name.charAt(0)}.{" "}
+                                    {replacement1.replacement_first_name.charAt(0)}.
+                                    {replacement1.start_time && replacement1.end_time && (
+                                      <span className="text-[7px] md:text-[10px] ml-0.5 text-muted-foreground">
+                                        ({replacement1.start_time.slice(0, 5)}-{replacement1.end_time.slice(0, 5)})
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="firefighter-name truncate py-0 md:py-0.5">
+                                  <span className="text-orange-500 text-[6px] md:text-[10px] mr-0.5">●</span>
+                                  <span className="text-[8px] md:text-xs font-medium">
+                                    {replacement2.replacement_last_name.charAt(0)}.{" "}
+                                    {replacement2.replacement_first_name.charAt(0)}.
+                                    {replacement2.start_time && replacement2.end_time && (
+                                      <span className="text-[7px] md:text-[10px] ml-0.5 text-muted-foreground">
+                                        ({replacement2.start_time.slice(0, 5)}-{replacement2.end_time.slice(0, 5)})
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
                               </div>
                             )
                           }
