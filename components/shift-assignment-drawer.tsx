@@ -301,17 +301,22 @@ export function ShiftAssignmentDrawer({
   const loadData = useCallback(async () => {
     if (!open || !shift) return
 
+    console.log("[v0] Drawer - loadData called")
     setLoadingReplacements(true)
     const shiftDate = formatDateForDB(shift.date)
 
     try {
+      console.log("[v0] Drawer - fetching replacements for shift")
       const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
       setReplacements(data)
+      console.log("[v0] Drawer - got replacements:", data.length)
 
       const assigned = data.filter(
         (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
       )
+      console.log("[v0] Drawer - assigned replacements:", assigned.length)
 
+      console.log("[v0] Drawer - fetching shift assignments for assigned replacements")
       const assignedWithAssignments = await Promise.all(
         assigned.map(async (r: any) => {
           const approvedApp = r.applications.find((app: any) => app.status === "approved")
@@ -344,22 +349,22 @@ export function ShiftAssignmentDrawer({
       )
       setAssignedReplacements(assignedWithAssignments)
 
-      // Fetch all firefighters if not already fetched
-      if (allFirefighters.length === 0) {
-        const firefighters = await getAllFirefighters()
-        setAllFirefighters(firefighters)
-      }
+      console.log("[v0] Drawer - about to call getAllFirefighters()")
+      console.log("[v0] Drawer - current allFirefighters.length:", allFirefighters.length)
+      const firefighters = await getAllFirefighters()
+      setAllFirefighters(firefighters)
 
       if (onShiftUpdated) {
         onShiftUpdated(shift)
       }
     } catch (error) {
-      console.error("Error fetching data:", error)
+      console.error("[v0] Drawer - Error fetching data:", error)
       toast.error("Erreur lors du chargement des données.")
     } finally {
       setLoadingReplacements(false)
+      console.log("[v0] Drawer - loadData completed")
     }
-  }, [open, shift, allFirefighters.length, allFirefighters, onShiftUpdated]) // Added onShiftUpdated dependency
+  }, [open, shift, onShiftUpdated, allFirefighters.length])
 
   useEffect(() => {
     loadData()
@@ -1043,7 +1048,7 @@ export function ShiftAssignmentDrawer({
         is_acting_captain: assignment.is_acting_captain || false,
         replaced_first_name: replacedFF?.first_name || replacedFromTeam?.first_name || "Pompier",
         replaced_last_name: replacedFF?.last_name || replacedFromTeam?.last_name || "Inconnu",
-        replaced_position_code: replacedFF?.position_code || replacedFromTeam?.position_code || "",
+        replaced_position_code: replacedFF?.position_code || replacedFromTeam?.position_code || "", // Use stored position_code
         leave_bank_1: assignment.leave_bank_1,
         leave_hours_1: assignment.leave_hours_1,
         leave_bank_2: assignment.leave_bank_2,

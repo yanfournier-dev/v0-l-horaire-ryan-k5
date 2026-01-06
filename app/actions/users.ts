@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, unstable_noStore as noStore } from "next/cache"
 import { hashPassword, getSession } from "@/app/actions/auth"
 import { sql } from "@/lib/db"
 import { createAuditLog } from "./audit"
@@ -82,7 +82,6 @@ export async function bulkImportFirefighters(
         `
 
         if (existing.length > 0) {
-          console.log(`[v0] User ${firefighter.email} already exists, skipping`)
           continue
         }
 
@@ -113,7 +112,7 @@ export async function bulkImportFirefighters(
 
         successCount++
       } catch (error) {
-        console.error(`[v0] Error importing firefighter ${firefighter.email}:`, error)
+        console.error(`Error importing firefighter ${firefighter.email}:`, error)
       }
     }
 
@@ -121,7 +120,7 @@ export async function bulkImportFirefighters(
       revalidatePath("/dashboard/admin")
       revalidatePath("/dashboard/users")
     } catch (revalidateError) {
-      console.log("[v0] Revalidation failed (non-critical):", revalidateError)
+      console.log("Revalidation failed (non-critical):", revalidateError)
     }
 
     return {
@@ -130,7 +129,7 @@ export async function bulkImportFirefighters(
       count: successCount,
     }
   } catch (error) {
-    console.error("[v0] Bulk import error:", error)
+    console.error("Bulk import error:", error)
     return {
       success: false,
       message: "Erreur lors de l'importation des pompiers",
@@ -187,7 +186,6 @@ export async function importTeam1Firefighters(): Promise<{
       const existing = await sql`SELECT id FROM users WHERE email = ${email}`
 
       if (existing.length > 0) {
-        console.log(`[v0] User ${email} already exists, skipping`)
         skipped++
         continue
       }
@@ -209,14 +207,13 @@ export async function importTeam1Firefighters(): Promise<{
       `
 
       imported++
-      console.log(`[v0] Imported ${fullName} (${email})`)
     }
 
     try {
       revalidatePath("/dashboard/firefighters")
       revalidatePath("/dashboard/teams")
     } catch (revalidateError) {
-      console.log("[v0] Revalidation failed (non-critical):", revalidateError)
+      console.log("Revalidation failed (non-critical):", revalidateError)
     }
 
     return {
@@ -226,7 +223,7 @@ export async function importTeam1Firefighters(): Promise<{
       skipped,
     }
   } catch (error) {
-    console.error("[v0] Error importing Team 1:", error)
+    console.error("Error importing Team 1:", error)
     return {
       success: false,
       message: `Erreur lors de l'importation: ${error instanceof Error ? error.message : "Erreur inconnue"}`,
@@ -300,7 +297,7 @@ export async function addFirefighter(data: {
       revalidatePath("/dashboard/firefighters")
       revalidatePath("/dashboard/teams")
     } catch (revalidateError) {
-      console.log("[v0] Revalidation failed (non-critical):", revalidateError)
+      console.log("Revalidation failed (non-critical):", revalidateError)
     }
 
     return {
@@ -308,7 +305,7 @@ export async function addFirefighter(data: {
       message: "Pompier ajouté avec succès",
     }
   } catch (error) {
-    console.error("[v0] Error adding firefighter:", error)
+    console.error("Error adding firefighter:", error)
     return {
       success: false,
       message: "Erreur lors de l'ajout du pompier",
@@ -317,30 +314,45 @@ export async function addFirefighter(data: {
 }
 
 export async function getAllFirefighters() {
-  try {
-    console.log("[v0] getAllFirefighters called")
+  noStore()
 
+  try {
     const firefighters = await sql`
       SELECT 
         u.id,
         u.first_name,
         u.last_name,
         u.email,
-        u.role,
-        t.name as team_name
+        u.role
       FROM users u
-      LEFT JOIN team_members tm ON u.id = tm.user_id
-      LEFT JOIN teams t ON tm.team_id = t.id
-      WHERE u.role = 'firefighter'
       ORDER BY u.last_name, u.first_name
     `
 
-    console.log("[v0] Firefighters found:", firefighters.length)
-    console.log("[v0] First few firefighters:", firefighters.slice(0, 3))
-
     return firefighters
   } catch (error) {
-    console.error("[v0] Error getting firefighters:", error)
+    console.error("Error getting firefighters:", error)
+    return []
+  }
+}
+
+export async function getAllUsers() {
+  noStore()
+
+  try {
+    const users = await sql`
+      SELECT 
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.role
+      FROM users u
+      ORDER BY u.last_name, u.first_name
+    `
+
+    return users
+  } catch (error) {
+    console.error("Error getting all users:", error)
     return []
   }
 }
@@ -410,7 +422,7 @@ export async function updateFirefighter(
     revalidatePath("/dashboard/teams")
     return { success: true, message: "Pompier mis à jour avec succès" }
   } catch (error) {
-    console.error("[v0] Error updating firefighter:", error)
+    console.error("Error updating firefighter:", error)
     const errorMessage = error instanceof Error ? error.message : "Erreur inconnue"
     return {
       success: false,

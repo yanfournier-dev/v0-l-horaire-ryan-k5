@@ -186,7 +186,6 @@ export async function getAllFirefighters() {
       u.role,
       u.email
     FROM users u
-    WHERE u.is_admin = false
     ORDER BY 
       CASE u.role 
         WHEN 'captain' THEN 1 
