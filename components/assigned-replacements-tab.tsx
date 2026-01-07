@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Bell, Check, Send, ArrowUpDown } from "lucide-react"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { formatShortDate, formatLocalDateTime } from "@/lib/date-utils"
-import { sendAssignmentNotification } from "@/app/actions/send-assignment-notification" // Updated import path
+import { sendAssignmentNotification } from "@/app/actions/send-assignment-notification"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { EditReplacementAssignmentButton } from "@/components/edit-replacement-assignment-button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface AssignedReplacementsTabProps {
   assignedReplacements: any[]
@@ -115,6 +116,18 @@ export function AssignedReplacementsTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
+          <Select value={dateFilter} onValueChange={handleDateFilterChange}>
+            <SelectTrigger className="w-[160px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="upcoming">À venir</SelectItem>
+              <SelectItem value="7days">7 derniers jours</SelectItem>
+              <SelectItem value="30days">30 derniers jours</SelectItem>
+              <SelectItem value="all">Tous</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>
             Tous ({assignedReplacements.length})
           </Button>
