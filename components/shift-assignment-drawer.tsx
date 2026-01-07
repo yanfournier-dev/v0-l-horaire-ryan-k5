@@ -697,13 +697,9 @@ export function ShiftAssignmentDrawer({
 
     toast.success(`${replacementName || "Le remplacement"} a été retiré`)
 
-    // Refresh replacements list
-    const shiftDate = formatDateForDB(shift.date)
-    const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
-    setReplacements(data)
+    await loadData()
 
     setIsLoading(false)
-    refreshAndClose()
   }
 
   const handleRemoveDirectAssignment = async (shiftId: number, userId: number, replacementOrder?: number) => {
