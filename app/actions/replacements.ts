@@ -303,6 +303,7 @@ export async function createReplacementFromShift(
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -370,6 +371,7 @@ export async function applyForReplacement(replacementId: number, firefighterId?:
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -401,6 +403,7 @@ export async function withdrawApplication(applicationId: number) {
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -600,6 +603,7 @@ export async function approveApplication(
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -665,6 +669,7 @@ export async function rejectApplication(applicationId: number) {
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -750,6 +755,7 @@ export async function deleteReplacement(replacementId: number) {
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("deleteReplacement - Error invalidating cache:", cacheError)
     }
@@ -889,6 +895,7 @@ export async function createExtraFirefighterReplacement(
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -954,6 +961,7 @@ export async function updateReplacementAssignment(replacementId: number, assigne
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -1065,6 +1073,7 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -1097,6 +1106,7 @@ export async function rejectReplacementRequest(replacementId: number) {
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -1144,6 +1154,7 @@ export async function requestReplacement(
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -1255,6 +1266,7 @@ export async function removeReplacementAssignment(replacementId: number) {
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }
@@ -1341,6 +1353,7 @@ export async function reactivateApplication(applicationId: number) {
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
     } catch (cacheError) {
       console.error("Error invalidating cache:", cacheError)
     }

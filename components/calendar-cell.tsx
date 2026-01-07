@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -73,6 +73,22 @@ export function CalendarCell({
   const formatFirefighterName = (firstName: string, lastName: string) => {
     return `${lastName} ${firstName.charAt(0)}.`
   }
+
+  const handleShiftUpdatedWithRefresh = useCallback(async () => {
+    // First call parent's onShiftUpdated to update calendar
+    onShiftUpdated()
+
+    // Then refresh local currentAssignments if drawer is open and shift is selected
+    if (selectedShift) {
+      try {
+        const shiftDetails = await getShiftWithAssignments(selectedShift.id, day.date)
+        setCurrentAssignments(shiftDetails.assignments)
+        setTeamFirefighters(shiftDetails.teamFirefighters)
+      } catch (error) {
+        console.error("[v0] Error refreshing assignments:", error)
+      }
+    }
+  }, [onShiftUpdated, selectedShift, day.date])
 
   const handleShiftClick = async (shift: any) => {
     if (!isAdmin) {
@@ -879,7 +895,7 @@ export function CalendarCell({
           dateStr={dateStr}
           isAdmin={isAdmin}
           onReplacementCreated={onReplacementCreated}
-          onShiftUpdated={onShiftUpdated}
+          onShiftUpdated={handleShiftUpdatedWithRefresh}
         />
       )}
 

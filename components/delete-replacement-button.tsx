@@ -37,6 +37,8 @@ export function DeleteReplacementButton({
   const router = useRouter()
 
   const handleDelete = async () => {
+    console.log("[v0] DeleteReplacementButton - handleDelete called, hasAssignedCandidate:", hasAssignedCandidate)
+
     if (isDeleting) return
 
     setIsDeleting(true)
@@ -46,12 +48,14 @@ export function DeleteReplacementButton({
       let result
 
       if (hasAssignedCandidate) {
-        // Unassign the candidate without deleting the replacement
+        console.log("[v0] DeleteReplacementButton - calling removeReplacementAssignment")
         result = await removeReplacementAssignment(replacementId)
       } else {
-        // Delete the entire replacement
+        console.log("[v0] DeleteReplacementButton - calling deleteReplacement")
         result = await deleteReplacement(replacementId)
       }
+
+      console.log("[v0] DeleteReplacementButton - result:", JSON.stringify(result))
 
       if (result.error) {
         if (result.isRateLimit) {
@@ -64,28 +68,26 @@ export function DeleteReplacementButton({
         alert(result.error)
         setIsDeleting(false)
       } else {
+        console.log("[v0] DeleteReplacementButton - success, onSuccess exists:", !!onSuccess)
+
         if (onSuccess) {
-          onSuccess()
+          console.log("[v0] DeleteReplacementButton - calling onSuccess (loadData)")
+          await onSuccess()
+          console.log("[v0] DeleteReplacementButton - onSuccess completed")
         } else {
+          console.log("[v0] DeleteReplacementButton - no onSuccess, calling router.refresh()")
           router.refresh()
         }
 
         setTimeout(() => {
           setIsDeleting(false)
-        }, 2000)
+        }, 500)
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-
-      if (errorMessage.includes("Too Many")) {
-        alert("Trop de requêtes. Veuillez attendre 5 secondes avant de supprimer un autre remplacement.")
-        setTimeout(() => {
-          setIsDeleting(false)
-        }, 5000)
-      } else {
-        alert("Une erreur est survenue lors de la suppression")
-        setIsDeleting(false)
-      }
+      console.error("[v0] DeleteReplacementButton - error:", errorMessage)
+      alert(`Erreur: ${errorMessage}`)
+      setIsDeleting(false)
     }
   }
 
