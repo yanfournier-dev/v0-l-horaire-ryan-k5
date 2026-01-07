@@ -20,11 +20,13 @@ import { Label } from "@/components/ui/label"
 interface EditReplacementAssignmentButtonProps {
   replacementId: number
   currentFirefighterName?: string
+  className?: string
 }
 
 export function EditReplacementAssignmentButton({
   replacementId,
   currentFirefighterName,
+  className,
 }: EditReplacementAssignmentButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -82,7 +84,7 @@ export function EditReplacementAssignmentButton({
           variant="outline"
           size="sm"
           disabled={isUpdating}
-          className="h-6 text-xs px-2 gap-1 leading-none bg-transparent"
+          className={`h-8 text-xs px-2 gap-1 leading-none bg-transparent ${className}`}
         >
           <Edit className="h-3 w-3" />
           Modifier

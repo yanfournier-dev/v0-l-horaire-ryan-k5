@@ -222,18 +222,18 @@ export function AssignedReplacementsTab({
 
                   <div className="flex gap-0.5 shrink-0">
                     <Link href={`/dashboard/replacements/${replacement.id}`}>
-                      <Button variant="outline" size="sm" className="h-7 text-xs px-2 bg-transparent">
-                        Voir ({replacement.candidate_count || 0})
+                      <Button variant="outline" size="sm" className="h-8 text-xs px-2 bg-transparent w-[140px]">
+                        Voir les candidats ({replacement.candidate_count || 0})
                       </Button>
                     </Link>
 
-                    <EditReplacementAssignmentButton replacementId={replacement.id} />
+                    <EditReplacementAssignmentButton replacementId={replacement.id} className="w-[100px]" />
 
                     {!replacement.notification_sent && (
                       <Button
                         variant="default"
                         size="sm"
-                        className="h-7 text-xs px-2"
+                        className="h-8 text-xs px-2 w-[100px]"
                         onClick={() => handleSendNotification(replacement.id)}
                         disabled={sendingIds.has(replacement.id)}
                       >

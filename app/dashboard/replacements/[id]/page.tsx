@@ -15,6 +15,7 @@ import { DeleteReplacementButton } from "@/components/delete-replacement-button"
 import { getBatchFirefighterWeeklyHours } from "@/app/actions/weekly-hours"
 import { AddManualApplicationDialog } from "@/components/add-manual-application-dialog"
 import { checkFirefighterAbsence } from "@/app/actions/leaves"
+import { UnassignReplacementButton } from "@/components/unassign-replacement-button"
 
 export const dynamic = "force-dynamic"
 
@@ -335,6 +336,12 @@ export default async function ReplacementDetailPage({
           {cannotBeAssigned && (
             <span className="text-sm text-muted-foreground italic">Candidat pour rôle de lieutenant uniquement</span>
           )}
+          {!cannotBeAssigned && application.status === "approved" && (
+            <UnassignReplacementButton
+              applicationId={application.id}
+              firefighterName={`${application.last_name} ${application.first_name}`}
+            />
+          )}
           {!cannotBeAssigned && application.status === "pending" && !isAlreadyAssigned && (
             <>
               <ApproveApplicationButton
@@ -488,11 +495,8 @@ export default async function ReplacementDetailPage({
 
             {teamPriorityCandidates.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3 text-foreground flex items-center gap-2">
+                <h3 className="text-lg font-semibold mb-3 text-foreground">
                   Pompiers permanents de {replacement.team_name} (priorité pour rôle de lieutenant)
-                  <Badge className="bg-blue-600 text-white hover:bg-blue-700 font-semibold">
-                    {teamPriorityCandidates.length}
-                  </Badge>
                 </h3>
                 <div className="space-y-2">{teamPriorityCandidates.map(renderApplicationCard)}</div>
               </div>

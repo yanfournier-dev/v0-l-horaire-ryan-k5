@@ -1582,7 +1582,8 @@ export async function getAssignedReplacements(
             l.start_date as leave_start_date,
             l.end_date as leave_end_date,
             sender.first_name as sent_by_first_name,
-            sender.last_name as sent_by_last_name
+            sender.last_name as sent_by_last_name,
+            COALESCE(app_count.total_count, 0) as candidate_count
           FROM replacements r
           LEFT JOIN teams t ON r.team_id = t.id
           LEFT JOIN leaves l ON r.leave_id = l.id
@@ -1592,6 +1593,11 @@ export async function getAssignedReplacements(
             AND ra_approved.status = 'approved'
           INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
           LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          LEFT JOIN (
+            SELECT replacement_id, COUNT(*) as total_count
+            FROM replacement_applications
+            GROUP BY replacement_id
+          ) app_count ON app_count.replacement_id = r.id
           ORDER BY r.shift_date ASC, r.shift_type
         `
       } else {
@@ -1607,7 +1613,8 @@ export async function getAssignedReplacements(
             l.start_date as leave_start_date,
             l.end_date as leave_end_date,
             sender.first_name as sent_by_first_name,
-            sender.last_name as sent_by_last_name
+            sender.last_name as sent_by_last_name,
+            COALESCE(app_count.total_count, 0) as candidate_count
           FROM replacements r
           LEFT JOIN teams t ON r.team_id = t.id
           LEFT JOIN leaves l ON r.leave_id = l.id
@@ -1617,6 +1624,11 @@ export async function getAssignedReplacements(
             AND ra_approved.status = 'approved'
           INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
           LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          LEFT JOIN (
+            SELECT replacement_id, COUNT(*) as total_count
+            FROM replacement_applications
+            GROUP BY replacement_id
+          ) app_count ON app_count.replacement_id = r.id
           ORDER BY r.shift_date DESC, r.shift_type
         `
       }
@@ -1634,7 +1646,8 @@ export async function getAssignedReplacements(
             l.start_date as leave_start_date,
             l.end_date as leave_end_date,
             sender.first_name as sent_by_first_name,
-            sender.last_name as sent_by_last_name
+            sender.last_name as sent_by_last_name,
+            COALESCE(app_count.total_count, 0) as candidate_count
           FROM replacements r
           LEFT JOIN teams t ON r.team_id = t.id
           LEFT JOIN leaves l ON r.leave_id = l.id
@@ -1644,6 +1657,11 @@ export async function getAssignedReplacements(
             AND ra_approved.status = 'approved'
           INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
           LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          LEFT JOIN (
+            SELECT replacement_id, COUNT(*) as total_count
+            FROM replacement_applications
+            GROUP BY replacement_id
+          ) app_count ON app_count.replacement_id = r.id
           WHERE r.shift_date >= CURRENT_DATE
           ORDER BY r.shift_date ASC, r.shift_type
         `
@@ -1660,7 +1678,8 @@ export async function getAssignedReplacements(
             l.start_date as leave_start_date,
             l.end_date as leave_end_date,
             sender.first_name as sent_by_first_name,
-            sender.last_name as sent_by_last_name
+            sender.last_name as sent_by_last_name,
+            COALESCE(app_count.total_count, 0) as candidate_count
           FROM replacements r
           LEFT JOIN teams t ON r.team_id = t.id
           LEFT JOIN leaves l ON r.leave_id = l.id
@@ -1670,6 +1689,11 @@ export async function getAssignedReplacements(
             AND ra_approved.status = 'approved'
           INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
           LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          LEFT JOIN (
+            SELECT replacement_id, COUNT(*) as total_count
+            FROM replacement_applications
+            GROUP BY replacement_id
+          ) app_count ON app_count.replacement_id = r.id
           WHERE r.shift_date >= CURRENT_DATE
           ORDER BY r.shift_date DESC, r.shift_type
         `
@@ -1688,7 +1712,8 @@ export async function getAssignedReplacements(
             l.start_date as leave_start_date,
             l.end_date as leave_end_date,
             sender.first_name as sent_by_first_name,
-            sender.last_name as sent_by_last_name
+            sender.last_name as sent_by_last_name,
+            COALESCE(app_count.total_count, 0) as candidate_count
           FROM replacements r
           LEFT JOIN teams t ON r.team_id = t.id
           LEFT JOIN leaves l ON r.leave_id = l.id
@@ -1698,6 +1723,11 @@ export async function getAssignedReplacements(
             AND ra_approved.status = 'approved'
           INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
           LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          LEFT JOIN (
+            SELECT replacement_id, COUNT(*) as total_count
+            FROM replacement_applications
+            GROUP BY replacement_id
+          ) app_count ON app_count.replacement_id = r.id
           WHERE r.shift_date >= CURRENT_DATE - INTERVAL '7 days'
           ORDER BY r.shift_date ASC, r.shift_type
         `
@@ -1714,7 +1744,8 @@ export async function getAssignedReplacements(
             l.start_date as leave_start_date,
             l.end_date as leave_end_date,
             sender.first_name as sent_by_first_name,
-            sender.last_name as sent_by_last_name
+            sender.last_name as sent_by_last_name,
+            COALESCE(app_count.total_count, 0) as candidate_count
           FROM replacements r
           LEFT JOIN teams t ON r.team_id = t.id
           LEFT JOIN leaves l ON r.leave_id = l.id
@@ -1724,6 +1755,11 @@ export async function getAssignedReplacements(
             AND ra_approved.status = 'approved'
           INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
           LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          LEFT JOIN (
+            SELECT replacement_id, COUNT(*) as total_count
+            FROM replacement_applications
+            GROUP BY replacement_id
+          ) app_count ON app_count.replacement_id = r.id
           WHERE r.shift_date >= CURRENT_DATE - INTERVAL '7 days'
           ORDER BY r.shift_date DESC, r.shift_type
         `
@@ -1743,7 +1779,8 @@ export async function getAssignedReplacements(
             l.start_date as leave_start_date,
             l.end_date as leave_end_date,
             sender.first_name as sent_by_first_name,
-            sender.last_name as sent_by_last_name
+            sender.last_name as sent_by_last_name,
+            COALESCE(app_count.total_count, 0) as candidate_count
           FROM replacements r
           LEFT JOIN teams t ON r.team_id = t.id
           LEFT JOIN leaves l ON r.leave_id = l.id
@@ -1753,6 +1790,11 @@ export async function getAssignedReplacements(
             AND ra_approved.status = 'approved'
           INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
           LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          LEFT JOIN (
+            SELECT replacement_id, COUNT(*) as total_count
+            FROM replacement_applications
+            GROUP BY replacement_id
+          ) app_count ON app_count.replacement_id = r.id
           WHERE r.shift_date >= CURRENT_DATE - INTERVAL '30 days'
           ORDER BY r.shift_date ASC, r.shift_type
         `
@@ -1769,7 +1811,8 @@ export async function getAssignedReplacements(
             l.start_date as leave_start_date,
             l.end_date as leave_end_date,
             sender.first_name as sent_by_first_name,
-            sender.last_name as sent_by_last_name
+            sender.last_name as sent_by_last_name,
+            COALESCE(app_count.total_count, 0) as candidate_count
           FROM replacements r
           LEFT JOIN teams t ON r.team_id = t.id
           LEFT JOIN leaves l ON r.leave_id = l.id
@@ -1779,6 +1822,11 @@ export async function getAssignedReplacements(
             AND ra_approved.status = 'approved'
           INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
           LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          LEFT JOIN (
+            SELECT replacement_id, COUNT(*) as total_count
+            FROM replacement_applications
+            GROUP BY replacement_id
+          ) app_count ON app_count.replacement_id = r.id
           WHERE r.shift_date >= CURRENT_DATE - INTERVAL '30 days'
           ORDER BY r.shift_date DESC, r.shift_type
         `
