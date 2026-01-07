@@ -127,7 +127,7 @@ export function ReplacementsTabs({
       </div>
 
       <TabsList>
-        <TabsTrigger value="available">Demandes de remplacement ({openReplacements.length})</TabsTrigger>
+        <TabsTrigger value="available">Remplacements disponibles ({openReplacements.length})</TabsTrigger>
         {isAdmin && (
           <TabsTrigger
             value="to-assign"

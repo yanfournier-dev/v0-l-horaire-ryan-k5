@@ -76,7 +76,7 @@ export async function getRecentReplacements() {
         ON r.id = ra_approved.replacement_id 
         AND ra_approved.status = 'approved'
       LEFT JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
-      WHERE r.status IN ('open', 'assigned')
+      WHERE r.status = 'open'
         AND r.shift_date >= CURRENT_DATE
         AND (l.status = 'approved' OR l.id IS NULL)
       ORDER BY r.shift_date ASC, r.shift_type
