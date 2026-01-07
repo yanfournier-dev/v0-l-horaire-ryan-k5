@@ -13,6 +13,7 @@ import { UserRequestsTab } from "@/components/user-requests-tab"
 import { WithdrawApplicationButton } from "@/components/withdraw-application-button"
 import { RequestReplacementDialog } from "@/components/request-replacement-dialog"
 import { ExpiredReplacementsTab } from "@/components/expired-replacements-tab"
+import { AssignedReplacementsTab } from "@/components/assigned-replacements-tab"
 import { parseLocalDate, formatLocalDateTime, formatShortDate } from "@/lib/date-utils"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { compareShifts } from "@/lib/shift-sort"
@@ -27,6 +28,8 @@ interface ReplacementsTabsProps {
   userRequests: any[]
   expiredReplacements: any[]
   directAssignments: any[]
+  assignedReplacements: any[]
+  assignedUnsentCount: number // Added unsent count prop
   isAdmin: boolean
   userId: number
   initialTab?: string
@@ -41,6 +44,8 @@ export function ReplacementsTabs({
   userRequests,
   expiredReplacements,
   directAssignments,
+  assignedReplacements,
+  assignedUnsentCount, // Added unsent count
   isAdmin,
   userId,
   initialTab = "available",
@@ -102,7 +107,7 @@ export function ReplacementsTabs({
     const isExpired = r.application_deadline && new Date(r.application_deadline) < new Date()
     return !isExpired
   })
-  const assignedReplacements = replacementsToDisplay.filter((r) => r.status === "assigned")
+  const assignedReplacementsList = replacementsToDisplay.filter((r) => r.status === "assigned")
   const pendingApplications = userApplications.filter((app: any) => app.status === "pending")
 
   const sortedOpenReplacements = sortReplacements(openReplacements)
@@ -133,6 +138,16 @@ export function ReplacementsTabs({
             }
           >
             Prêts à assigner ({expiredReplacements.length})
+          </TabsTrigger>
+        )}
+        {isAdmin && (
+          <TabsTrigger
+            value="assigned"
+            className={
+              assignedUnsentCount > 0 ? "data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold" : ""
+            }
+          >
+            Remplacements assignés ({assignedUnsentCount})
           </TabsTrigger>
         )}
         <TabsTrigger value="direct-assignments">Assignations directes ({directAssignments.length})</TabsTrigger>
@@ -269,6 +284,15 @@ export function ReplacementsTabs({
             expiredReplacements={expiredReplacements}
             isAdmin={isAdmin}
             firefighters={firefighters}
+          />
+        </TabsContent>
+      )}
+
+      {isAdmin && (
+        <TabsContent value="assigned">
+          <AssignedReplacementsTab
+            assignedReplacements={assignedReplacements}
+            unsentCount={assignedUnsentCount} // Pass unsent count
           />
         </TabsContent>
       )}

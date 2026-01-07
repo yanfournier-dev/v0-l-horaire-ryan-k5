@@ -6,7 +6,8 @@ import {
   getPendingReplacementRequests,
   getUserReplacementRequests,
   getExpiredReplacements,
-  getDirectAssignments, // Added import for direct assignments
+  getDirectAssignments,
+  getAssignedReplacements, // Added import for assigned replacements
 } from "@/app/actions/replacements"
 import { getAllFirefighters } from "@/app/actions/teams"
 import { redirect } from "next/navigation"
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic"
 export default async function ReplacementsPage({
   searchParams,
 }: {
-  searchParams: { tab?: string }
+  searchParams: { tab?: string; dateFilter?: string; sortOrder?: string }
 }) {
   const user = await getSession()
   if (!user) redirect("/login")
@@ -37,10 +38,15 @@ export default async function ReplacementsPage({
   ])
 
   // Batch 3: Low priority queries (admin-only features)
-  const [firefighters, pendingRequests, expiredReplacements] = await Promise.all([
+  const dateFilter = (searchParams.dateFilter as "all" | "upcoming" | "7days" | "30days") || "upcoming"
+  const sortOrder = (searchParams.sortOrder as "asc" | "desc") || "desc"
+  const [firefighters, pendingRequests, expiredReplacements, assignedReplacementsData] = await Promise.all([
     user.is_admin ? getAllFirefighters() : Promise.resolve([]),
     user.is_admin ? getPendingReplacementRequests() : Promise.resolve([]),
     user.is_admin ? getExpiredReplacements() : Promise.resolve([]),
+    user.is_admin
+      ? getAssignedReplacements(dateFilter, sortOrder)
+      : Promise.resolve({ replacements: [], unsentCount: 0 }), // Pass filters and get unsent count
   ])
 
   const initialTab = searchParams.tab || "available"
@@ -62,7 +68,9 @@ export default async function ReplacementsPage({
         pendingRequests={pendingRequests}
         userRequests={userRequests}
         expiredReplacements={expiredReplacements}
-        directAssignments={directAssignments} // Passed direct assignments to tabs
+        directAssignments={directAssignments}
+        assignedReplacements={assignedReplacementsData.replacements} // Pass replacements array
+        assignedUnsentCount={assignedReplacementsData.unsentCount} // Pass unsent count
         isAdmin={user.is_admin}
         userId={user.id}
         initialTab={initialTab}

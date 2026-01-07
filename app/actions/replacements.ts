@@ -1534,3 +1534,272 @@ export async function getReplacementsAdminActionCount() {
     return 0
   }
 }
+
+export async function getAssignedReplacements(
+  dateFilter: "all" | "upcoming" | "7days" | "30days" = "upcoming",
+  sortOrder: "asc" | "desc" = "asc",
+) {
+  try {
+    let replacements
+
+    // Base query parts
+    const baseSelect = `
+      SELECT 
+        r.*,
+        t.name as team_name,
+        t.color as team_color,
+        replaced_user.first_name as first_name,
+        replaced_user.last_name as last_name,
+        replacement_user.first_name as assigned_first_name,
+        replacement_user.last_name as assigned_last_name,
+        l.start_date as leave_start_date,
+        l.end_date as leave_end_date,
+        sender.first_name as sent_by_first_name,
+        sender.last_name as sent_by_last_name
+      FROM replacements r
+      LEFT JOIN teams t ON r.team_id = t.id
+      LEFT JOIN leaves l ON r.leave_id = l.id
+      LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+      INNER JOIN replacement_applications ra_approved 
+        ON r.id = ra_approved.replacement_id 
+        AND ra_approved.status = 'approved'
+      INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+      LEFT JOIN users sender ON r.notification_sent_by = sender.id
+    `
+
+    // Execute query based on filters
+    if (dateFilter === "all") {
+      if (sortOrder === "asc") {
+        replacements = await sql`
+          SELECT 
+            r.*,
+            t.name as team_name,
+            t.color as team_color,
+            replaced_user.first_name as first_name,
+            replaced_user.last_name as last_name,
+            replacement_user.first_name as assigned_first_name,
+            replacement_user.last_name as assigned_last_name,
+            l.start_date as leave_start_date,
+            l.end_date as leave_end_date,
+            sender.first_name as sent_by_first_name,
+            sender.last_name as sent_by_last_name
+          FROM replacements r
+          LEFT JOIN teams t ON r.team_id = t.id
+          LEFT JOIN leaves l ON r.leave_id = l.id
+          LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+          INNER JOIN replacement_applications ra_approved 
+            ON r.id = ra_approved.replacement_id 
+            AND ra_approved.status = 'approved'
+          INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+          LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          ORDER BY r.shift_date ASC, r.shift_type
+        `
+      } else {
+        replacements = await sql`
+          SELECT 
+            r.*,
+            t.name as team_name,
+            t.color as team_color,
+            replaced_user.first_name as first_name,
+            replaced_user.last_name as last_name,
+            replacement_user.first_name as assigned_first_name,
+            replacement_user.last_name as assigned_last_name,
+            l.start_date as leave_start_date,
+            l.end_date as leave_end_date,
+            sender.first_name as sent_by_first_name,
+            sender.last_name as sent_by_last_name
+          FROM replacements r
+          LEFT JOIN teams t ON r.team_id = t.id
+          LEFT JOIN leaves l ON r.leave_id = l.id
+          LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+          INNER JOIN replacement_applications ra_approved 
+            ON r.id = ra_approved.replacement_id 
+            AND ra_approved.status = 'approved'
+          INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+          LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          ORDER BY r.shift_date DESC, r.shift_type
+        `
+      }
+    } else if (dateFilter === "upcoming") {
+      if (sortOrder === "asc") {
+        replacements = await sql`
+          SELECT 
+            r.*,
+            t.name as team_name,
+            t.color as team_color,
+            replaced_user.first_name as first_name,
+            replaced_user.last_name as last_name,
+            replacement_user.first_name as assigned_first_name,
+            replacement_user.last_name as assigned_last_name,
+            l.start_date as leave_start_date,
+            l.end_date as leave_end_date,
+            sender.first_name as sent_by_first_name,
+            sender.last_name as sent_by_last_name
+          FROM replacements r
+          LEFT JOIN teams t ON r.team_id = t.id
+          LEFT JOIN leaves l ON r.leave_id = l.id
+          LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+          INNER JOIN replacement_applications ra_approved 
+            ON r.id = ra_approved.replacement_id 
+            AND ra_approved.status = 'approved'
+          INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+          LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          WHERE r.shift_date >= CURRENT_DATE
+          ORDER BY r.shift_date ASC, r.shift_type
+        `
+      } else {
+        replacements = await sql`
+          SELECT 
+            r.*,
+            t.name as team_name,
+            t.color as team_color,
+            replaced_user.first_name as first_name,
+            replaced_user.last_name as last_name,
+            replacement_user.first_name as assigned_first_name,
+            replacement_user.last_name as assigned_last_name,
+            l.start_date as leave_start_date,
+            l.end_date as leave_end_date,
+            sender.first_name as sent_by_first_name,
+            sender.last_name as sent_by_last_name
+          FROM replacements r
+          LEFT JOIN teams t ON r.team_id = t.id
+          LEFT JOIN leaves l ON r.leave_id = l.id
+          LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+          INNER JOIN replacement_applications ra_approved 
+            ON r.id = ra_approved.replacement_id 
+            AND ra_approved.status = 'approved'
+          INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+          LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          WHERE r.shift_date >= CURRENT_DATE
+          ORDER BY r.shift_date DESC, r.shift_type
+        `
+      }
+    } else if (dateFilter === "7days") {
+      if (sortOrder === "asc") {
+        replacements = await sql`
+          SELECT 
+            r.*,
+            t.name as team_name,
+            t.color as team_color,
+            replaced_user.first_name as first_name,
+            replaced_user.last_name as last_name,
+            replacement_user.first_name as assigned_first_name,
+            replacement_user.last_name as assigned_last_name,
+            l.start_date as leave_start_date,
+            l.end_date as leave_end_date,
+            sender.first_name as sent_by_first_name,
+            sender.last_name as sent_by_last_name
+          FROM replacements r
+          LEFT JOIN teams t ON r.team_id = t.id
+          LEFT JOIN leaves l ON r.leave_id = l.id
+          LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+          INNER JOIN replacement_applications ra_approved 
+            ON r.id = ra_approved.replacement_id 
+            AND ra_approved.status = 'approved'
+          INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+          LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          WHERE r.shift_date >= CURRENT_DATE - INTERVAL '7 days'
+          ORDER BY r.shift_date ASC, r.shift_type
+        `
+      } else {
+        replacements = await sql`
+          SELECT 
+            r.*,
+            t.name as team_name,
+            t.color as team_color,
+            replaced_user.first_name as first_name,
+            replaced_user.last_name as last_name,
+            replacement_user.first_name as assigned_first_name,
+            replacement_user.last_name as assigned_last_name,
+            l.start_date as leave_start_date,
+            l.end_date as leave_end_date,
+            sender.first_name as sent_by_first_name,
+            sender.last_name as sent_by_last_name
+          FROM replacements r
+          LEFT JOIN teams t ON r.team_id = t.id
+          LEFT JOIN leaves l ON r.leave_id = l.id
+          LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+          INNER JOIN replacement_applications ra_approved 
+            ON r.id = ra_approved.replacement_id 
+            AND ra_approved.status = 'approved'
+          INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+          LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          WHERE r.shift_date >= CURRENT_DATE - INTERVAL '7 days'
+          ORDER BY r.shift_date DESC, r.shift_type
+        `
+      }
+    } else {
+      // 30days
+      if (sortOrder === "asc") {
+        replacements = await sql`
+          SELECT 
+            r.*,
+            t.name as team_name,
+            t.color as team_color,
+            replaced_user.first_name as first_name,
+            replaced_user.last_name as last_name,
+            replacement_user.first_name as assigned_first_name,
+            replacement_user.last_name as assigned_last_name,
+            l.start_date as leave_start_date,
+            l.end_date as leave_end_date,
+            sender.first_name as sent_by_first_name,
+            sender.last_name as sent_by_last_name
+          FROM replacements r
+          LEFT JOIN teams t ON r.team_id = t.id
+          LEFT JOIN leaves l ON r.leave_id = l.id
+          LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+          INNER JOIN replacement_applications ra_approved 
+            ON r.id = ra_approved.replacement_id 
+            AND ra_approved.status = 'approved'
+          INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+          LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          WHERE r.shift_date >= CURRENT_DATE - INTERVAL '30 days'
+          ORDER BY r.shift_date ASC, r.shift_type
+        `
+      } else {
+        replacements = await sql`
+          SELECT 
+            r.*,
+            t.name as team_name,
+            t.color as team_color,
+            replaced_user.first_name as first_name,
+            replaced_user.last_name as last_name,
+            replacement_user.first_name as assigned_first_name,
+            replacement_user.last_name as assigned_last_name,
+            l.start_date as leave_start_date,
+            l.end_date as leave_end_date,
+            sender.first_name as sent_by_first_name,
+            sender.last_name as sent_by_last_name
+          FROM replacements r
+          LEFT JOIN teams t ON r.team_id = t.id
+          LEFT JOIN leaves l ON r.leave_id = l.id
+          LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+          INNER JOIN replacement_applications ra_approved 
+            ON r.id = ra_approved.replacement_id 
+            AND ra_approved.status = 'approved'
+          INNER JOIN users replacement_user ON ra_approved.applicant_id = replacement_user.id
+          LEFT JOIN users sender ON r.notification_sent_by = sender.id
+          WHERE r.shift_date >= CURRENT_DATE - INTERVAL '30 days'
+          ORDER BY r.shift_date DESC, r.shift_type
+        `
+      }
+    }
+
+    // Count total and unsent
+    const totalCount = replacements.length
+    const unsentCount = replacements.filter((r: any) => !r.notification_sent).length
+
+    return {
+      replacements,
+      totalCount,
+      unsentCount,
+    }
+  } catch (error) {
+    console.error("getAssignedReplacements: Error", error instanceof Error ? error.message : String(error))
+    return {
+      replacements: [],
+      totalCount: 0,
+      unsentCount: 0,
+    }
+  }
+}
