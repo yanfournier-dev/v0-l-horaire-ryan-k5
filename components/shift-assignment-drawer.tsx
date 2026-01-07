@@ -1289,7 +1289,7 @@ export function ShiftAssignmentDrawer({
               size="sm"
             >
               <UserPlus className="h-4 w-4 mr-1" />
-              Demander un remplacement
+              Ajouter un pompier supplémentaire
             </Button>
           </div>
 
@@ -1383,17 +1383,14 @@ export function ShiftAssignmentDrawer({
 
                     return (
                       <Card key={`replaced-${firefighter.id}`} className="border-green-300 bg-green-50/30">
-                        <CardContent className="p-4">
+                        <CardContent className="p-3">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium">
+                                <p className="font-medium truncate">
                                   {firefighter.first_name} {firefighter.last_name}
                                 </p>
                               </div>
-                              {firefighter.email && (
-                                <p className="text-xs text-muted-foreground">{firefighter.email}</p>
-                              )}
 
                               {(() => {
                                 if (!bankInfo) {
@@ -1419,7 +1416,10 @@ export function ShiftAssignmentDrawer({
 
                                 return (
                                   <div className="mt-2 pt-2 border-t">
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Banques de congé:</p>
+                                    {/* Changed text-xs to text-[11px] and added underline to match "Remplaçant X" style */}
+                                    <p className="text-[11px] font-medium text-muted-foreground mb-1 underline">
+                                      Banque de congé
+                                    </p>
                                     <div className="text-xs space-y-0.5">
                                       {bankInfo.leave_bank_1 && (
                                         <div>
@@ -1481,75 +1481,82 @@ export function ShiftAssignmentDrawer({
 
                               {replacement1 && (
                                 <div className="space-y-2">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
-                                      {replacement2 ? "Remplaçant 1" : "Remplaçant"}: {replacement1.first_name}{" "}
-                                      {replacement1.last_name}
-                                      {(() => {
-                                        const allR1Periods = replacementsForUser.filter(
-                                          (r) => r.replacement_order === 1,
-                                        )
-
-                                        if (allR1Periods.length > 1) {
-                                          // Multiple periods - R2 is in the middle
-                                          const timeRanges = allR1Periods
-                                            .map((period) => {
-                                              if (period.start_time && period.end_time) {
-                                                return `${period.start_time.slice(0, 5)}-${period.end_time.slice(0, 5)}`
-                                              }
-                                              return null
-                                            })
-                                            .filter(Boolean)
-                                            .join(", ")
-
-                                          return timeRanges ? (
-                                            <span> ({timeRanges})</span>
-                                          ) : (
-                                            <span> (Quart complet)</span>
+                                  <div className="space-y-1">
+                                    <div className="text-[11px] text-muted-foreground font-medium underline">
+                                      {replacement2 ? "Remplaçant 1" : "Remplaçant"}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[13px] text-orange-600 font-medium truncate">
+                                        {replacement1.first_name} {replacement1.last_name}
+                                        {(() => {
+                                          const allR1Periods = replacementsForUser.filter(
+                                            (r) => r.replacement_order === 1,
                                           )
-                                        }
 
-                                        // Single period - normal display
-                                        if (replacement1.start_time && replacement1.end_time) {
-                                          return (
-                                            <span>
-                                              {" "}
-                                              ({replacement1.start_time.slice(0, 5)}-{replacement1.end_time.slice(0, 5)}
-                                              )
-                                            </span>
-                                          )
-                                        }
-                                        return <span> (Quart complet)</span>
-                                      })()}
-                                    </Badge>
+                                          if (allR1Periods.length > 1) {
+                                            // Multiple periods - R2 is in the middle
+                                            const timeRanges = allR1Periods
+                                              .map((period) => {
+                                                if (period.start_time && period.end_time) {
+                                                  return `${period.start_time.slice(0, 5)}-${period.end_time.slice(0, 5)}`
+                                                }
+                                                return null
+                                              })
+                                              .filter(Boolean)
+                                              .join(", ")
 
-                                    {replacement1.is_direct_assignment && (
-                                      <span className="text-orange-500 text-lg" title="Assignation directe">
-                                        ⚡
+                                            return timeRanges ? (
+                                              <span className="text-[11px]"> ({timeRanges})</span>
+                                            ) : (
+                                              <span className="text-[11px]"> (Quart complet)</span>
+                                            )
+                                          }
+
+                                          // Single period - normal display
+                                          if (replacement1.start_time && replacement1.end_time) {
+                                            return (
+                                              <span className="text-[11px]">
+                                                {" "}
+                                                ({replacement1.start_time.slice(0, 5)}-
+                                                {replacement1.end_time.slice(0, 5)})
+                                              </span>
+                                            )
+                                          }
+                                          return <span className="text-[11px]"> (Quart complet)</span>
+                                        })()}
                                       </span>
-                                    )}
 
-                                    {isAdmin && replacement1.replacement_id && (
-                                      <DeleteReplacementButton
-                                        replacementId={replacement1.replacement_id}
-                                        onSuccess={loadData}
-                                        hasAssignedCandidate={!!replacement1.user_id}
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      />
-                                    )}
-                                    {isAdmin && !replacement1.replacement_id && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleRemoveReplacement1(firefighter.id)}
-                                        disabled={isLoading || loadingReplacements}
-                                        className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent"
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    )}
+                                      {replacement1.is_direct_assignment && (
+                                        <span
+                                          className="text-orange-500 text-lg flex-shrink-0"
+                                          title="Assignation directe"
+                                        >
+                                          ⚡
+                                        </span>
+                                      )}
+
+                                      {isAdmin && replacement1.replacement_id && (
+                                        <DeleteReplacementButton
+                                          replacementId={replacement1.replacement_id}
+                                          onSuccess={loadData}
+                                          hasAssignedCandidate={!!replacement1.user_id}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                                        />
+                                      )}
+                                      {isAdmin && !replacement1.replacement_id && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleRemoveReplacement1(firefighter.id)}
+                                          disabled={isLoading || loadingReplacements}
+                                          className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent flex-shrink-0"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
 
                                   {isAdmin && replacement1.user_id && (
@@ -1622,75 +1629,55 @@ export function ShiftAssignmentDrawer({
                               )}
 
                               {replacement2 && (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
-                                    {replacement1 ? "Remplaçant 2" : "Remplaçant"}: {replacement2.first_name}{" "}
-                                    {replacement2.last_name}
-                                    {replacement2.start_time && replacement2.end_time && (
-                                      <span>
-                                        {" "}
-                                        ({replacement2.start_time.slice(0, 5)}-{replacement2.end_time.slice(0, 5)})
+                                <div className="space-y-1">
+                                  <div className="text-[11px] text-muted-foreground font-medium underline">
+                                    {replacement1 ? "Remplaçant 2" : "Remplaçant"}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[13px] text-orange-600 font-medium truncate">
+                                      {replacement2.first_name} {replacement2.last_name}
+                                      {replacement2.start_time && replacement2.end_time && (
+                                        <span className="text-[11px]">
+                                          {" "}
+                                          ({replacement2.start_time.slice(0, 5)}-{replacement2.end_time.slice(0, 5)})
+                                        </span>
+                                      )}
+                                    </span>
+
+                                    {replacement2.is_direct_assignment && (
+                                      <span
+                                        className="text-orange-500 text-lg flex-shrink-0"
+                                        title="Assignation directe"
+                                      >
+                                        ⚡
                                       </span>
                                     )}
-                                  </Badge>
 
-                                  {replacement2.is_direct_assignment && (
-                                    <span className="text-orange-500 text-lg" title="Assignation directe">
-                                      ⚡
-                                    </span>
-                                  )}
-
-                                  {isAdmin && replacement2.replacement_id && (
-                                    <DeleteReplacementButton
-                                      replacementId={replacement2.replacement_id}
-                                      onSuccess={loadData}
-                                      hasAssignedCandidate={!!replacement2.user_id}
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    />
-                                  )}
-                                  {isAdmin && !replacement2.replacement_id && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleRemoveReplacement2(firefighter.id)}
-                                      disabled={isLoading || loadingReplacements}
-                                      className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  )}
+                                    {isAdmin && replacement2.replacement_id && (
+                                      <DeleteReplacementButton
+                                        replacementId={replacement2.replacement_id}
+                                        onSuccess={loadData}
+                                        hasAssignedCandidate={!!replacement2.user_id}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                                      />
+                                    )}
+                                    {isAdmin && !replacement2.replacement_id && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleRemoveReplacement2(firefighter.id)}
+                                        disabled={isLoading || loadingReplacements}
+                                        className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent flex-shrink-0"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               )}
-
-                              {replacement1 && !replacement2 && isAdmin && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedReplacementForSecond({
-                                      replacedFirefighter: {
-                                        id: firefighter.id,
-                                        first_name: firefighter.first_name,
-                                        last_name: firefighter.last_name,
-                                      },
-                                      firstReplacementUserId: replacement1.user_id,
-                                    })
-                                    setShowSecondReplacementDialog(true)
-                                  }}
-                                  disabled={isLoading || loadingReplacements}
-                                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                                >
-                                  + Remplaçant 2
-                                </Button>
-                              )}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={getRoleBadgeColor(firefighter.role)}>
-                              {getRoleLabel(firefighter.role)}
-                            </Badge>
                           </div>
                         </CardContent>
                       </Card>
@@ -1793,18 +1780,18 @@ export function ShiftAssignmentDrawer({
                                   : ""
                         }
                       >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium">{displayName}</p>
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <p className="font-medium truncate">{displayName}</p>
                                 {assignment.is_extra && !isExtraRequest && (
-                                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-xs">
+                                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0">
                                     Supplémentaire
                                   </Badge>
                                 )}
                                 {isExtraRequest && (
-                                  <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
+                                  <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-[10px] px-1.5 py-0">
                                     Demande en cours
                                   </Badge>
                                 )}
@@ -1812,46 +1799,43 @@ export function ShiftAssignmentDrawer({
                                   assignment.is_partial &&
                                   assignment.start_time &&
                                   assignment.end_time && (
-                                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-xs">
+                                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0 truncate max-w-full">
                                       Partiel: {assignment.start_time.slice(0, 5)} - {assignment.end_time.slice(0, 5)}
                                     </Badge>
                                   )}
                                 {isReplacementFirefighter && (
-                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-[10px] px-1.5 py-0">
                                     <span className="text-green-700 mr-1">✓</span>
                                     Remplaçant
                                   </Badge>
                                 )}
                                 {isDirectAssignment && (
-                                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
-                                    <Zap className="h-3 w-3 mr-1" /> Assignation directe {/* Zap icon added */}
+                                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-[10px] px-1.5 py-0">
+                                    <Zap className="h-3 w-3 mr-1" /> Assignation directe
                                   </Badge>
                                 )}
                                 {isDirectAssignment &&
                                   assignment.is_partial &&
                                   assignment.start_time &&
                                   assignment.end_time && (
-                                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
+                                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-[10px] px-1.5 py-0 truncate max-w-full">
                                       Partiel: {assignment.start_time.slice(0, 5)} - {assignment.end_time.slice(0, 5)}
                                     </Badge>
                                   )}
                               </div>
-                              {!isExtraRequest && assignment.email && (
-                                <p className="text-xs text-muted-foreground">{assignment.email}</p>
-                              )}
                               {isReplacementFirefighter && assignment.replaced_first_name && (
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <p className="text-[11px] text-muted-foreground truncate">
                                   Remplace {assignment.replaced_first_name} {assignment.replaced_last_name}
                                 </p>
                               )}
                               {isDirectAssignment && assignment.replaced_name && (
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <p className="text-[11px] text-muted-foreground truncate">
                                   Remplace {assignment.replaced_name}
                                 </p>
                               )}
                               {hasExchange && (
-                                <div className="mt-2">
-                                  <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs">
+                                <div className="mt-1.5">
+                                  <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-[10px] px-1.5 py-0 truncate max-w-full">
                                     ↔ Échange avec {exchangePartner}
                                     {exchangeShiftInfo}
                                     {exchangePartialTimes && ` • ${exchangePartialTimes}`}
@@ -1859,15 +1843,15 @@ export function ShiftAssignmentDrawer({
                                 </div>
                               )}
                               {hasPartialLeave && (
-                                <div className="mt-2">
-                                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
+                                <div className="mt-1.5">
+                                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-[10px] px-1.5 py-0">
                                     Congé partiel: {firefighterLeave.start_time?.slice(0, 5) || "N/A"} -{" "}
                                     {firefighterLeave.end_time?.slice(0, 5) || "N/A"}
                                   </Badge>
                                 </div>
                               )}
                               {hasPartialReplacement && (
-                                <div className="mt-2">
+                                <div className="mt-1.5">
                                   <Badge
                                     className={`${
                                       replacement.status === "assigned"
@@ -1875,7 +1859,7 @@ export function ShiftAssignmentDrawer({
                                         : replacement.status === "pending"
                                           ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
                                           : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                                    } text-xs`}
+                                    } text-[10px] px-1.5 py-0`}
                                   >
                                     {replacement.status === "assigned" ? (
                                       <span className="text-green-700 mr-1">✓</span>
@@ -1890,8 +1874,8 @@ export function ShiftAssignmentDrawer({
                                 </div>
                               )}
                               {isReplacementAssigned && assignedFirefighterName && (
-                                <div className="mt-2 flex items-center gap-2">
-                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                                <div className="mt-1.5 flex items-center gap-2">
+                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-[10px] px-1.5 py-0">
                                     <span className="text-green-700 mr-1">✓</span>
                                     Remplacé par {assignedFirefighterName}
                                   </Badge>
@@ -1911,7 +1895,7 @@ export function ShiftAssignmentDrawer({
                                 </div>
                               )}
                               {hasReplacement && (
-                                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                                   {!isReplacementAssigned && (
                                     <ApplyForReplacementButton
                                       replacementId={replacement.id}
@@ -1930,7 +1914,7 @@ export function ShiftAssignmentDrawer({
                                         onClick={() => {
                                           router.push(`/dashboard/replacements/${replacement.id}`)
                                         }}
-                                        className="text-foreground hover:bg-gray-50"
+                                        className="text-foreground hover:bg-gray-50 h-8 text-xs"
                                       >
                                         <Users className="h-4 w-4 mr-1" />
                                         Voir les candidats ({replacement.applications.length})
@@ -1962,7 +1946,7 @@ export function ShiftAssignmentDrawer({
                                         setSelectedReplacementId(replacement.id)
                                         setShowAddManualApplicationDialog(true)
                                       }}
-                                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                      className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 text-xs"
                                     >
                                       <UserPlus className="h-4 w-4 mr-1" />
                                       Ajouter candidat
@@ -1972,7 +1956,7 @@ export function ShiftAssignmentDrawer({
                               )}
 
                               {isDirectAssignment && isAdmin && (
-                                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -1984,7 +1968,7 @@ export function ShiftAssignmentDrawer({
                                       )
                                     } // Pass replacement_order
                                     disabled={isLoading || loadingReplacements}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 text-xs"
                                   >
                                     <Trash2 className="h-3 w-3" />
                                     Retirer
@@ -1993,7 +1977,7 @@ export function ShiftAssignmentDrawer({
                                 </div>
                               )}
                               {!isReplacementFirefighter && !isDirectAssignment && !assignment.is_extra && isAdmin && (
-                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                                   {!hasReplacement && (
                                     <>
                                       <Button
@@ -2007,7 +1991,7 @@ export function ShiftAssignmentDrawer({
                                           })
                                         }
                                         disabled={isLoading || loadingReplacements}
-                                        className="text-orange-600 hover:bg-orange-50"
+                                        className="text-orange-600 hover:bg-orange-50 h-8 text-xs"
                                       >
                                         Remplacement
                                       </Button>
@@ -2019,7 +2003,7 @@ export function ShiftAssignmentDrawer({
                                           setShowDirectAssignmentDialog(true)
                                         }}
                                         disabled={isLoading || loadingReplacements}
-                                        className="text-orange-600 hover:bg-orange-50"
+                                        className="text-orange-600 hover:bg-orange-50 h-8 text-xs"
                                       >
                                         Assigner directement
                                       </Button>
@@ -2030,7 +2014,7 @@ export function ShiftAssignmentDrawer({
                               )}
                               {/* Lt/Cpt buttons for ALL firefighters (including replacements and direct assignments) */}
                               {isAdmin && !isExtraRequest && (
-                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                                   {assignment.is_acting_lieutenant ? (
                                     <Button
                                       size="sm"
@@ -2039,7 +2023,7 @@ export function ShiftAssignmentDrawer({
                                         handleRemoveLieutenant(assignment.user_id || assignment.id, displayName)
                                       }
                                       disabled={isLoading || loadingReplacements}
-                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 text-xs"
                                     >
                                       Retirer Lt
                                     </Button>
@@ -2051,7 +2035,7 @@ export function ShiftAssignmentDrawer({
                                         handleSetLieutenant(assignment.user_id || assignment.id, displayName)
                                       }
                                       disabled={isLoading || loadingReplacements}
-                                      className="text-cyan-600 hover:bg-cyan-50"
+                                      className="text-cyan-600 hover:bg-cyan-50 h-8 text-xs"
                                     >
                                       Désigner Lt
                                     </Button>
@@ -2064,7 +2048,7 @@ export function ShiftAssignmentDrawer({
                                         handleRemoveCaptain(assignment.user_id || assignment.id, displayName)
                                       }
                                       disabled={isLoading || loadingReplacements}
-                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 text-xs"
                                     >
                                       Retirer Cpt
                                     </Button>
@@ -2074,7 +2058,7 @@ export function ShiftAssignmentDrawer({
                                       variant="outline"
                                       onClick={() => handleSetCaptain(assignment.user_id || assignment.id, displayName)}
                                       disabled={isLoading || loadingReplacements}
-                                      className="text-cyan-600 hover:bg-cyan-50"
+                                      className="text-cyan-600 hover:bg-cyan-50 h-8 text-xs"
                                     >
                                       Désigner Cpt
                                     </Button>
@@ -2083,16 +2067,13 @@ export function ShiftAssignmentDrawer({
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge className={getRoleBadgeColor(assignment.role)}>
-                                {getRoleLabel(assignment.role)}
-                              </Badge>
                               {assignment.is_extra && !isExtraRequest && (
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleRemoveExtraFirefighter(assignment.user_id, displayName)}
                                   disabled={isLoading || loadingReplacements}
-                                  className="text-red-600 hover:text-red-600 hover:bg-red-50"
+                                  className="text-red-600 hover:text-red-600 hover:bg-red-50 h-8 w-8"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -2107,23 +2088,22 @@ export function ShiftAssignmentDrawer({
                   // Case 3: Firefighter is not assigned and has no replacements - show basic card
                   return (
                     <Card key={`unassigned-${firefighter.id}`}>
-                      <CardContent className="p-4">
+                      <CardContent className="p-3">
                         <div className="flex items-center justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-medium">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                              <p className="font-medium truncate">
                                 {firefighter.first_name} {firefighter.last_name}
                               </p>
                             </div>
-                            {firefighter.email && <p className="text-xs text-muted-foreground">{firefighter.email}</p>}
                             {isAdmin && (
-                              <div className="mt-2 grid grid-cols-2 gap-2">
+                              <div className="grid grid-cols-2 gap-1.5">
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => setSelectedFirefighter(firefighter)}
                                   disabled={isLoading || loadingReplacements}
-                                  className="text-orange-600 hover:bg-orange-50"
+                                  className="text-orange-600 hover:bg-orange-50 h-8 text-xs"
                                 >
                                   Remplacement
                                 </Button>
@@ -2135,17 +2115,12 @@ export function ShiftAssignmentDrawer({
                                     setShowDirectAssignmentDialog(true)
                                   }}
                                   disabled={isLoading || loadingReplacements}
-                                  className="text-orange-600 hover:bg-orange-50"
+                                  className="text-orange-600 hover:bg-orange-50 h-8 text-xs"
                                 >
                                   Assigner directement
                                 </Button>
                               </div>
                             )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={getRoleBadgeColor(firefighter.role)}>
-                              {getRoleLabel(firefighter.role)}
-                            </Badge>
                           </div>
                         </div>
                       </CardContent>
