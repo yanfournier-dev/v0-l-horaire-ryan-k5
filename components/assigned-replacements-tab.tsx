@@ -7,14 +7,39 @@ import { Button } from "@/components/ui/button"
 import { Bell, Check, Send, ArrowUpDown } from "lucide-react"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { formatShortDate, formatLocalDateTime } from "@/lib/date-utils"
-import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
-import { sendAssignmentNotification } from "@/app/actions/send-assignment-notification"
+import { sendAssignmentNotification } from "@/app/actions/send-assignment-notification" // Updated import path
 import { useRouter } from "next/navigation"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Link from "next/link"
+import { EditReplacementAssignmentButton } from "@/components/edit-replacement-assignment-button"
 
 interface AssignedReplacementsTabProps {
   assignedReplacements: any[]
   unsentCount: number
+}
+
+function formatCreatedAt(createdAt: string) {
+  const date = new Date(createdAt)
+  const now = new Date()
+  const diffTime = Math.abs(now.getTime() - date.getTime())
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) {
+    return `le ${date.toLocaleDateString("fr-CA")} à ${date.toLocaleTimeString("fr-CA", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`
+  } else if (diffDays < 30) {
+    return `le ${date.toLocaleDateString("fr-CA", {
+      month: "short",
+      day: "numeric",
+    })} à ${date.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}`
+  } else {
+    return `le ${date.toLocaleDateString("fr-CA", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })}`
+  }
 }
 
 export function AssignedReplacementsTab({
@@ -90,18 +115,6 @@ export function AssignedReplacementsTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          <Select value={dateFilter} onValueChange={handleDateFilterChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="upcoming">À venir</SelectItem>
-              <SelectItem value="7days">7 derniers jours</SelectItem>
-              <SelectItem value="30days">30 derniers jours</SelectItem>
-              <SelectItem value="all">Tous</SelectItem>
-            </SelectContent>
-          </Select>
-
           <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>
             Tous ({assignedReplacements.length})
           </Button>
@@ -144,18 +157,17 @@ export function AssignedReplacementsTab({
         <div className="space-y-2">
           {filteredReplacements.map((replacement: any) => (
             <Card key={replacement.id} className="overflow-hidden">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{formatShortDate(replacement.shift_date)}</span>
-                      <Badge className={`${getShiftTypeColor(replacement.shift_type)} text-xs`}>
+              <CardContent className="p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium whitespace-nowrap">{formatShortDate(replacement.shift_date)}</span>
+                      <Badge className={`${getShiftTypeColor(replacement.shift_type)} text-xs shrink-0`}>
                         {getShiftTypeLabel(replacement.shift_type).split(" ")[0]}
                       </Badge>
-                      <PartTimeTeamBadge shiftDate={replacement.shift_date} />
                       <span className="text-sm text-muted-foreground">•</span>
                       <span className="text-sm">
-                        {replacement.replaced_first_name} {replacement.replaced_last_name}
+                        {replacement.first_name} {replacement.last_name}
                       </span>
                       <span className="text-sm text-muted-foreground">→</span>
                       <span className="text-sm font-medium text-blue-600">
@@ -163,54 +175,70 @@ export function AssignedReplacementsTab({
                       </span>
                     </div>
 
-                    {replacement.notification_sent ? (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Check className="h-4 w-4 text-green-600" />
-                        <span className="text-green-600 font-medium">
-                          Notification envoyée le {formatLocalDateTime(replacement.notification_sent_at)}
-                        </span>
-                        {replacement.notification_types_sent && replacement.notification_types_sent.length > 0 && (
-                          <>
-                            <span className="text-muted-foreground">•</span>
-                            <span className="text-muted-foreground">
-                              {replacement.notification_types_sent
-                                .map((type: string) => {
-                                  if (type === "email") return "Email"
-                                  if (type === "sms") return "SMS"
-                                  if (type === "telegram") return "Telegram"
-                                  if (type === "app") return "App"
-                                  return type
-                                })
-                                .join(", ")}
-                            </span>
-                          </>
-                        )}
-                        {replacement.sent_by_first_name && (
-                          <>
-                            <span className="text-muted-foreground">•</span>
-                            <span className="text-muted-foreground">
-                              Par {replacement.sent_by_first_name} {replacement.sent_by_last_name}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Bell className="h-4 w-4 text-orange-600" />
-                        <span className="text-orange-600 font-medium">Notification non envoyée</span>
-                      </div>
-                    )}
+                    <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                      Créé {formatCreatedAt(replacement.created_at)}
+                    </div>
+
+                    <div className="mt-1.5">
+                      {replacement.notification_sent ? (
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                          <span className="text-green-600 font-medium">
+                            Notification envoyée {formatLocalDateTime(replacement.notification_sent_at)}
+                          </span>
+                          {replacement.notification_types_sent && replacement.notification_types_sent.length > 0 && (
+                            <>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="text-muted-foreground">
+                                {replacement.notification_types_sent
+                                  .map((type: string) => {
+                                    if (type === "email") return "Email"
+                                    if (type === "sms") return "SMS"
+                                    if (type === "telegram") return "Telegram"
+                                    if (type === "app") return "App"
+                                    return type
+                                  })
+                                  .join(", ")}
+                              </span>
+                            </>
+                          )}
+                          {replacement.sent_by_first_name && (
+                            <>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="text-muted-foreground">
+                                Par {replacement.sent_by_first_name} {replacement.sent_by_last_name}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <Bell className="h-3.5 w-3.5 text-orange-600" />
+                          <span className="text-orange-600 font-medium">Notification non envoyée</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
+                  <div className="flex gap-0.5 shrink-0">
+                    <Link href={`/dashboard/replacements/${replacement.id}`}>
+                      <Button variant="outline" size="sm" className="h-7 text-xs px-2 bg-transparent">
+                        Voir ({replacement.candidate_count || 0})
+                      </Button>
+                    </Link>
+
+                    <EditReplacementAssignmentButton replacementId={replacement.id} />
+
                     {!replacement.notification_sent && (
                       <Button
+                        variant="default"
+                        size="sm"
+                        className="h-7 text-xs px-2"
                         onClick={() => handleSendNotification(replacement.id)}
                         disabled={sendingIds.has(replacement.id)}
-                        className="gap-2"
                       >
-                        <Send className="h-4 w-4" />
-                        {sendingIds.has(replacement.id) ? "Envoi..." : "Envoyer la notification"}
+                        <Send className="h-3 w-3 mr-1" />
+                        Envoyer
                       </Button>
                     )}
                   </div>
