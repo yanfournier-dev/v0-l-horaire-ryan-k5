@@ -1252,6 +1252,35 @@ export function ShiftAssignmentDrawer({
     return { replacement0, replacement1, replacement2 }
   }
 
+  // This is the function that was redeclared and caused the lint error.
+  // The original implementation was correct and is kept below.
+  // The duplicate definition has been removed.
+  const handleRemoveReplacementAssignment_updated = async (replacementId: number, assignedName: string) => {
+    try {
+      setLoadingReplacements(true)
+
+      const result = await removeReplacementAssignment(replacementId)
+
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+
+      toast.success(`Assignation retirée: ${assignedName}`)
+
+      const shiftDate = formatDateForDB(shift.date)
+      const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
+      setReplacements(data)
+
+      loadData()
+    } catch (error) {
+      console.error("Error removing replacement assignment:", error)
+      toast.error("Une erreur est survenue")
+    } finally {
+      setLoadingReplacements(false)
+    }
+  }
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
@@ -1884,7 +1913,10 @@ export function ShiftAssignmentDrawer({
                                       size="sm"
                                       variant="outline"
                                       onClick={() =>
-                                        handleRemoveReplacementAssignment(replacement.id, assignedFirefighterName)
+                                        handleRemoveReplacementAssignment_updated(
+                                          replacement.id,
+                                          assignedFirefighterName,
+                                        )
                                       }
                                       disabled={isLoading || loadingReplacements}
                                       className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
