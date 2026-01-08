@@ -680,7 +680,7 @@ export async function rejectApplication(applicationId: number) {
       applicantId,
       "Candidature rejetée",
       "Votre candidature pour un remplacement a été rejetée.",
-      "application_rejected",
+      "replacement_rejected",
       null,
       null,
     )
