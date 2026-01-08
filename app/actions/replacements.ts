@@ -536,11 +536,30 @@ export async function approveApplication(
       WHERE id = ${applicationId}
     `
 
+    const rejectedCandidates = await db`
+      SELECT applicant_id
+      FROM replacement_applications
+      WHERE replacement_id = ${replacementId} AND id != ${applicationId} AND status = 'pending'
+    `
+
     await db`
       UPDATE replacement_applications
       SET status = 'rejected'
       WHERE replacement_id = ${replacementId} AND id != ${applicationId}
     `
+
+    if (rejectedCandidates.length > 0) {
+      for (const candidate of rejectedCandidates) {
+        await createNotification(
+          candidate.applicant_id,
+          "Candidature rejetée",
+          "Votre candidature pour un remplacement a été rejetée.",
+          "application_rejected",
+          null,
+          null,
+        )
+      }
+    }
 
     await db`
       UPDATE replacements
