@@ -635,8 +635,17 @@ export async function approveApplication(
 }
 
 export async function rejectApplication(applicationId: number) {
+  console.log("[v0] rejectApplication called for application ID:", applicationId)
+
   const user = await getSession()
-  if (!user?.is_admin) {
+
+  if (!user) {
+    console.log("[v0] rejectApplication: No user session found")
+    return { error: "Non autorisé" }
+  }
+
+  if (!user.is_admin) {
+    console.log("[v0] rejectApplication: User is not admin")
     return { error: "Non autorisé" }
   }
 
@@ -646,20 +655,24 @@ export async function rejectApplication(applicationId: number) {
       disableWarningInBrowsers: true,
     })
 
+    console.log("[v0] rejectApplication: Fetching applicant info...")
     const appResult = await db`
       SELECT applicant_id FROM replacement_applications WHERE id = ${applicationId}
     `
 
     if (appResult.length === 0) {
+      console.log("[v0] rejectApplication: Application not found")
       return { error: "Candidature non trouvée" }
     }
 
     const applicantId = appResult[0].applicant_id
+    console.log("[v0] rejectApplication: Applicant ID:", applicantId)
 
     const applicantInfo = await db`
       SELECT first_name, last_name FROM users WHERE id = ${applicantId}
     `
 
+    console.log("[v0] rejectApplication: Updating application status...")
     await db`
       UPDATE replacement_applications
       SET status = 'rejected', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
@@ -667,6 +680,7 @@ export async function rejectApplication(applicationId: number) {
     `
 
     if (applicantInfo.length > 0) {
+      console.log("[v0] rejectApplication: Creating audit log...")
       await createAuditLog({
         userId: user.id,
         actionType: "REPLACEMENT_REJECTED",
@@ -676,6 +690,7 @@ export async function rejectApplication(applicationId: number) {
       })
     }
 
+    console.log("[v0] rejectApplication: Creating notification for user:", applicantId)
     await createNotification(
       applicantId,
       "Candidature rejetée",
@@ -684,6 +699,7 @@ export async function rejectApplication(applicationId: number) {
       null,
       null,
     )
+    console.log("[v0] rejectApplication: Notification created successfully")
 
     try {
       invalidateCache()
