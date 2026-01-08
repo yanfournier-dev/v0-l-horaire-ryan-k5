@@ -138,10 +138,11 @@ export function AuditLogsTable({ logs, pagination }: AuditLogsTableProps) {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
+
     return new Intl.DateTimeFormat("fr-CA", {
-      year: "numeric",
-      month: "short",
       day: "numeric",
+      month: "short",
+      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
       timeZone: "America/Toronto",
