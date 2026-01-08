@@ -130,7 +130,7 @@ export async function getAuditLogs(options: {
         al.new_values,
         al.description,
         al.ip_address,
-        (al.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Toronto') as created_at,
+        al.created_at,
         u.first_name,
         u.last_name,
         u.email
