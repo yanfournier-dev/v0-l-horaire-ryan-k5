@@ -550,13 +550,14 @@ export async function approveApplication(
 
     if (rejectedCandidates.length > 0) {
       for (const candidate of rejectedCandidates) {
+        // FIX: Changed notification type from "application_rejected" to "replacement_rejected" and added relatedId
         await createNotification(
           candidate.applicant_id,
           "Candidature rejetée",
           "Votre candidature pour un remplacement a été rejetée.",
-          "application_rejected",
-          null,
-          null,
+          "replacement_rejected",
+          replacementId, // Pass the replacement ID here
+          "replacement",
         )
       }
     }
