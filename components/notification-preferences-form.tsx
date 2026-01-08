@@ -20,7 +20,6 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
     notify_replacement_available: initialPreferences?.notify_replacement_available ?? false,
     notify_replacement_accepted: initialPreferences?.notify_replacement_accepted ?? false,
     notify_replacement_rejected: initialPreferences?.notify_replacement_rejected ?? false,
-    notify_schedule_change: initialPreferences?.notify_schedule_change ?? false,
   })
 
   const [saving, setSaving] = useState(false)
@@ -135,20 +134,6 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               id="notify_replacement_rejected"
               checked={preferences.notify_replacement_rejected}
               onCheckedChange={(checked) => handleToggle("notify_replacement_rejected", checked)}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="notify_schedule_change" className="font-medium">
-                Changements d'horaire
-              </Label>
-              <p className="text-sm text-muted-foreground">Quand votre horaire est modifié</p>
-            </div>
-            <Switch
-              id="notify_schedule_change"
-              checked={preferences.notify_schedule_change}
-              onCheckedChange={(checked) => handleToggle("notify_schedule_change", checked)}
             />
           </div>
         </div>

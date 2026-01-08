@@ -163,7 +163,6 @@ export async function createNotification(
       replacement_available: "notify_replacement_available",
       replacement_accepted: "notify_replacement_accepted",
       replacement_rejected: "notify_replacement_rejected",
-      schedule_change: "notify_schedule_change",
       application_approved: "notify_replacement_accepted",
       application_rejected: "notify_replacement_rejected",
       replacement_approved: "notify_replacement_accepted",
@@ -386,10 +385,7 @@ async function sendEmailNotification(
       }
       break
 
-    case "schedule_change":
-      // Schedule change notifications don't need specific email templates
-      // The message is already descriptive enough
-      break
+    // This notification type is no longer supported
   }
 
   if (emailContent) {
@@ -428,7 +424,6 @@ export async function updateUserPreferences(
     notify_replacement_available?: boolean
     notify_replacement_accepted?: boolean
     notify_replacement_rejected?: boolean
-    notify_schedule_change?: boolean
   },
 ) {
   const user = await getSession()
@@ -451,16 +446,14 @@ export async function updateUserPreferences(
           enable_email,
           notify_replacement_available,
           notify_replacement_accepted,
-          notify_replacement_rejected,
-          notify_schedule_change
+          notify_replacement_rejected
         ) VALUES (
           ${userId},
           ${preferences.enable_app ?? true},
           ${preferences.enable_email ?? false},
           ${preferences.notify_replacement_available ?? false},
           ${preferences.notify_replacement_accepted ?? false},
-          ${preferences.notify_replacement_rejected ?? false},
-          ${preferences.notify_schedule_change ?? false}
+          ${preferences.notify_replacement_rejected ?? false}
         )
       `
     } else {
@@ -472,7 +465,6 @@ export async function updateUserPreferences(
           notify_replacement_available = ${preferences.notify_replacement_available ?? existing[0].notify_replacement_available},
           notify_replacement_accepted = ${preferences.notify_replacement_accepted ?? existing[0].notify_replacement_accepted},
           notify_replacement_rejected = ${preferences.notify_replacement_rejected ?? existing[0].notify_replacement_rejected},
-          notify_schedule_change = ${preferences.notify_schedule_change ?? existing[0].notify_schedule_change},
           updated_at = CURRENT_TIMESTAMP
         WHERE user_id = ${userId}
       `
