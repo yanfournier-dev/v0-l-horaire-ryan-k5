@@ -657,7 +657,7 @@ export async function rejectApplication(applicationId: number) {
 
     console.log("[v0] rejectApplication: Fetching applicant info...")
     const appResult = await db`
-      SELECT applicant_id FROM replacement_applications WHERE id = ${applicationId}
+      SELECT applicant_id, replacement_id FROM replacement_applications WHERE id = ${applicationId}
     `
 
     if (appResult.length === 0) {
@@ -666,6 +666,7 @@ export async function rejectApplication(applicationId: number) {
     }
 
     const applicantId = appResult[0].applicant_id
+    const replacementId = appResult[0].replacement_id
     console.log("[v0] rejectApplication: Applicant ID:", applicantId)
 
     const applicantInfo = await db`
@@ -696,8 +697,8 @@ export async function rejectApplication(applicationId: number) {
       "Candidature rejetée",
       "Votre candidature pour un remplacement a été rejetée.",
       "replacement_rejected",
-      null,
-      null,
+      replacementId, // Pass the replacement ID here
+      "replacement",
     )
     console.log("[v0] rejectApplication: Notification created successfully")
 
