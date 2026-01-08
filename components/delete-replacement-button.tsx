@@ -37,8 +37,6 @@ export function DeleteReplacementButton({
   const router = useRouter()
 
   const handleDelete = async () => {
-    console.log("[v0] DeleteReplacementButton - handleDelete called, hasAssignedCandidate:", hasAssignedCandidate)
-
     if (isDeleting) return
 
     setIsDeleting(true)
@@ -48,14 +46,10 @@ export function DeleteReplacementButton({
       let result
 
       if (hasAssignedCandidate) {
-        console.log("[v0] DeleteReplacementButton - calling removeReplacementAssignment")
         result = await removeReplacementAssignment(replacementId)
       } else {
-        console.log("[v0] DeleteReplacementButton - calling deleteReplacement")
         result = await deleteReplacement(replacementId)
       }
-
-      console.log("[v0] DeleteReplacementButton - result:", JSON.stringify(result))
 
       if (result.error) {
         if (result.isRateLimit) {
@@ -68,14 +62,9 @@ export function DeleteReplacementButton({
         alert(result.error)
         setIsDeleting(false)
       } else {
-        console.log("[v0] DeleteReplacementButton - success, onSuccess exists:", !!onSuccess)
-
         if (onSuccess) {
-          console.log("[v0] DeleteReplacementButton - calling onSuccess (loadData)")
           await onSuccess()
-          console.log("[v0] DeleteReplacementButton - onSuccess completed")
         } else {
-          console.log("[v0] DeleteReplacementButton - no onSuccess, calling router.refresh()")
           router.refresh()
         }
 

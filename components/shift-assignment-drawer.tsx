@@ -194,6 +194,9 @@ export function ShiftAssignmentDrawer({
 
   const [refreshKey, setRefreshKey] = useState(0)
 
+  const [showReplacementDialog, setShowReplacementDialog] = useState(false) // Added
+  const [replacementOrder, setReplacementOrder] = useState<number>(1) // Added
+
   const translateShiftType = (type: string): string => {
     const translations: Record<string, string> = {
       day: "Jour",
@@ -215,25 +218,22 @@ export function ShiftAssignmentDrawer({
 
   useEffect(() => {
     if (open && shift) {
-      // console.log("[v0] ShiftAssignmentDrawer opened")
-      // console.log("[v0] teamFirefighters:", teamFirefighters)
-      // console.log("[v0] currentAssignments:", currentAssignments)
-
-      // Log direct assignments with acting flags
-      const directAssignments = currentAssignments.filter((a) => a.is_direct_assignment)
-      // console.log(
-      //   "[v0] Direct assignments:",
-      //   directAssignments.map((da) => ({
-      //     name: `${da.first_name} ${da.last_name}`,
-      //     user_id: da.user_id,
-      //     is_acting_lt: da.is_acting_lieutenant,
-      //     is_acting_cpt: da.is_acting_captain,
-      //   })),
-      // )
-
-      // console.log("[v0] shift:", shift)
+      console.log("[v0] ShiftAssignmentDrawer - currentAssignments:", currentAssignments.length)
+      const withReplacementOrder = currentAssignments.filter((a) => a.replacement_order)
+      if (withReplacementOrder.length > 0) {
+        console.log(
+          "[v0] Assignments with replacement_order:",
+          withReplacementOrder.map((a) => ({
+            name: `${a.first_name} ${a.last_name}`,
+            replacement_order: a.replacement_order,
+            start_time: a.start_time,
+            end_time: a.end_time,
+            replaced_user_id: a.replaced_user_id,
+          })),
+        )
+      }
     }
-  }, [open, shift, teamFirefighters, currentAssignments])
+  }, [open, shift, currentAssignments])
 
   useEffect(() => {
     if (open && shift && dateStr) {
@@ -1669,6 +1669,23 @@ export function ShiftAssignmentDrawer({
                                         )}
                                       </div>
                                     )}
+
+                                    {isAdmin && !replacement2 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSelectedFirefighter(firefighter)
+                                          setReplacementOrder(2)
+                                          setShowDirectAssignmentDialog(true)
+                                        }}
+                                        disabled={isLoading || loadingReplacements}
+                                        className="w-full text-cyan-600 hover:bg-cyan-50 border-dashed"
+                                      >
+                                        <UserPlus className="h-4 w-4 mr-1" />
+                                        Ajouter un 2e remplaçant
+                                      </Button>
+                                    )}
                                   </div>
                                 )}
 
@@ -2483,22 +2500,21 @@ export function ShiftAssignmentDrawer({
         </AlertDialogContent>
       </AlertDialog>
 
-      {shift && (
-        <DirectAssignmentDialog
-          open={showDirectAssignmentDialog}
-          onOpenChange={(open) => {
-            setShowDirectAssignmentDialog(open)
-            if (!open) {
-              setSelectedFirefighter(null)
-            }
-          }}
-          shift={shift}
-          teamFirefighters={teamFirefighters}
-          allFirefighters={allFirefighters}
-          onSuccess={refreshShiftAndClose} // Use refreshShiftAndClose instead of refreshAndClose
-          preSelectedFirefighter={selectedFirefighter}
-        />
-      )}
+      <DirectAssignmentDialog
+        open={showDirectAssignmentDialog}
+        onOpenChange={(open) => {
+          setShowDirectAssignmentDialog(open)
+          if (!open) {
+            setSelectedFirefighter(null)
+          }
+        }}
+        shift={shift}
+        teamFirefighters={teamFirefighters}
+        allFirefighters={allFirefighters}
+        onSuccess={loadData}
+        preSelectedFirefighter={selectedFirefighter}
+        replacementOrder={replacementOrder}
+      />
 
       {/* Direct Assignment Dialog for pending replacements */}
       {shift && selectedReplacementForAssignment && (

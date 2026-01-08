@@ -13,7 +13,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { createDirectAssignment } from "@/app/actions/direct-assignments"
+import { createDirectAssignment, addSecondReplacement } from "@/app/actions/direct-assignments"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
@@ -51,6 +51,7 @@ interface DirectAssignmentDialogProps {
   }>
   onSuccess: () => void
   preSelectedFirefighter?: { id: number; first_name: string; last_name: string } | null
+  replacementOrder?: number
 }
 
 export function DirectAssignmentDialog({
@@ -61,6 +62,7 @@ export function DirectAssignmentDialog({
   allFirefighters,
   onSuccess,
   preSelectedFirefighter,
+  replacementOrder = 1,
 }: DirectAssignmentDialogProps) {
   const [assignedFirefighter, setAssignedFirefighter] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -73,10 +75,18 @@ export function DirectAssignmentDialog({
 
   useEffect(() => {
     if (open && shift) {
-      setIsPartial(false)
+      setIsPartial(replacementOrder === 2)
       setAssignedFirefighter(null)
+
+      if (shift.shift_type === "Jour" || shift.shift_type === "jour") {
+        setStartTime("07:00")
+        setEndTime("17:00")
+      } else if (shift.shift_type === "Nuit" || shift.shift_type === "nuit") {
+        setStartTime("19:00")
+        setEndTime("07:00")
+      }
     }
-  }, [open, shift])
+  }, [open, shift, replacementOrder])
 
   const generateTimeOptions = () => {
     const times = []
@@ -95,14 +105,14 @@ export function DirectAssignmentDialog({
       return
     }
 
-    if (isPartial && startTime >= endTime) {
+    if ((isPartial || replacementOrder === 2) && startTime >= endTime) {
       toast.error("L'heure de début doit être avant l'heure de fin")
       return
     }
 
     if (typeof window !== "undefined") {
       const scrollPos = window.scrollY
-      console.log("[v0] DirectAssignmentDialog - saving scroll before createDirectAssignment:", scrollPos)
+      console.log("[v0] DirectAssignmentDialog - saving scroll before assignment:", scrollPos)
       sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
       sessionStorage.setItem("skip-scroll-to-today", "true")
     }
@@ -112,24 +122,45 @@ export function DirectAssignmentDialog({
     try {
       const shiftDateStr = `${shift.date.getFullYear()}-${String(shift.date.getMonth() + 1).padStart(2, "0")}-${String(shift.date.getDate()).padStart(2, "0")}`
       console.log("[v0] DirectAssignmentDialog - shift.date:", shift.date, "converted to:", shiftDateStr)
-      console.log("[v0] DirectAssignmentDialog - Creating direct assignment:", {
-        shiftId: shift.id,
-        replacedUserId: preSelectedFirefighter.id,
-        assignedUserId: assignedFirefighter,
-        isPartial,
-      })
 
-      const result = await createDirectAssignment({
-        shiftId: shift.id,
-        replacedUserId: preSelectedFirefighter.id,
-        assignedUserId: assignedFirefighter,
-        isPartial,
-        startTime: isPartial ? startTime : undefined,
-        endTime: isPartial ? endTime : undefined,
-        shiftDate: shiftDateStr,
-      })
+      let result
+      if (replacementOrder === 2) {
+        console.log("[v0] DirectAssignmentDialog - Adding second replacement with:", {
+          shiftId: shift.id,
+          replacedUserId: preSelectedFirefighter.id,
+          assignedUserId: assignedFirefighter,
+          startTime,
+          endTime,
+        })
+        result = await addSecondReplacement({
+          shiftId: shift.id,
+          replacedUserId: preSelectedFirefighter.id,
+          assignedUserId: assignedFirefighter,
+          startTime,
+          endTime,
+          shiftDate: shiftDateStr,
+        })
+      } else {
+        console.log("[v0] DirectAssignmentDialog - Creating direct assignment:", {
+          shiftId: shift.id,
+          replacedUserId: preSelectedFirefighter.id,
+          assignedUserId: assignedFirefighter,
+          isPartial,
+          replacementOrder,
+        })
+        result = await createDirectAssignment({
+          shiftId: shift.id,
+          replacedUserId: preSelectedFirefighter.id,
+          assignedUserId: assignedFirefighter,
+          isPartial: isPartial,
+          startTime: isPartial ? startTime : undefined,
+          endTime: isPartial ? endTime : undefined,
+          shiftDate: shiftDateStr,
+          replacementOrder,
+        })
+      }
 
-      console.log("[v0] DirectAssignmentDialog - createDirectAssignment result:", result)
+      console.log("[v0] DirectAssignmentDialog - result:", result)
 
       if (result.error === "CONSECUTIVE_HOURS_EXCEEDED") {
         setWarningMessage(result.message || "")
@@ -176,11 +207,12 @@ export function DirectAssignmentDialog({
         shiftId: shift.id,
         replacedUserId: preSelectedFirefighter.id,
         assignedUserId: assignedFirefighter,
-        isPartial,
+        isPartial: isPartial,
         startTime: isPartial ? startTime : undefined,
         endTime: isPartial ? endTime : undefined,
         shiftDate: shiftDateStr,
-        override: true, // Force assign despite warnings
+        override: true,
+        replacementOrder,
       })
 
       if (result.error) {
@@ -247,21 +279,23 @@ export function DirectAssignmentDialog({
               </Select>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="partial"
-                checked={isPartial}
-                onCheckedChange={(checked) => setIsPartial(checked === true)}
-              />
-              <Label
-                htmlFor="partial"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Assignation partielle
-              </Label>
-            </div>
+            {replacementOrder === 1 && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="partial"
+                  checked={isPartial}
+                  onCheckedChange={(checked) => setIsPartial(checked === true)}
+                />
+                <Label
+                  htmlFor="partial"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Assignation partielle
+                </Label>
+              </div>
+            )}
 
-            {isPartial && (
+            {(isPartial || replacementOrder === 2) && (
               <div className="space-y-3 pl-6">
                 <div className="space-y-2">
                   <Label htmlFor="start-time" className="text-sm">

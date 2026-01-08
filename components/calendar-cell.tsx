@@ -85,7 +85,7 @@ export function CalendarCell({
         setCurrentAssignments(shiftDetails.assignments)
         setTeamFirefighters(shiftDetails.teamFirefighters)
       } catch (error) {
-        console.error("[v0] Error refreshing assignments:", error)
+        console.error("Error refreshing assignments:", error)
       }
     }
   }, [onShiftUpdated, selectedShift, day.date])
