@@ -1670,21 +1670,20 @@ export function ShiftAssignmentDrawer({
                                       </div>
                                     )}
 
-                                    {isAdmin && !replacement2 && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setSelectedFirefighter(firefighter)
-                                          setReplacementOrder(2)
-                                          setShowDirectAssignmentDialog(true)
-                                        }}
-                                        disabled={isLoading || loadingReplacements}
-                                        className="w-full text-cyan-600 hover:bg-cyan-50 border-dashed"
-                                      >
-                                        <UserPlus className="h-4 w-4 mr-1" />
-                                        Ajouter un 2e remplaçant
-                                      </Button>
+                                    {!replacement2 && (
+                                      <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
+                                        <button
+                                          onClick={() => {
+                                            setSelectedFirefighter(firefighter)
+                                            setReplacementOrder(2)
+                                            setShowDirectAssignmentDialog(true)
+                                          }}
+                                          disabled={isLoading || loadingReplacements}
+                                          className="text-[11px] text-muted-foreground hover:text-cyan-600 font-medium underline underline-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                          + Remplaçant 2
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 )}
