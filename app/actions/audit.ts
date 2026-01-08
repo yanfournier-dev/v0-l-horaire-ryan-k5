@@ -86,36 +86,34 @@ export async function getAuditLogs(options: {
   const offset = (page - 1) * limit
 
   try {
-    const whereConditions = []
-    const params: any[] = []
+    let whereClause = sql``
+    const conditions = []
 
     if (options.userId) {
-      whereConditions.push(`user_id = $${params.length + 1}`)
-      params.push(options.userId)
+      conditions.push(sql`user_id = ${options.userId}`)
     }
 
     if (options.actionType) {
-      whereConditions.push(`action_type = $${params.length + 1}`)
-      params.push(options.actionType)
+      conditions.push(sql`action_type = ${options.actionType}`)
     }
 
     if (options.startDate) {
-      whereConditions.push(`created_at >= $${params.length + 1}`)
-      params.push(options.startDate)
+      conditions.push(sql`created_at >= ${options.startDate}`)
     }
 
     if (options.endDate) {
-      whereConditions.push(`created_at <= $${params.length + 1}`)
-      params.push(options.endDate)
+      conditions.push(sql`created_at <= ${options.endDate}`)
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
+    if (conditions.length > 0) {
+      whereClause = sql`WHERE ${sql.join(conditions, sql` AND `)}`
+    }
 
     // Compter le total
     const countResult = await sql`
       SELECT COUNT(*) as total
       FROM audit_logs
-      ${whereClause ? sql.unsafe(whereClause) : sql``}
+      ${whereClause}
     `
 
     const total = Number.parseInt(countResult[0]?.total || "0")
@@ -138,7 +136,7 @@ export async function getAuditLogs(options: {
         u.email
       FROM audit_logs al
       LEFT JOIN users u ON al.user_id = u.id
-      ${whereClause ? sql.unsafe(whereClause) : sql``}
+      ${whereClause}
       ORDER BY al.created_at DESC
       LIMIT ${limit}
       OFFSET ${offset}
