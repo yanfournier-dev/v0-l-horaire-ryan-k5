@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { updateUserPreferences } from "@/app/actions/notifications"
 import { generateTelegramLink, disconnectTelegram } from "@/app/actions/telegram"
-import { Bell, Mail, CheckCircle2, MessageSquare, ExternalLink } from "lucide-react"
+import { Bell, Mail, MessageSquare, ExternalLink } from "lucide-react"
 
 interface NotificationPreferencesFormProps {
   userId: number
@@ -25,24 +25,28 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
     notify_replacement_rejected: initialPreferences?.notify_replacement_rejected ?? false,
   })
 
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [savingToggles, setSavingToggles] = useState<Set<string>>(new Set())
   const [connectingTelegram, setConnectingTelegram] = useState(false)
 
-  const handleToggle = (key: string, value: boolean) => {
-    setPreferences((prev) => ({ ...prev, [key]: value }))
-    setSaved(false)
-  }
+  const handleToggle = async (key: string, value: boolean) => {
+    // Update local state immediately for responsive UI
+    const newPreferences = { ...preferences, [key]: value }
+    setPreferences(newPreferences)
 
-  const handleSave = async () => {
-    setSaving(true)
-    const result = await updateUserPreferences(userId, preferences)
-    setSaving(false)
+    // Mark this toggle as saving
+    setSavingToggles((prev) => new Set(prev).add(key))
 
-    if (result.success) {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    }
+    // Save to database
+    await updateUserPreferences(userId, newPreferences)
+
+    // Remove from saving state after a short delay
+    setTimeout(() => {
+      setSavingToggles((prev) => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
+    }, 500)
   }
 
   const handleTelegramConnect = async () => {
@@ -68,12 +72,14 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
     try {
       const result = await disconnectTelegram()
       if (result.success) {
-        setPreferences((prev) => ({
-          ...prev,
+        const newPreferences = {
+          ...preferences,
           telegram_chat_id: null,
           enable_telegram: false,
-        }))
-        setSaved(false)
+        }
+        setPreferences(newPreferences)
+        // Auto-save after disconnect
+        await updateUserPreferences(userId, newPreferences)
       }
     } catch (error) {
       console.error("[v0] Error disconnecting Telegram:", error)
@@ -104,6 +110,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               id="enable_app"
               checked={preferences.enable_app}
               onCheckedChange={(checked) => handleToggle("enable_app", checked)}
+              disabled={savingToggles.has("enable_app")}
             />
           </div>
 
@@ -121,6 +128,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               id="enable_email"
               checked={preferences.enable_email}
               onCheckedChange={(checked) => handleToggle("enable_email", checked)}
+              disabled={savingToggles.has("enable_email")}
             />
           </div>
 
@@ -168,7 +176,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               id="enable_telegram"
               checked={preferences.enable_telegram}
               onCheckedChange={(checked) => handleToggle("enable_telegram", checked)}
-              disabled={!preferences.telegram_chat_id}
+              disabled={!preferences.telegram_chat_id || savingToggles.has("enable_telegram")}
             />
           </div>
         </div>
@@ -193,6 +201,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               id="notify_replacement_available"
               checked={preferences.notify_replacement_available}
               onCheckedChange={(checked) => handleToggle("notify_replacement_available", checked)}
+              disabled={savingToggles.has("notify_replacement_available")}
             />
           </div>
 
@@ -207,6 +216,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               id="notify_replacement_accepted"
               checked={preferences.notify_replacement_accepted}
               onCheckedChange={(checked) => handleToggle("notify_replacement_accepted", checked)}
+              disabled={savingToggles.has("notify_replacement_accepted")}
             />
           </div>
 
@@ -221,23 +231,11 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               id="notify_replacement_rejected"
               checked={preferences.notify_replacement_rejected}
               onCheckedChange={(checked) => handleToggle("notify_replacement_rejected", checked)}
+              disabled={savingToggles.has("notify_replacement_rejected")}
             />
           </div>
         </div>
       </Card>
-
-      {/* Save Button */}
-      <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={saving} size="lg">
-          {saving ? "Enregistrement..." : "Enregistrer les préférences"}
-        </Button>
-        {saved && (
-          <div className="flex items-center gap-2 text-green-600">
-            <CheckCircle2 className="h-5 w-5" />
-            <span className="text-sm font-medium">Préférences enregistrées</span>
-          </div>
-        )}
-      </div>
     </div>
   )
 }
