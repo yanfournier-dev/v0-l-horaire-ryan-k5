@@ -50,8 +50,8 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
     try {
       const result = await generateTelegramLink()
       if (result.success && result.link) {
-        // Open the Telegram deep link
-        window.open(result.link, "_blank")
+        // On iOS, window.open() with _blank can be blocked, use location.href instead
+        window.location.href = result.link
       } else {
         console.error("[v0] Failed to generate Telegram link:", result.error)
         alert("Erreur lors de la génération du lien Telegram")
