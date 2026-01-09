@@ -654,7 +654,6 @@ export async function sendBatchReplacementEmails(
         ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
         : null
 
-    // Get all users who should receive emails - properly checking notification preferences
     const eligibleUsers = await sql`
       SELECT 
         u.id,
@@ -662,7 +661,9 @@ export async function sendBatchReplacementEmails(
         u.first_name,
         u.last_name,
         COALESCE(np.enable_email, true) as enable_email,
-        COALESCE(np.notify_replacement_available, true) as notify_replacement_available
+        COALESCE(np.notify_replacement_available, true) as notify_replacement_available,
+        np.telegram_chat_id,
+        COALESCE(np.enable_telegram, false) as enable_telegram
       FROM users u
       LEFT JOIN notification_preferences np ON u.id = np.user_id
       WHERE u.email IS NOT NULL
@@ -744,6 +745,50 @@ export async function sendBatchReplacementEmails(
 
     console.log("[v0] PRODUCTION: sendBatchEmails returned:", result)
 
+    console.log("[v0] PRODUCTION: Checking for Telegram users...")
+    const telegramUsers = eligibleUsers.filter(
+      (user: any) =>
+        user.enable_telegram === true && user.telegram_chat_id && user.notify_replacement_available === true,
+    )
+
+    console.log("[v0] PRODUCTION: Found", telegramUsers.length, "users with Telegram enabled")
+
+    if (telegramUsers.length > 0) {
+      const shiftDateStr = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+
+      const shiftTypeLabels: Record<string, string> = {
+        day: "Jour (7h-17h)",
+        night: "Nuit (17h-7h)",
+      }
+
+      const shiftLabel =
+        r.is_partial && partialHours
+          ? `Partiel (${partialHours})`
+          : shiftTypeLabels[r.shift_type as string] || r.shift_type
+
+      // Send Telegram notifications with delay between each
+      for (const user of telegramUsers) {
+        try {
+          const fullName = `${user.first_name} ${user.last_name}`
+          const message = `🚒 <b>Nouveau remplacement disponible</b>\n\n📅 <b>Date:</b> ${shiftDateStr}\n⏰ <b>Quart:</b> ${shiftLabel}\n👤 <b>Remplace:</b> ${firefighterToReplaceName}\n⏳ <b>Échéance:</b> ${deadlineLabel}\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL || "https://v0-l-horaire-ryan.vercel.app"}/dashboard/replacements">Voir les détails et postuler</a>`
+
+          await sendTelegramMessage(user.telegram_chat_id, message)
+          console.log("[v0] PRODUCTION: Telegram notification sent to", fullName)
+
+          // Add delay to avoid rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        } catch (telegramError) {
+          console.error("[v0] PRODUCTION ERROR: Failed to send Telegram to user", user.id, "Error:", telegramError)
+          // Continue with other users even if one fails
+        }
+      }
+    }
+
     if (!result.success) {
       console.error("[v0] PRODUCTION ERROR: Batch emails failed, notifying admins...")
 
@@ -753,6 +798,7 @@ export async function sendBatchReplacementEmails(
 
       // Format shift date
       const shiftDateStr = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
+        weekday: "long",
         year: "numeric",
         month: "long",
         day: "numeric",
