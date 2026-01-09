@@ -786,7 +786,7 @@ export async function sendBatchReplacementEmails(
             DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
           `
 
-          const message = `🚒 <b>Nouveau remplacement disponible</b>\n\n📅 <b>Date:</b> ${shiftDateStr}\n⏰ <b>Quart:</b> ${shiftLabel}\n👤 <b>Remplace:</b> ${firefighterToReplaceName}\n⏳ <b>Échéance:</b> ${deadlineLabel}\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL || "https://v0-l-horaire-ryan.vercel.app"}/apply?token=${applyToken}">Postuler maintenant</a>`
+          const message = `🚒 <b>Nouveau remplacement disponible</b>\n\n📅 <b>Date:</b> ${shiftDateStr}\n⏰ <b>Quart:</b> ${shiftLabel}\n👤 <b>Remplace:</b> ${firefighterToReplaceName}\n⏳ <b>Échéance:</b> ${deadlineLabel}\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL || "https://v0-l-horaire-ryan.vercel.app"}/apply-replacement?token=${applyToken}">Postuler maintenant</a>`
 
           await sendTelegramMessage(user.telegram_chat_id, message)
           console.log("[v0] PRODUCTION: Telegram notification sent to", fullName)
