@@ -56,20 +56,30 @@ export async function sendTelegramMessage(
  * Gets information about the bot
  */
 export async function getBotInfo() {
+  console.log("[v0] getBotInfo called")
+  console.log("[v0] TELEGRAM_BOT_TOKEN exists:", !!TELEGRAM_BOT_TOKEN)
+
   if (!TELEGRAM_BOT_TOKEN) {
+    console.error("[v0] Bot token not configured")
     return { success: false, error: "Bot token not configured" }
   }
 
   try {
+    console.log("[v0] Fetching bot info from Telegram API...")
     const response = await fetch(`${TELEGRAM_API_URL}/getMe`)
     const data = await response.json()
 
+    console.log("[v0] Telegram API response:", data)
+
     if (!response.ok) {
+      console.error("[v0] Telegram API error:", data.description)
       return { success: false, error: data.description }
     }
 
+    console.log("[v0] Bot info retrieved successfully:", data.result.username)
     return { success: true, data: data.result }
   } catch (error: any) {
+    console.error("[v0] Error in getBotInfo:", error)
     return { success: false, error: error.message }
   }
 }
