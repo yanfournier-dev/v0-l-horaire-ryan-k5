@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { updateUserPreferences } from "@/app/actions/notifications"
+import { generateTelegramLink, disconnectTelegram } from "@/app/actions/telegram"
 import { Bell, Mail, CheckCircle2, MessageSquare, ExternalLink } from "lucide-react"
 
 interface NotificationPreferencesFormProps {
@@ -46,19 +47,37 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
 
   const handleTelegramConnect = async () => {
     setConnectingTelegram(true)
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "horaire_ssiv_bot"
-    const deepLink = `https://t.me/${botUsername}?start=link_${userId}_${Date.now()}`
-    window.open(deepLink, "_blank")
-    setConnectingTelegram(false)
+    try {
+      const result = await generateTelegramLink()
+      if (result.success && result.link) {
+        // Open the Telegram deep link
+        window.open(result.link, "_blank")
+      } else {
+        console.error("[v0] Failed to generate Telegram link:", result.error)
+        alert("Erreur lors de la génération du lien Telegram")
+      }
+    } catch (error) {
+      console.error("[v0] Error connecting Telegram:", error)
+      alert("Erreur lors de la connexion à Telegram")
+    } finally {
+      setConnectingTelegram(false)
+    }
   }
 
   const handleTelegramDisconnect = async () => {
-    setPreferences((prev) => ({
-      ...prev,
-      telegram_chat_id: null,
-      enable_telegram: false,
-    }))
-    setSaved(false)
+    try {
+      const result = await disconnectTelegram()
+      if (result.success) {
+        setPreferences((prev) => ({
+          ...prev,
+          telegram_chat_id: null,
+          enable_telegram: false,
+        }))
+        setSaved(false)
+      }
+    } catch (error) {
+      console.error("[v0] Error disconnecting Telegram:", error)
+    }
   }
 
   return (
