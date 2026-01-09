@@ -12,6 +12,7 @@ import {
   // Removed getExchangeRequestEmail, getExchangeApprovedEmail, getExchangeRejectedEmail, getExchangeRequestConfirmationEmail
 } from "@/lib/email"
 import { parseLocalDate } from "@/lib/date-utils"
+import { sendTelegramMessage } from "@/lib/telegram"
 // crypto is available globally in Node.js
 
 export async function getUserNotifications(userId: number) {
@@ -132,6 +133,8 @@ export async function createNotification(
         u.first_name,
         u.last_name,
         np.enable_email,
+        np.enable_telegram,
+        np.telegram_chat_id,
         np.notify_replacement_available,
         np.notify_replacement_accepted,
         np.notify_replacement_rejected,
@@ -187,6 +190,22 @@ export async function createNotification(
       }
     } else {
       console.log("[v0] Email not sent - enable_email:", user.enable_email, "has email:", !!user.email)
+    }
+
+    if (user.enable_telegram === true && user.telegram_chat_id) {
+      console.log("[v0] Sending Telegram notification to chat_id:", user.telegram_chat_id)
+      try {
+        await sendTelegramNotificationMessage(type, user.telegram_chat_id, fullName, message, relatedId)
+      } catch (telegramError) {
+        console.error("[v0] Telegram sending failed but notification created:", telegramError)
+      }
+    } else {
+      console.log(
+        "[v0] Telegram not sent - enable_telegram:",
+        user.enable_telegram,
+        "has chat_id:",
+        !!user.telegram_chat_id,
+      )
     }
 
     return { success: true }
@@ -421,6 +440,7 @@ export async function updateUserPreferences(
   preferences: {
     enable_app?: boolean
     enable_email?: boolean
+    enable_telegram?: boolean
     notify_replacement_available?: boolean
     notify_replacement_accepted?: boolean
     notify_replacement_rejected?: boolean
@@ -444,6 +464,7 @@ export async function updateUserPreferences(
           user_id,
           enable_app,
           enable_email,
+          enable_telegram,
           notify_replacement_available,
           notify_replacement_accepted,
           notify_replacement_rejected
@@ -451,6 +472,7 @@ export async function updateUserPreferences(
           ${userId},
           ${preferences.enable_app ?? true},
           ${preferences.enable_email ?? false},
+          ${preferences.enable_telegram ?? false},
           ${preferences.notify_replacement_available ?? false},
           ${preferences.notify_replacement_accepted ?? false},
           ${preferences.notify_replacement_rejected ?? false}
@@ -462,6 +484,7 @@ export async function updateUserPreferences(
         SET
           enable_app = ${preferences.enable_app ?? existing[0].enable_app},
           enable_email = ${preferences.enable_email ?? existing[0].enable_email},
+          enable_telegram = ${preferences.enable_telegram ?? existing[0].enable_telegram},
           notify_replacement_available = ${preferences.notify_replacement_available ?? existing[0].notify_replacement_available},
           notify_replacement_accepted = ${preferences.notify_replacement_accepted ?? existing[0].notify_replacement_accepted},
           notify_replacement_rejected = ${preferences.notify_replacement_rejected ?? existing[0].notify_replacement_rejected},
@@ -806,5 +829,166 @@ export async function sendBatchReplacementEmails(
       failed: 0,
       recipients: [],
     }
+  }
+}
+
+async function sendTelegramNotificationMessage(
+  type: string,
+  chatId: string,
+  name: string,
+  message: string,
+  relatedId?: number,
+) {
+  if (process.env.VERCEL_ENV !== "production") {
+    console.log("[v0] Skipping Telegram in preview - notification created in-app only")
+    return
+  }
+
+  console.log("[v0] sendTelegramNotificationMessage called - type:", type, "chatId:", chatId)
+
+  let telegramMessage = ""
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://v0-l-horaire-ryan.vercel.app"
+
+  switch (type) {
+    case "replacement_available":
+      if (relatedId) {
+        const replacement = await sql`
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
+          FROM replacements r
+          LEFT JOIN users u ON r.user_id = u.id
+          WHERE r.id = ${relatedId}
+        `
+
+        if (replacement.length > 0) {
+          const r = replacement[0]
+          const date = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+
+          const shiftTypeLabel = r.shift_type === "jour" ? "Jour (7h-17h)" : "Nuit (17h-7h)"
+          const partialInfo =
+            r.is_partial && r.start_time && r.end_time
+              ? `\n⏰ Heures: ${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : ""
+
+          telegramMessage = `🚒 <b>Nouveau remplacement disponible</b>
+
+📅 Date: ${date}
+🕐 Quart: ${shiftTypeLabel}${partialInfo}
+👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}
+
+<a href="${appUrl}/dashboard/replacements/${relatedId}">Voir les détails et postuler</a>`
+        }
+      }
+      break
+
+    case "replacement_approved":
+    case "application_approved":
+      if (relatedId) {
+        const replacement = await sql`
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
+          FROM replacements r
+          LEFT JOIN users u ON r.user_id = u.id
+          WHERE r.id = ${relatedId}
+        `
+
+        if (replacement.length > 0) {
+          const r = replacement[0]
+          const date = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+
+          const shiftTypeLabel = r.shift_type === "jour" ? "Jour (7h-17h)" : "Nuit (17h-7h)"
+          const partialInfo =
+            r.is_partial && r.start_time && r.end_time
+              ? `\n⏰ Heures: ${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : ""
+
+          telegramMessage = `✅ <b>Candidature acceptée</b>
+
+Félicitations! Votre candidature a été acceptée.
+
+📅 Date: ${date}
+🕐 Quart: ${shiftTypeLabel}${partialInfo}
+👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}
+
+<a href="${appUrl}/dashboard/replacements/${relatedId}">Voir les détails</a>`
+        }
+      }
+      break
+
+    case "replacement_rejected":
+    case "application_rejected":
+      if (relatedId) {
+        const replacement = await sql`
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
+          FROM replacements r
+          LEFT JOIN users u ON r.user_id = u.id
+          WHERE r.id = ${relatedId}
+        `
+
+        if (replacement.length > 0) {
+          const r = replacement[0]
+          const date = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+
+          const shiftTypeLabel = r.shift_type === "jour" ? "Jour (7h-17h)" : "Nuit (17h-7h)"
+          const partialInfo =
+            r.is_partial && r.start_time && r.end_time
+              ? `\n⏰ Heures: ${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : ""
+
+          telegramMessage = `❌ <b>Candidature refusée</b>
+
+Votre candidature pour ce remplacement a été refusée.
+
+📅 Date: ${date}
+🕐 Quart: ${shiftTypeLabel}${partialInfo}
+👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}
+
+<a href="${appUrl}/dashboard/replacements">Voir d'autres remplacements disponibles</a>`
+        }
+      }
+      break
+  }
+
+  if (telegramMessage) {
+    console.log("[v0] Sending Telegram message...")
+    const result = await sendTelegramMessage(chatId, telegramMessage)
+    console.log("[v0] Telegram message result:", result)
+
+    if (!result.success) {
+      throw new Error(result.error || "Telegram sending failed")
+    }
+  } else {
+    console.log("[v0] No Telegram message generated for type:", type)
   }
 }
