@@ -542,25 +542,7 @@ export async function approveApplication(
       WHERE replacement_id = ${replacementId} AND id != ${applicationId} AND status = 'pending'
     `
 
-    await db`
-      UPDATE replacement_applications
-      SET status = 'rejected'
-      WHERE replacement_id = ${replacementId} AND id != ${applicationId}
-    `
-
-    if (rejectedCandidates.length > 0) {
-      for (const candidate of rejectedCandidates) {
-        // FIX: Changed notification type from "application_rejected" to "replacement_rejected" and added relatedId
-        await createNotification(
-          candidate.applicant_id,
-          "Candidature rejetée",
-          "Votre candidature pour un remplacement a été rejetée.",
-          "replacement_rejected",
-          replacementId, // Pass the replacement ID here
-          "replacement",
-        )
-      }
-    }
+    // The loop that called createNotification for rejected candidates has been removed
 
     await db`
       UPDATE replacements
@@ -603,14 +585,7 @@ export async function approveApplication(
       )
     `
 
-    await createNotification(
-      applicantId,
-      "Remplacement assigné",
-      `Vous avez été assigné au remplacement du ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"})`,
-      "application_approved",
-      replacementId,
-      "replacement",
-    )
+    // The createNotification call for "application_approved" has been removed
 
     await createAuditLog({
       userId: user.id,
