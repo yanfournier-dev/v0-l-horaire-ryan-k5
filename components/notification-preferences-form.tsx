@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { updateUserPreferences } from "@/app/actions/notifications"
-import { Bell, Mail, CheckCircle2 } from "lucide-react"
+import { Bell, Mail, CheckCircle2, MessageSquare, ExternalLink } from "lucide-react"
 
 interface NotificationPreferencesFormProps {
   userId: number
@@ -17,6 +17,8 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
   const [preferences, setPreferences] = useState({
     enable_app: initialPreferences?.enable_app ?? true,
     enable_email: initialPreferences?.enable_email ?? false,
+    enable_telegram: initialPreferences?.enable_telegram ?? false,
+    telegram_chat_id: initialPreferences?.telegram_chat_id ?? null,
     notify_replacement_available: initialPreferences?.notify_replacement_available ?? false,
     notify_replacement_accepted: initialPreferences?.notify_replacement_accepted ?? false,
     notify_replacement_rejected: initialPreferences?.notify_replacement_rejected ?? false,
@@ -24,6 +26,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [connectingTelegram, setConnectingTelegram] = useState(false)
 
   const handleToggle = (key: string, value: boolean) => {
     setPreferences((prev) => ({ ...prev, [key]: value }))
@@ -39,6 +42,23 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     }
+  }
+
+  const handleTelegramConnect = async () => {
+    setConnectingTelegram(true)
+    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "horaire_ssiv_bot"
+    const deepLink = `https://t.me/${botUsername}?start=link_${userId}_${Date.now()}`
+    window.open(deepLink, "_blank")
+    setConnectingTelegram(false)
+  }
+
+  const handleTelegramDisconnect = async () => {
+    setPreferences((prev) => ({
+      ...prev,
+      telegram_chat_id: null,
+      enable_telegram: false,
+    }))
+    setSaved(false)
   }
 
   return (
@@ -82,6 +102,54 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               id="enable_email"
               checked={preferences.enable_email}
               onCheckedChange={(checked) => handleToggle("enable_email", checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <MessageSquare className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <Label htmlFor="enable_telegram" className="font-medium">
+                  Notifications par Telegram
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {preferences.telegram_chat_id ? (
+                    <span className="text-green-600 font-medium">✓ Connecté</span>
+                  ) : (
+                    "Recevez des notifications instantanées sur Telegram"
+                  )}
+                </p>
+                {!preferences.telegram_chat_id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 bg-transparent"
+                    onClick={handleTelegramConnect}
+                    disabled={connectingTelegram}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Connecter Telegram
+                  </Button>
+                )}
+                {preferences.telegram_chat_id && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 text-red-600 hover:text-red-700"
+                    onClick={handleTelegramDisconnect}
+                  >
+                    Déconnecter
+                  </Button>
+                )}
+              </div>
+            </div>
+            <Switch
+              id="enable_telegram"
+              checked={preferences.enable_telegram}
+              onCheckedChange={(checked) => handleToggle("enable_telegram", checked)}
+              disabled={!preferences.telegram_chat_id}
             />
           </div>
         </div>
