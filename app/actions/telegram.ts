@@ -18,12 +18,12 @@ export async function generateTelegramLink() {
     const session = await getSession()
     console.log("[v0] Step 2: Session result:", session ? "exists" : "null")
 
-    if (!session?.user?.id) {
+    if (!session?.id) {
       console.log("[v0] No session or user ID found")
       return { success: false, error: "Non authentifié" }
     }
 
-    const userId = session.user.id
+    const userId = session.id
     console.log("[v0] Step 3: User ID:", userId)
 
     // Generate a unique 8-character code
@@ -76,11 +76,11 @@ export async function disconnectTelegram() {
   console.log("[v0] disconnectTelegram called")
 
   const session = await getSession()
-  if (!session?.user?.id) {
+  if (!session?.id) {
     return { success: false, error: "Non authentifié" }
   }
 
-  const userId = session.user.id
+  const userId = session.id
 
   try {
     // Remove telegram_chat_id and disable telegram notifications
@@ -104,11 +104,11 @@ export async function disconnectTelegram() {
  */
 export async function checkTelegramStatus() {
   const session = await getSession()
-  if (!session?.user?.id) {
+  if (!session?.id) {
     return { connected: false }
   }
 
-  const userId = session.user.id
+  const userId = session.id
 
   try {
     const result = await sql`
