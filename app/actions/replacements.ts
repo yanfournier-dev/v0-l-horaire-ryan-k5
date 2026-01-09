@@ -536,13 +536,13 @@ export async function approveApplication(
       WHERE id = ${applicationId}
     `
 
-    const rejectedCandidates = await db`
-      SELECT applicant_id
-      FROM replacement_applications
+    await db`
+      UPDATE replacement_applications
+      SET status = 'rejected', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
       WHERE replacement_id = ${replacementId} AND id != ${applicationId} AND status = 'pending'
     `
 
-    // The loop that called createNotification for rejected candidates has been removed
+    // The rejected candidates will be found by sendAssignmentNotification when "Envoyer" is clicked
 
     await db`
       UPDATE replacements
@@ -936,7 +936,7 @@ export async function updateReplacementAssignment(replacementId: number, assigne
         INSERT INTO replacement_applications (replacement_id, applicant_id, status, reviewed_by, reviewed_at)
         VALUES (${replacementId}, ${assignedTo}, 'approved', ${user.id}, CURRENT_TIMESTAMP)
         ON CONFLICT (replacement_id, applicant_id) 
-        DO UPDATE SET status = 'approved', reviewed_by = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
+        DO UPDATE SET status = 'approved', reviewed_by = ${user.id}, reviewed_at = ${user.id}, reviewed_at = CURRENT_TIMESTAMP
       `
 
       await db`
