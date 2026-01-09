@@ -697,7 +697,6 @@ export async function sendBatchReplacementEmails(
       filteredUsers.map(async (user: any) => {
         const fullName = `${user.first_name} ${user.last_name}`
 
-        // Generate token for this user
         const applyToken = crypto.randomUUID()
         const expiresAt = new Date()
         expiresAt.setDate(expiresAt.getDate() + 7)
@@ -775,7 +774,19 @@ export async function sendBatchReplacementEmails(
       for (const user of telegramUsers) {
         try {
           const fullName = `${user.first_name} ${user.last_name}`
-          const message = `🚒 <b>Nouveau remplacement disponible</b>\n\n📅 <b>Date:</b> ${shiftDateStr}\n⏰ <b>Quart:</b> ${shiftLabel}\n👤 <b>Remplace:</b> ${firefighterToReplaceName}\n⏳ <b>Échéance:</b> ${deadlineLabel}\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL || "https://v0-l-horaire-ryan.vercel.app"}/dashboard/replacements">Voir les détails et postuler</a>`
+
+          const applyToken = crypto.randomUUID()
+          const expiresAt = new Date()
+          expiresAt.setDate(expiresAt.getDate() + 7)
+
+          await sql`
+            INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
+            VALUES (${applyToken}, ${replacementId}, ${user.id}, ${expiresAt})
+            ON CONFLICT (user_id, replacement_id) 
+            DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
+          `
+
+          const message = `🚒 <b>Nouveau remplacement disponible</b>\n\n📅 <b>Date:</b> ${shiftDateStr}\n⏰ <b>Quart:</b> ${shiftLabel}\n👤 <b>Remplace:</b> ${firefighterToReplaceName}\n⏳ <b>Échéance:</b> ${deadlineLabel}\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL || "https://v0-l-horaire-ryan.vercel.app"}/apply?token=${applyToken}">Postuler maintenant</a>`
 
           await sendTelegramMessage(user.telegram_chat_id, message)
           console.log("[v0] PRODUCTION: Telegram notification sent to", fullName)
@@ -974,9 +985,7 @@ Félicitations! Votre candidature a été acceptée.
 
 📅 Date: ${date}
 🕐 Quart: ${shiftTypeLabel}${partialInfo}
-👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}
-
-<a href="${appUrl}/dashboard/replacements/${relatedId}">Voir les détails</a>`
+👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}`
         }
       }
       break
@@ -1018,9 +1027,7 @@ Votre candidature pour ce remplacement a été refusée.
 
 📅 Date: ${date}
 🕐 Quart: ${shiftTypeLabel}${partialInfo}
-👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}
-
-<a href="${appUrl}/dashboard/replacements">Voir d'autres remplacements disponibles</a>`
+👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}`
         }
       }
       break
