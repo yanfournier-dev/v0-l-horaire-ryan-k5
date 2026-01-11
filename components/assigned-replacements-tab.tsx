@@ -10,7 +10,6 @@ import { formatShortDate, formatLocalDateTime } from "@/lib/date-utils"
 import { sendAssignmentNotification } from "@/app/actions/send-assignment-notification"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { EditReplacementAssignmentButton } from "@/components/edit-replacement-assignment-button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface AssignedReplacementsTabProps {
@@ -239,8 +238,6 @@ export function AssignedReplacementsTab({
                         Voir les candidats ({replacement.candidate_count || 0})
                       </Button>
                     </Link>
-
-                    <EditReplacementAssignmentButton replacementId={replacement.id} className="w-[100px]" />
 
                     {!replacement.notification_sent && (
                       <Button
