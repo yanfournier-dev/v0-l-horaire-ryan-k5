@@ -43,7 +43,6 @@ export function NotificationHistoryList() {
 
   const fetchHistory = async (page = 1) => {
     setLoading(true)
-    console.log("[v0] Fetching history with filters:", filters, "page:", page)
 
     const result = await getNotificationHistory({
       ...filters,
@@ -56,8 +55,6 @@ export function NotificationHistoryList() {
     if (result.success && result.notifications && result.pagination) {
       setNotifications(result.notifications)
       setPagination(result.pagination)
-    } else {
-      console.error("[v0] Error fetching history:", result.error)
     }
 
     setLoading(false)
@@ -191,18 +188,19 @@ export function NotificationHistoryList() {
                         Destinataire: <span className="font-medium text-foreground">{notification.user_name}</span>
                       </div>
 
-                      {notification.sent_by_name && (
-                        <div>
-                          Envoyé par: <span className="font-medium text-foreground">{notification.sent_by_name}</span>
-                        </div>
-                      )}
+                      <div>
+                        Envoyé par:{" "}
+                        <span className="font-medium text-foreground">{notification.sent_by_name || "Système"}</span>
+                      </div>
 
-                      {notification.channels_sent && notification.channels_sent.length > 0 && (
-                        <div>
-                          Canaux:{" "}
-                          <span className="font-medium text-foreground">{notification.channels_sent.join(", ")}</span>
-                        </div>
-                      )}
+                      <div>
+                        Canaux:{" "}
+                        <span className="font-medium text-foreground">
+                          {notification.channels_sent && notification.channels_sent.length > 0
+                            ? notification.channels_sent.join(", ")
+                            : "App uniquement"}
+                        </span>
+                      </div>
 
                       {notification.channels_failed && notification.channels_failed.length > 0 && (
                         <div className="text-red-600">

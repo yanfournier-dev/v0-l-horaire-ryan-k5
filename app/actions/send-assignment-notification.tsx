@@ -5,6 +5,7 @@ import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 import { sendEmail, getApplicationApprovedEmail, getApplicationRejectedEmail } from "@/lib/email"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { createNotification } from "@/app/actions/notifications"
 
 export async function sendAssignmentNotification(replacementId: number) {
   console.log("[v0] sendAssignmentNotification called for replacementId:", replacementId)
@@ -74,30 +75,43 @@ export async function sendAssignmentNotification(replacementId: number) {
     const typesSent: string[] = []
     const fullName = `${r.first_name} ${r.last_name}`
 
-    // In-app notification for accepted candidate
-    if (prefs.enable_app !== false) {
-      const partialHours =
-        r.is_partial && r.start_time && r.end_time
-          ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
-          : null
+    console.log("[v0] sendAssignmentNotification: User preferences:", {
+      enable_app: prefs.enable_app,
+      enable_email: prefs.enable_email,
+      enable_telegram: prefs.enable_telegram,
+      notify_replacement_accepted: prefs.notify_replacement_accepted,
+    })
 
-      const message = partialHours
-        ? `Vous avez été assigné pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} de ${partialHours}`
-        : `Vous avez été assigné pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} (${r.shift_type})`
+    console.log("[v0] sendAssignmentNotification: Creating in-app notification (mandatory)")
+    const partialHours =
+      r.is_partial && r.start_time && r.end_time
+        ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+        : null
 
-      await sql`
-        INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
-        VALUES (
-          ${r.assigned_user_id}, 
-          ${"Remplacement assigné"}, 
-          ${message}, 
-          ${"replacement_accepted"}, 
-          ${replacementId}, 
-          ${"replacement"}
-        )
-      `
-      typesSent.push("app")
-    }
+    const message = partialHours
+      ? `Vous avez été assigné pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} de ${partialHours}`
+      : `Vous avez été assigné pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} (${r.shift_type})`
+
+    console.log("[v0] sendAssignmentNotification: About to call createNotification with:", {
+      userId: r.assigned_user_id,
+      title: "Remplacement assigné",
+      type: "replacement_accepted",
+      relatedId: replacementId,
+      sentBy: user.id,
+    })
+
+    await createNotification(
+      r.assigned_user_id,
+      "Remplacement assigné",
+      message,
+      "replacement_accepted",
+      replacementId,
+      "replacement",
+      user.id, // sentBy
+    )
+
+    console.log("[v0] sendAssignmentNotification: createNotification completed successfully")
+    typesSent.push("app")
 
     // Email notification for accepted candidate
     if (prefs.enable_email === true && r.email) {
@@ -221,29 +235,24 @@ Votre candidature a été acceptée!
 
       const rejectedFullName = `${rejected.first_name} ${rejected.last_name}`
 
-      // In-app notification for rejected candidate
-      if (rejected.enable_app !== false) {
-        const partialHours =
-          r.is_partial && r.start_time && r.end_time
-            ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
-            : null
+      const partialHoursRejected =
+        r.is_partial && r.start_time && r.end_time
+          ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+          : null
 
-        const message = partialHours
-          ? `Votre candidature pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} de ${partialHours} a été rejetée.`
-          : `Votre candidature pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} (${r.shift_type}) a été rejetée.`
+      const messageRejected = partialHoursRejected
+        ? `Votre candidature pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} de ${partialHoursRejected} a été rejetée.`
+        : `Votre candidature pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} (${r.shift_type}) a été rejetée.`
 
-        await sql`
-          INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
-          VALUES (
-            ${rejected.applicant_id}, 
-            ${"Candidature rejetée"}, 
-            ${message}, 
-            ${"replacement_rejected"}, 
-            ${replacementId}, 
-            ${"replacement"}
-          )
-        `
-      }
+      await createNotification(
+        rejected.applicant_id,
+        "Candidature rejetée",
+        messageRejected,
+        "replacement_rejected",
+        replacementId,
+        "replacement",
+        user.id, // sentBy
+      )
 
       // Email notification for rejected candidate
       if (rejected.enable_email === true && rejected.email) {

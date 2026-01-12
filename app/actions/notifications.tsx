@@ -351,19 +351,17 @@ export async function createBatchNotificationsInApp(
   type: string,
   relatedId: number | null,
   relatedType: string | null,
+  sentBy?: number, // Added sentBy parameter to track who created the notification
 ) {
   if (userIds.length === 0) return
 
   try {
-    console.log(`[v0] Creating ${userIds.length} notifications with sequential inserts`)
+    console.log(`[v0] Creating ${userIds.length} notifications with sequential createNotification calls`)
 
     for (let i = 0; i < userIds.length; i++) {
       const userId = userIds[i]
 
-      await sql`
-        INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
-        VALUES (${userId}, ${title}, ${message}, ${type}, ${relatedId}, ${relatedType})
-      `
+      await createNotification(userId, title, message, type, relatedId, relatedType, sentBy)
 
       if (i < userIds.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 150))

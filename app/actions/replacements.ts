@@ -269,6 +269,7 @@ export async function createReplacementFromShift(
         "replacement_available",
         replacementId,
         "replacement",
+        user.id, // Track who created this replacement
       ).catch((error) => {
         console.error("Background notification creation failed:", error)
       })
@@ -912,6 +913,7 @@ export async function createExtraFirefighterReplacement(
         "replacement_available",
         replacementId,
         "replacement",
+        user.id, // Track who created this replacement
       ).catch((error) => {
         console.error("Background notification creation failed:", error)
       })
