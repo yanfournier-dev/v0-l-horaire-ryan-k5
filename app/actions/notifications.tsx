@@ -404,6 +404,44 @@ async function sendEmailNotification(
       }
       break
 
+    case "manual_message":
+      emailContent = {
+        subject: "Message important - Horaire SSIV",
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background-color: #ef4444; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+                .message-box { background-color: white; padding: 20px; border-left: 4px solid #ef4444; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin: 0;">📢 Message de l'administration</h1>
+                </div>
+                <div class="content">
+                  <p>Bonjour ${name},</p>
+                  <div class="message-box">
+                    <p style="margin: 0; white-space: pre-wrap;">${message}</p>
+                  </div>
+                  <div class="footer">
+                    <p>Service des incendies</p>
+                  </div>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
+      }
+      break
+
     // This notification type is no longer supported
   }
 
@@ -896,11 +934,6 @@ async function sendTelegramNotificationMessage(
   message: string,
   relatedId?: number,
 ) {
-  if (process.env.VERCEL_ENV !== "production") {
-    console.log("[v0] Skipping Telegram in preview - notification created in-app only")
-    return
-  }
-
   console.log("[v0] sendTelegramNotificationMessage called - type:", type, "chatId:", chatId)
 
   let telegramMessage = ""
@@ -1030,6 +1063,12 @@ Votre candidature pour ce remplacement a été refusée.
 👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}`
         }
       }
+      break
+
+    case "manual_message":
+      telegramMessage = `📢 <b>Message de l'administration</b>
+
+${message}`
       break
   }
 
