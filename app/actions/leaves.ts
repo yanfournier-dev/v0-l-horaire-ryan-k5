@@ -33,7 +33,13 @@ async function checkOverlappingLeaves(userId: number, startDate: string, endDate
   return Number(result[0]?.count || 0) > 0
 }
 
-async function notifyAdminsOfNewLeave(leaveId: number, userName: string, startDate: string, endDate: string) {
+async function notifyAdminsOfNewLeave(
+  leaveId: number,
+  userName: string,
+  startDate: string,
+  endDate: string,
+  userId: number,
+) {
   try {
     const admins = await sql`
       SELECT id FROM users WHERE is_admin = true
@@ -47,6 +53,7 @@ async function notifyAdminsOfNewLeave(leaveId: number, userName: string, startDa
         "leave_requested",
         leaveId,
         "leave",
+        userId, // Track who requested the leave
       )
     }
   } catch (error) {
@@ -111,7 +118,7 @@ export async function createLeaveRequest(formData: FormData) {
 
     if (!user.is_admin) {
       const userName = `${user.first_name} ${user.last_name}`
-      await notifyAdminsOfNewLeave(leaveId, userName, startDate, endDate)
+      await notifyAdminsOfNewLeave(leaveId, userName, startDate, endDate, user.id)
     }
 
     revalidatePath("/dashboard/absences")
@@ -289,6 +296,7 @@ export async function approveLeave(leaveId: number) {
       "leave_approved",
       leaveId,
       "leave",
+      user.id, // Track who approved the leave
     )
 
     try {
@@ -357,6 +365,7 @@ export async function rejectLeave(leaveId: number, rejectionReason?: string) {
       "leave_rejected",
       leaveId,
       "leave",
+      user.id, // Track who rejected the leave
     )
 
     try {

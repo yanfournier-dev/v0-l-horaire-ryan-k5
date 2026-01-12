@@ -308,6 +308,7 @@ export async function createExchangeRequest(data: {
           "exchange_request",
           exchangeId,
           "shift_exchange",
+          user.id, // Track who created the exchange request
         )
 
         await createNotification(
@@ -317,6 +318,7 @@ export async function createExchangeRequest(data: {
           "exchange_request_confirmation",
           exchangeId,
           "shift_exchange",
+          user.id, // Self-notification confirmation
         )
       }
     } catch (notificationError) {
@@ -639,7 +641,7 @@ export async function approveExchange(exchangeId: number, forceConsecutiveHours 
 
         const targetPartialHours =
           exchange.is_partial && exchange.target_start_time && exchange.targetEndTime
-            ? `${exchange.target_start_time.slice(0, 5)} - ${exchange.targetEndTime.slice(0, 5)}`
+            ? `${exchange.target_start_time.slice(0, 5)} - ${exchange.target_end_time.slice(0, 5)}`
             : ""
 
         const requesterShiftDate = new Date(exchange.requester_shift_date).toLocaleDateString("fr-CA", {
@@ -660,10 +662,11 @@ export async function approveExchange(exchangeId: number, forceConsecutiveHours 
           await createNotification(
             requesterUser.id,
             "✅ Échange de quart approuvé",
-            `Votre échange de quart avec ${targetUser.first_name} ${targetUser.last_name} a été approuvé: ${requesterShiftDate} (${exchange.requester_shift_type}) contre ${targetShiftDate} (${exchange.target_shift_type})${exchange.is_partial ? ` - Partiel: ${requesterPartialHours} / ${targetPartialHours}` : ""}`,
+            `Votre échange de quart avec ${targetUser?.first_name} ${targetUser?.last_name} a été approuvé: ${requesterShiftDate} (${exchange.requester_shift_type}) contre ${targetShiftDate} (${exchange.target_shift_type})${exchange.is_partial ? ` - Partiel: ${requesterPartialHours} / ${targetPartialHours}` : ""}`,
             "exchange_approved",
             exchangeId,
             "shift_exchange",
+            user.id, // Track who approved the exchange
           )
         }
 
@@ -671,10 +674,11 @@ export async function approveExchange(exchangeId: number, forceConsecutiveHours 
           await createNotification(
             targetUser.id,
             "✅ Échange de quart approuvé",
-            `Votre échange de quart avec ${requesterUser.first_name} ${requesterUser.last_name} a été approuvé: ${targetShiftDate} (${exchange.target_shift_type}) contre ${requesterShiftDate} (${exchange.requester_shift_type})${exchange.is_partial ? ` - Partiel: ${targetPartialHours} / ${requesterPartialHours}` : ""}`,
+            `Votre échange de quart avec ${requesterUser?.first_name} ${requesterUser?.last_name} a été approuvé: ${targetShiftDate} (${exchange.target_shift_type}) contre ${requesterShiftDate} (${exchange.requester_shift_type})${exchange.is_partial ? ` - Partiel: ${targetPartialHours} / ${requesterPartialHours}` : ""}`,
             "exchange_approved",
             exchangeId,
             "shift_exchange",
+            user.id, // Track who approved the exchange
           )
         }
       } catch (notificationError) {
@@ -765,12 +769,12 @@ export async function rejectExchange(exchangeId: number, reason?: string) {
 
       const requesterPartialHours =
         exchange.is_partial && exchange.requester_start_time && exchange.requesterEndTime
-          ? `${exchange.requester_start_time.slice(0, 5)} - ${exchange.requesterEndTime.slice(0, 5)}`
+          ? `${exchange.requester_start_time.slice(0, 5)} - ${exchange.requester_end_time.slice(0, 5)}`
           : ""
 
       const targetPartialHours =
         exchange.is_partial && exchange.target_start_time && exchange.targetEndTime
-          ? `${exchange.target_start_time.slice(0, 5)} - ${exchange.targetEndTime.slice(0, 5)}`
+          ? `${exchange.target_start_time.slice(0, 5)} - ${exchange.target_end_time.slice(0, 5)}`
           : ""
 
       const requesterShiftDate = new Date(exchange.requester_shift_date).toLocaleDateString("fr-CA", {
@@ -791,10 +795,11 @@ export async function rejectExchange(exchangeId: number, reason?: string) {
         await createNotification(
           requesterUser.id,
           "❌ Échange de quart refusé",
-          `Votre demande d'échange avec ${targetUser.first_name} ${targetUser.last_name} a été refusée: ${requesterShiftDate} (${exchange.requester_shift_type}) contre ${targetShiftDate} (${exchange.target_shift_type})${reason ? ` - Raison: ${reason}` : ""}${exchange.is_partial ? ` - Partiel: ${requesterPartialHours} / ${targetPartialHours}` : ""}`,
+          `Votre échange de quart avec ${targetUser?.first_name} ${targetUser?.last_name} a été refusé${reason ? `: ${reason}` : "."}`,
           "exchange_rejected",
           exchangeId,
           "shift_exchange",
+          user.id, // Track who rejected the exchange
         )
       }
 
@@ -802,10 +807,11 @@ export async function rejectExchange(exchangeId: number, reason?: string) {
         await createNotification(
           targetUser.id,
           "❌ Échange de quart refusé",
-          `La demande d'échange avec ${requesterUser.first_name} ${requesterUser.last_name} a été refusée: ${targetShiftDate} (${exchange.target_shift_type}) contre ${requesterShiftDate} (${exchange.requester_shift_type})${reason ? ` - Raison: ${reason}` : ""}${exchange.is_partial ? ` - Partiel: ${targetPartialHours} / ${requesterPartialHours}` : ""}`,
+          `Votre échange de quart avec ${requesterUser?.first_name} ${requesterUser?.last_name} a été refusé${reason ? `: ${reason}` : "."}`,
           "exchange_rejected",
           exchangeId,
           "shift_exchange",
+          user.id, // Track who rejected the exchange
         )
       }
     } catch (notificationError) {

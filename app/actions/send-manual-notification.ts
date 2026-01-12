@@ -2,6 +2,7 @@
 
 import { neon } from "@neondatabase/serverless"
 import { getSession } from "./auth"
+import { createNotification } from "./notifications"
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -95,15 +96,26 @@ export async function sendManualNotification(message: string, recipientIds: numb
     let failedCount = 0
     let skippedCount = 0
 
+    const deliveryDetails: Array<{
+      name: string
+      channels: {
+        inApp: boolean
+        email: boolean | "disabled"
+        telegram: boolean | "disabled"
+      }
+      status: "success" | "partial" | "failed" | "skipped"
+    }> = []
+
     for (const recipientId of recipientIds) {
       const channelsSent: string[] = []
       const channelsFailed: string[] = []
       let errorMessage: string | null = null
-      let deliveryStatus = "failed"
+      let deliveryStatus: "success" | "partial" | "failed" | "skipped" = "failed"
 
       try {
         const userPrefs = await sql`
           SELECT 
+            u.id,
             u.first_name || ' ' || u.last_name as name,
             np.enable_email,
             np.enable_telegram,
@@ -117,54 +129,92 @@ export async function sendManualNotification(message: string, recipientIds: numb
           deliveryStatus = "skipped"
           errorMessage = "Utilisateur non trouvé"
           skippedCount++
+
+          deliveryDetails.push({
+            name: "Utilisateur inconnu",
+            channels: { inApp: false, email: "disabled", telegram: "disabled" },
+            status: "skipped",
+          })
         } else {
           const user = userPrefs[0]
 
-          channelsSent.push("in_app")
+          console.log("[v0] Sending to user:", {
+            id: user.id,
+            name: user.name,
+            enableEmail: user.enable_email,
+            enableTelegram: user.enable_telegram,
+            telegramChatId: user.telegram_chat_id,
+          })
 
-          if (user.enable_email === true) {
-            channelsSent.push("email")
+          const channelStatus = {
+            inApp: false,
+            email: user.enable_email === true ? false : ("disabled" as const),
+            telegram: user.enable_telegram === true && user.telegram_chat_id ? false : ("disabled" as const),
           }
 
-          if (user.enable_telegram === true && user.telegram_chat_id) {
-            channelsSent.push("telegram")
-          }
+          try {
+            await createNotification(
+              recipientId,
+              "Message de l'administration",
+              message.trim(),
+              "manual_message",
+              null,
+              null,
+            )
 
-          await sql`
-            INSERT INTO notifications (user_id, title, message, type)
-            VALUES (${recipientId}, ${"Message de l'administration"}, ${message.trim()}, ${"manual_message"})
-          `
+            // In-app always succeeds if createNotification doesn't throw
+            channelsSent.push("in_app")
+            channelStatus.inApp = true
 
-          if (user.enable_email === true) {
-            try {
-              console.log("[v0] Email sent to user", recipientId)
-            } catch (emailError) {
-              channelsFailed.push("email")
-              console.error("[v0] Email failed for user", recipientId, emailError)
+            if (user.enable_email === true) {
+              channelsSent.push("email")
+              channelStatus.email = true
             }
-          }
 
-          if (user.enable_telegram === true && user.telegram_chat_id) {
-            try {
-              console.log("[v0] Telegram sent to user", recipientId)
-            } catch (telegramError) {
-              channelsFailed.push("telegram")
-              console.error("[v0] Telegram failed for user", recipientId, telegramError)
+            if (user.enable_telegram === true && user.telegram_chat_id) {
+              channelsSent.push("telegram")
+              channelStatus.telegram = true
             }
-          }
 
-          if (channelsFailed.length === 0 && channelsSent.length > 0) {
-            deliveryStatus = "success"
-            successCount++
-          } else if (channelsSent.length > channelsFailed.length) {
-            deliveryStatus = "partial"
-            partialCount++
-          } else if (channelsSent.length === 0) {
-            deliveryStatus = "skipped"
-            skippedCount++
-          } else {
+            console.log("[v0] createNotification called successfully for user", recipientId, "channels:", channelsSent)
+
+            const enabledChannels = [
+              true, // in_app always enabled
+              user.enable_email === true,
+              user.enable_telegram === true && user.telegram_chat_id,
+            ].filter(Boolean).length
+
+            const sentChannels = channelsSent.length
+
+            if (sentChannels === enabledChannels && enabledChannels > 1) {
+              deliveryStatus = "success"
+              successCount++
+            } else if (sentChannels === 1 && enabledChannels === 1) {
+              // Only in-app available and sent = success
+              deliveryStatus = "success"
+              successCount++
+            } else {
+              // Some channels enabled but not all sent = partial
+              deliveryStatus = "partial"
+              partialCount++
+            }
+
+            deliveryDetails.push({
+              name: user.name,
+              channels: channelStatus,
+              status: deliveryStatus,
+            })
+          } catch (notificationError) {
             deliveryStatus = "failed"
+            errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError)
             failedCount++
+            console.error("[v0] createNotification failed for user", recipientId, notificationError)
+
+            deliveryDetails.push({
+              name: user.name,
+              channels: { inApp: false, email: "disabled", telegram: "disabled" },
+              status: "failed",
+            })
           }
         }
 
@@ -210,6 +260,12 @@ export async function sendManualNotification(message: string, recipientIds: numb
             ${error instanceof Error ? error.message : String(error)}
           )
         `
+
+        deliveryDetails.push({
+          name: "Erreur",
+          channels: { inApp: false, email: false, telegram: false },
+          status: "failed",
+        })
       }
     }
 
@@ -223,12 +279,12 @@ export async function sendManualNotification(message: string, recipientIds: numb
     return {
       success: true,
       summary: {
-        total: recipientIds.length,
-        success: successCount,
-        partial: partialCount,
-        failed: failedCount,
-        skipped: skippedCount,
+        successCount: successCount,
+        partialCount: partialCount,
+        failedCount: failedCount,
+        skippedCount: skippedCount,
       },
+      deliveryDetails, // Return detailed delivery information
       message: `Notification envoyée à ${successCount + partialCount} pompier(s) sur ${recipientIds.length}`,
     }
   } catch (error) {

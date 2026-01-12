@@ -116,15 +116,31 @@ export async function createNotification(
   type: string,
   relatedId?: number,
   relatedType?: string,
+  sentBy?: number, // Added sentBy parameter to track who sent the notification
 ) {
   try {
     console.log("[v0] Creating notification for user:", userId, "type:", type)
 
+    const channelsSent: string[] = ["in_app"] // In-app is always sent
+    const channelsFailed: string[] = []
+    let deliveryStatus = "success" // Start optimistic
+    let errorMessage: string | null = null
+
     // Create in-app notification
     await sql`
-      INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
-      VALUES (${userId}, ${title}, ${message}, ${type}, ${relatedId || null}, ${relatedType || null})
+      INSERT INTO notifications (user_id, title, message, type, related_id, related_type, sent_by)
+      VALUES (${userId}, ${title}, ${message}, ${type}, ${relatedId || null}, ${relatedType || null}, ${sentBy || null})
     `
+
+    const notificationResult = await sql`
+      SELECT id FROM notifications 
+      WHERE user_id = ${userId} 
+      AND type = ${type}
+      AND created_at >= NOW() - INTERVAL '5 seconds'
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `
+    const notificationId = notificationResult[0]?.id
 
     // Get user preferences and contact info
     const userPrefs = await sql`
@@ -148,6 +164,18 @@ export async function createNotification(
 
     if (userPrefs.length === 0) {
       console.log("[v0] No user found, skipping email")
+      deliveryStatus = "skipped"
+      errorMessage = "User not found"
+      if (notificationId) {
+        await sql`
+          UPDATE notifications 
+          SET delivery_status = ${deliveryStatus},
+              channels_sent = ${channelsSent},
+              channels_failed = ${channelsFailed},
+              error_message = ${errorMessage}
+          WHERE id = ${notificationId}
+        `
+      }
       return { success: true }
     }
 
@@ -156,7 +184,6 @@ export async function createNotification(
 
     if (user.enable_email === null) {
       console.log("[v0] No notification preferences found - email notifications disabled by default")
-      return { success: true }
     }
 
     console.log("[v0] User email:", user.email)
@@ -177,15 +204,17 @@ export async function createNotification(
 
     if (prefKey && user[prefKey] === false) {
       console.log("[v0] User disabled this notification type, skipping email")
-      return { success: true }
     }
 
     if (user.enable_email === true && user.email) {
       console.log("[v0] Sending email notification to:", user.email)
       try {
         await sendEmailNotification(type, user.email, fullName, message, relatedId, userId)
+        channelsSent.push("email")
       } catch (emailError) {
         console.error("[v0] Email sending failed but notification created:", emailError)
+        channelsFailed.push("email")
+        errorMessage = emailError instanceof Error ? emailError.message : String(emailError)
         await notifyAdminsOfEmailFailure(user.email, type, emailError)
       }
     } else {
@@ -196,8 +225,13 @@ export async function createNotification(
       console.log("[v0] Sending Telegram notification to chat_id:", user.telegram_chat_id)
       try {
         await sendTelegramNotificationMessage(type, user.telegram_chat_id, fullName, message, relatedId)
+        channelsSent.push("telegram")
       } catch (telegramError) {
         console.error("[v0] Telegram sending failed but notification created:", telegramError)
+        channelsFailed.push("telegram")
+        if (!errorMessage) {
+          errorMessage = telegramError instanceof Error ? telegramError.message : String(telegramError)
+        }
       }
     } else {
       console.log(
@@ -208,260 +242,31 @@ export async function createNotification(
       )
     }
 
+    if (channelsFailed.length > 0 && channelsSent.length === 1) {
+      // Only in-app succeeded
+      deliveryStatus = "partial"
+    } else if (channelsFailed.length > 0) {
+      deliveryStatus = "partial"
+    } else if (channelsSent.length === 1) {
+      // Only in-app, but user has no other channels enabled
+      deliveryStatus = "success"
+    }
+
+    if (notificationId) {
+      await sql`
+        UPDATE notifications 
+        SET delivery_status = ${deliveryStatus},
+            channels_sent = ${channelsSent},
+            channels_failed = ${channelsFailed},
+            error_message = ${errorMessage}
+        WHERE id = ${notificationId}
+      `
+    }
+
     return { success: true }
   } catch (error) {
     console.error("[v0] Notification error:", error)
     return { error: "Erreur lors de la création de la notification" }
-  }
-}
-
-async function notifyAdminsOfEmailFailure(recipientEmail: string, notificationType: string, error: any) {
-  try {
-    const admins = await sql`
-      SELECT id FROM users WHERE is_admin = true
-    `
-
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    const typeMap: Record<string, string> = {
-      replacement_available: "Remplacement disponible",
-      replacement_accepted: "Remplacement accepté",
-      replacement_rejected: "Remplacement rejeté",
-      application_approved: "Candidature approuvée",
-      application_rejected: "Candidature rejetée",
-      // Removed exchange_request, exchange_approved, exchange_rejected
-    }
-
-    const notificationTitle = typeMap[notificationType] || notificationType
-
-    for (const admin of admins) {
-      await sql`
-        INSERT INTO notifications (user_id, title, message, type)
-        VALUES (
-          ${admin.id}, 
-          ${"Échec d'envoi d'email"}, 
-          ${"L'email de notification '" + notificationTitle + "' à " + recipientEmail + " a échoué: " + errorMessage},
-          ${"system"}
-        )
-      `
-    }
-  } catch (notifyError) {
-    console.error("[v0] PRODUCTION: Failed to notify admins of email failure:", notifyError)
-  }
-}
-
-async function sendEmailNotification(
-  type: string,
-  email: string,
-  name: string,
-  message: string,
-  relatedId?: number,
-  userId?: number,
-) {
-  if (process.env.VERCEL_ENV !== "production") {
-    console.log("[v0] Skipping email in preview - notification created in-app only")
-    return
-  }
-
-  console.log(
-    "[v0] sendEmailNotification called - type:",
-    type,
-    "email:",
-    email,
-    "relatedId:",
-    relatedId,
-    "userId:",
-    userId,
-  )
-
-  let emailContent
-  let applyToken: string | undefined
-
-  switch (type) {
-    case "replacement_available":
-      if (relatedId && userId) {
-        console.log("[v0] Fetching replacement details for relatedId:", relatedId)
-        const replacement = await sql`
-          SELECT 
-            r.shift_date, 
-            r.shift_type, 
-            r.is_partial, 
-            r.start_time, 
-            r.end_time,
-            u.first_name || ' ' || u.last_name as firefighter_to_replace
-          FROM replacements r
-          LEFT JOIN users u ON r.user_id = u.id
-          WHERE r.id = ${relatedId}
-        `
-        console.log("[v0] Replacement found:", replacement.length > 0)
-
-        if (replacement.length > 0) {
-          const r = replacement[0]
-          const partialHours =
-            r.is_partial && r.start_time && r.end_time
-              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
-              : null
-
-          applyToken = crypto.randomUUID()
-          console.log("[v0] Generated applyToken:", applyToken)
-
-          const expiresAt = new Date()
-          expiresAt.setDate(expiresAt.getDate() + 7) // Token valid for 7 days
-          console.log("[v0] Token expires at:", expiresAt)
-
-          try {
-            console.log("[v0] Inserting token into database...")
-            await sql`
-              INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
-              VALUES (${applyToken}, ${relatedId}, ${userId}, ${expiresAt})
-              ON CONFLICT (user_id, replacement_id) 
-              DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
-            `
-            console.log("[v0] Token inserted successfully")
-          } catch (error) {
-            console.error("[v0] Error creating application token:", error)
-            applyToken = undefined
-          }
-
-          console.log("[v0] Calling getReplacementAvailableEmail with applyToken:", applyToken)
-          emailContent = await getReplacementAvailableEmail(
-            name,
-            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
-            r.shift_type,
-            r.firefighter_to_replace || "Pompier supplémentaire",
-            r.is_partial,
-            partialHours,
-            applyToken,
-          )
-        }
-      } else {
-        console.log("[v0] Missing relatedId or userId - cannot generate token")
-      }
-      break
-
-    case "replacement_approved":
-    case "application_approved":
-      if (relatedId) {
-        const replacement = await sql`
-          SELECT 
-            r.shift_date, 
-            r.shift_type, 
-            r.is_partial, 
-            r.start_time, 
-            r.end_time,
-            u.first_name || ' ' || u.last_name as firefighter_to_replace
-          FROM replacements r
-          LEFT JOIN users u ON r.user_id = u.id
-          WHERE r.id = ${relatedId}
-        `
-        if (replacement.length > 0) {
-          const r = replacement[0]
-          const partialHours =
-            r.is_partial && r.start_time && r.end_time
-              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
-              : null
-          emailContent = await getApplicationApprovedEmail(
-            name,
-            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
-            r.shift_type,
-            r.firefighter_to_replace || "Pompier supplémentaire",
-            r.is_partial,
-            partialHours,
-          )
-        }
-      }
-      break
-
-    case "replacement_rejected":
-    case "application_rejected":
-      if (relatedId) {
-        const replacement = await sql`
-          SELECT 
-            r.shift_date, 
-            r.shift_type, 
-            r.is_partial, 
-            r.start_time, 
-            r.end_time,
-            u.first_name || ' ' || u.last_name as firefighter_to_replace
-          FROM replacements r
-          LEFT JOIN users u ON r.user_id = u.id
-          WHERE r.id = ${relatedId}
-        `
-        if (replacement.length > 0) {
-          const r = replacement[0]
-          const partialHours =
-            r.is_partial && r.start_time && r.end_time
-              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
-              : null
-          emailContent = await getApplicationRejectedEmail(
-            name,
-            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
-            r.shift_type,
-            r.firefighter_to_replace || "Pompier supplémentaire",
-            r.is_partial,
-            partialHours,
-          )
-        }
-      }
-      break
-
-    case "manual_message":
-      emailContent = {
-        subject: "Message important - Horaire SSIV",
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background-color: #ef4444; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-                .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-                .message-box { background-color: white; padding: 20px; border-left: 4px solid #ef4444; margin: 20px 0; }
-                .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1 style="margin: 0;">📢 Message de l'administration</h1>
-                </div>
-                <div class="content">
-                  <p>Bonjour ${name},</p>
-                  <div class="message-box">
-                    <p style="margin: 0; white-space: pre-wrap;">${message}</p>
-                  </div>
-                  <div class="footer">
-                    <p>Service des incendies</p>
-                  </div>
-                </div>
-              </div>
-            </body>
-          </html>
-        `,
-      }
-      break
-
-    // This notification type is no longer supported
-  }
-
-  if (emailContent) {
-    console.log("[v0] Calling sendEmail with subject:", emailContent.subject)
-    const result = await sendEmail({
-      to: email,
-      subject: emailContent.subject,
-      html: emailContent.html,
-    })
-    if (result.isTestModeRestriction) {
-      console.log("[v0] Email skipped due to Resend test mode - notification still created in database")
-    } else {
-      console.log("[v0] sendEmail result:", result)
-    }
-    if (!result.success) {
-      throw new Error(result.error?.message || "Email sending failed")
-    }
-  } else {
-    console.log("[v0] No email content generated for type:", type)
   }
 }
 
@@ -1082,5 +887,255 @@ ${message}`
     }
   } else {
     console.log("[v0] No Telegram message generated for type:", type)
+  }
+}
+
+async function notifyAdminsOfEmailFailure(recipientEmail: string, notificationType: string, error: any) {
+  try {
+    const admins = await sql`
+      SELECT id FROM users WHERE is_admin = true
+    `
+
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const typeMap: Record<string, string> = {
+      replacement_available: "Remplacement disponible",
+      replacement_accepted: "Remplacement accepté",
+      replacement_rejected: "Remplacement rejeté",
+      application_approved: "Candidature approuvée",
+      application_rejected: "Candidature rejetée",
+      // Removed exchange_request, exchange_approved, exchange_rejected
+    }
+
+    const notificationTitle = typeMap[notificationType] || notificationType
+
+    for (const admin of admins) {
+      await sql`
+        INSERT INTO notifications (user_id, title, message, type)
+        VALUES (
+          ${admin.id}, 
+          ${"Échec d'envoi d'email"}, 
+          ${"L'email de notification '" + notificationTitle + "' à " + recipientEmail + " a échoué: " + errorMessage},
+          ${"system"}
+        )
+      `
+    }
+  } catch (notifyError) {
+    console.error("[v0] PRODUCTION: Failed to notify admins of email failure:", notifyError)
+  }
+}
+
+async function sendEmailNotification(
+  type: string,
+  email: string,
+  name: string,
+  message: string,
+  relatedId?: number,
+  userId?: number,
+) {
+  if (process.env.VERCEL_ENV !== "production") {
+    console.log("[v0] Skipping email in preview - notification created in-app only")
+    return
+  }
+
+  console.log(
+    "[v0] sendEmailNotification called - type:",
+    type,
+    "email:",
+    email,
+    "relatedId:",
+    relatedId,
+    "userId:",
+    userId,
+  )
+
+  let emailContent
+  let applyToken: string | undefined
+
+  switch (type) {
+    case "replacement_available":
+      if (relatedId && userId) {
+        console.log("[v0] Fetching replacement details for relatedId:", relatedId)
+        const replacement = await sql`
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
+          FROM replacements r
+          LEFT JOIN users u ON r.user_id = u.id
+          WHERE r.id = ${relatedId}
+        `
+        console.log("[v0] Replacement found:", replacement.length > 0)
+
+        if (replacement.length > 0) {
+          const r = replacement[0]
+          const partialHours =
+            r.is_partial && r.start_time && r.end_time
+              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : null
+
+          applyToken = crypto.randomUUID()
+          console.log("[v0] Generated applyToken:", applyToken)
+
+          const expiresAt = new Date()
+          expiresAt.setDate(expiresAt.getDate() + 7) // Token valid for 7 days
+          console.log("[v0] Token expires at:", expiresAt)
+
+          try {
+            console.log("[v0] Inserting token into database...")
+            await sql`
+              INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
+              VALUES (${applyToken}, ${relatedId}, ${userId}, ${expiresAt})
+              ON CONFLICT (user_id, replacement_id) 
+              DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
+            `
+            console.log("[v0] Token inserted successfully")
+          } catch (error) {
+            console.error("[v0] Error creating application token:", error)
+            applyToken = undefined
+          }
+
+          console.log("[v0] Calling getReplacementAvailableEmail with applyToken:", applyToken)
+          emailContent = await getReplacementAvailableEmail(
+            name,
+            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
+            r.shift_type,
+            r.firefighter_to_replace || "Pompier supplémentaire",
+            r.is_partial,
+            partialHours,
+            applyToken,
+          )
+        }
+      } else {
+        console.log("[v0] Missing relatedId or userId - cannot generate token")
+      }
+      break
+
+    case "replacement_approved":
+    case "application_approved":
+      if (relatedId) {
+        const replacement = await sql`
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
+          FROM replacements r
+          LEFT JOIN users u ON r.user_id = u.id
+          WHERE r.id = ${relatedId}
+        `
+        if (replacement.length > 0) {
+          const r = replacement[0]
+          const partialHours =
+            r.is_partial && r.start_time && r.end_time
+              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : null
+          emailContent = await getApplicationApprovedEmail(
+            name,
+            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
+            r.shift_type,
+            r.firefighter_to_replace || "Pompier supplémentaire",
+            r.is_partial,
+            partialHours,
+          )
+        }
+      }
+      break
+
+    case "replacement_rejected":
+    case "application_rejected":
+      if (relatedId) {
+        const replacement = await sql`
+          SELECT 
+            r.shift_date, 
+            r.shift_type, 
+            r.is_partial, 
+            r.start_time, 
+            r.end_time,
+            u.first_name || ' ' || u.last_name as firefighter_to_replace
+          FROM replacements r
+          LEFT JOIN users u ON r.user_id = u.id
+          WHERE r.id = ${relatedId}
+        `
+        if (replacement.length > 0) {
+          const r = replacement[0]
+          const partialHours =
+            r.is_partial && r.start_time && r.end_time
+              ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
+              : null
+          emailContent = await getApplicationRejectedEmail(
+            name,
+            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
+            r.shift_type,
+            r.firefighter_to_replace || "Pompier supplémentaire",
+            r.is_partial,
+            partialHours,
+          )
+        }
+      }
+      break
+
+    case "manual_message":
+      emailContent = {
+        subject: "Message important - Horaire SSIV",
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background-color: #ef4444; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+                .message-box { background-color: white; padding: 20px; border-left: 4px solid #ef4444; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin: 0;">📢 Message de l'administration</h1>
+                </div>
+                <div class="content">
+                  <p>Bonjour ${name},</p>
+                  <div class="message-box">
+                    <p style="margin: 0; white-space: pre-wrap;">${message}</p>
+                  </div>
+                  <div class="footer">
+                    <p>Service des incendies</p>
+                  </div>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
+      }
+      break
+
+    // This notification type is no longer supported
+  }
+
+  if (emailContent) {
+    console.log("[v0] Calling sendEmail with subject:", emailContent.subject)
+    const result = await sendEmail({
+      to: email,
+      subject: emailContent.subject,
+      html: emailContent.html,
+    })
+    if (result.isTestModeRestriction) {
+      console.log("[v0] Email skipped due to Resend test mode - notification still created in database")
+    } else {
+      console.log("[v0] sendEmail result:", result)
+    }
+    if (!result.success) {
+      throw new Error(result.error?.message || "Email sending failed")
+    }
+  } else {
+    console.log("[v0] No email content generated for type:", type)
   }
 }

@@ -649,6 +649,24 @@ export async function rejectApplication(applicationId: number) {
       SELECT first_name, last_name FROM users WHERE id = ${applicantId}
     `
 
+    // Fetch additional details for the notification message
+    const replacementDetails = await db`
+      SELECT r.shift_date, r.shift_type, u.first_name as replaced_first_name, u.last_name as replaced_last_name
+      FROM replacements r
+      LEFT JOIN users u ON r.user_id = u.id
+      WHERE r.id = ${replacementId}
+    `
+
+    let replacedFirstName = ""
+    let replacedLastName = ""
+    let shiftDate = ""
+
+    if (replacementDetails.length > 0) {
+      replacedFirstName = replacementDetails[0].replaced_first_name || "Inconnu"
+      replacedLastName = replacementDetails[0].replaced_last_name || ""
+      shiftDate = replacementDetails[0].shift_date
+    }
+
     console.log("[v0] rejectApplication: Updating application status...")
     await db`
       UPDATE replacement_applications
@@ -671,10 +689,11 @@ export async function rejectApplication(applicationId: number) {
     await createNotification(
       applicantId,
       "Candidature rejetée",
-      "Votre candidature pour un remplacement a été rejetée.",
+      `Votre candidature pour le remplacement de ${replacedFirstName} ${replacedLastName} le ${formatLocalDate(shiftDate)} a été rejetée.`,
       "replacement_rejected",
-      replacementId, // Pass the replacement ID here
+      replacementId,
       "replacement",
+      user.id, // Track who rejected the application
     )
     console.log("[v0] rejectApplication: Notification created successfully")
 
@@ -1193,16 +1212,29 @@ export async function removeReplacementAssignment(replacementId: number) {
     const replacementDetails = await db`
       SELECT r.shift_date, r.shift_type, r.team_id, ra.applicant_id, 
              req_user.first_name as requester_first_name, req_user.last_name as requester_last_name,
-             app_user.first_name as applicant_first_name, app_user.last_name as applicant_last_name
+             app_user.first_name as applicant_first_name, app_user.last_name as applicant_last_name,
+             u.first_name as replaced_first_name, u.last_name as replaced_last_name
       FROM replacements r
       LEFT JOIN users req_user ON r.user_id = req_user.id
       LEFT JOIN replacement_applications ra ON r.id = ra.replacement_id AND ra.status = 'approved'
       LEFT JOIN users app_user ON ra.applicant_id = app_user.id
+      LEFT JOIN users u ON r.user_id = u.id
       WHERE r.id = ${replacementId}
     `
 
     if (replacementDetails.length > 0) {
-      const { shift_date, shift_type, team_id, applicant_id } = replacementDetails[0]
+      const {
+        shift_date,
+        shift_type,
+        team_id,
+        applicant_id,
+        requester_first_name,
+        requester_last_name,
+        applicant_first_name,
+        applicant_last_name,
+        replaced_first_name,
+        replaced_last_name,
+      } = replacementDetails[0]
 
       const cycleConfig = await db`
         SELECT start_date, cycle_length_days
@@ -1240,20 +1272,20 @@ export async function removeReplacementAssignment(replacementId: number) {
         await createNotification(
           applicant_id,
           "Assignation retirée",
-          `Votre assignation au remplacement du ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"}) a été retirée.`,
+          `Votre assignation pour le remplacement de ${replaced_first_name || ""} ${replaced_last_name || ""} le ${formatLocalDate(shift_date)} a été retirée.`,
           "assignment_removed",
           replacementId,
           "replacement",
+          user.id, // Track who removed the assignment
         )
       }
 
-      const detail = replacementDetails[0]
       await createAuditLog({
         userId: user.id,
         actionType: "CANDIDATE_REMOVED",
         tableName: "shift_assignments",
         recordId: replacementId,
-        description: `Candidat assigné retiré: ${detail.applicant_first_name || ""} ${detail.applicant_last_name || ""} pour ${detail.requester_first_name || ""} ${detail.requester_last_name || ""} le ${new Date(shift_date).toLocaleDateString("fr-CA")} (${shift_type === "day" ? "Jour" : "Nuit"})`,
+        description: `Candidat assigné retiré: ${applicant_first_name || ""} ${applicant_last_name || ""} pour ${requester_first_name || ""} ${requester_last_name || ""} le ${new Date(shift_date).toLocaleDateString("fr-CA")} (${shift_type === "day" ? "Jour" : "Nuit"})`,
       })
     }
 

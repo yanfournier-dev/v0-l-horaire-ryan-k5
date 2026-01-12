@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { updateUserPreferences } from "@/app/actions/notifications"
 import { generateTelegramLink, disconnectTelegram } from "@/app/actions/telegram"
-import { Bell, Mail, MessageSquare, ExternalLink } from "lucide-react"
+import { Bell, MessageSquare, ExternalLink } from "lucide-react"
 
 interface NotificationPreferencesFormProps {
   userId: number
@@ -16,7 +16,7 @@ interface NotificationPreferencesFormProps {
 
 export function NotificationPreferencesForm({ userId, initialPreferences }: NotificationPreferencesFormProps) {
   const [preferences, setPreferences] = useState({
-    enable_app: initialPreferences?.enable_app ?? true,
+    enable_app: true,
     enable_email: initialPreferences?.enable_email ?? false,
     enable_telegram: initialPreferences?.enable_telegram ?? false,
     telegram_chat_id: initialPreferences?.telegram_chat_id ?? null,
@@ -96,24 +96,20 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
         </p>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between bg-muted/50 p-4 rounded-lg border border-muted">
             <div className="flex items-center gap-3">
               <Bell className="h-5 w-5 text-muted-foreground" />
               <div>
-                <Label htmlFor="enable_app" className="font-medium">
-                  Notifications dans l'application
-                </Label>
-                <p className="text-sm text-muted-foreground">Recevez des notifications dans l'application</p>
+                <Label className="font-medium">Notifications dans l'application</Label>
+                <p className="text-sm text-muted-foreground">Toujours activées (obligatoire)</p>
               </div>
             </div>
-            <Switch
-              id="enable_app"
-              checked={preferences.enable_app}
-              onCheckedChange={(checked) => handleToggle("enable_app", checked)}
-              disabled={savingToggles.has("enable_app")}
-            />
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-green-600 font-medium">✓ Activé</span>
+            </div>
           </div>
 
+          {/* 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Mail className="h-5 w-5 text-muted-foreground" />
@@ -131,6 +127,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
               disabled={savingToggles.has("enable_email")}
             />
           </div>
+          */}
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

@@ -21,7 +21,7 @@ export default async function SendNotificationPage() {
         <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Envoyer une notification</h1>
         <p className="text-muted-foreground">
           Envoyez un message personnalisé aux pompiers de votre choix. Le message sera envoyé via les canaux de
-          notification activés par chaque utilisateur (app, email, Telegram).
+          notification activés par chaque utilisateur (app, Telegram).
         </p>
       </div>
 
