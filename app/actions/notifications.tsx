@@ -308,9 +308,9 @@ export async function createBatchNotificationsInApp(
   title: string,
   message: string,
   type: string,
-  relatedId: number | null,
-  relatedType: string | null,
-  sentBy?: number, // Added sentBy parameter to track who created the notification
+  relatedId?: number,
+  relatedType?: string,
+  sentBy?: number, // Added sentBy parameter to track who sent the notification
 ) {
   if (userIds.length === 0) return
 
@@ -497,43 +497,47 @@ export async function sendBatchReplacementEmails(
       filteredUsers.map(async (user: any) => {
         const fullName = `${user.first_name} ${user.last_name}`
 
-        const applyToken = crypto.randomUUID()
-        const expiresAt = new Date()
-        expiresAt.setDate(expiresAt.getDate() + 7)
+        let applyToken = crypto.randomUUID()
+        console.log("[v0] Generated applyToken:", applyToken)
 
-        await sql`
-          INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
-          VALUES (${applyToken}, ${replacementId}, ${user.id}, ${expiresAt})
-          ON CONFLICT (user_id, replacement_id) 
-          DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
-        `
+        const expiresAt = new Date()
+        expiresAt.setDate(expiresAt.getDate() + 7) // Token valid for 7 days
+        console.log("[v0] Token expires at:", expiresAt)
 
         try {
-          console.log("[v0] PRODUCTION: Generating email for user", user.email, "with deadlineLabel:", deadlineLabel)
+          console.log("[v0] Inserting token into database...")
+          await sql`
+            INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
+            VALUES (${applyToken}, ${replacementId}, ${user.id}, ${expiresAt})
+            ON CONFLICT (user_id, replacement_id) 
+            DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
+          `
+          console.log("[v0] Token inserted successfully")
+        } catch (error) {
+          console.error("[v0] Error creating application token:", error)
+          applyToken = undefined
+        }
 
-          const emailContent = await getReplacementAvailableEmail(
-            fullName,
-            parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
-            r.shift_type,
-            firefighterToReplaceName,
-            r.is_partial,
-            partialHours,
-            applyToken,
-            deadlineLabel,
-          )
+        console.log("[v0] Calling getReplacementAvailableEmail with applyToken:", applyToken)
+        const emailContent = await getReplacementAvailableEmail(
+          fullName,
+          parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
+          r.shift_type,
+          firefighterToReplaceName,
+          r.is_partial,
+          partialHours,
+          applyToken,
+          deadlineLabel,
+        )
 
-          console.log("[v0] PRODUCTION: Email content generated successfully for", user.email)
+        console.log("[v0] PRODUCTION: Email content generated successfully for", user.email)
 
-          return {
-            to: user.email,
-            subject: emailContent.subject,
-            html: emailContent.html,
-            userId: user.id,
-            name: fullName,
-          }
-        } catch (emailError) {
-          console.error("[v0] PRODUCTION ERROR: Failed to generate email for", user.email, "Error:", emailError)
-          throw emailError
+        return {
+          to: user.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          userId: user.id,
+          name: fullName,
         }
       }),
     )
@@ -603,56 +607,9 @@ export async function sendBatchReplacementEmails(
     if (!result.success) {
       console.error("[v0] PRODUCTION ERROR: Batch emails failed, notifying admins...")
 
-      const admins = await sql`
-        SELECT id FROM users WHERE is_admin = true
-      `
-
-      // Format shift date
-      const shiftDateStr = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-
-      // Translate shift type
-      const shiftTypeMap: Record<string, string> = {
-        day: "Jour",
-        night: "Nuit",
-        "24h": "24h",
-      }
-      const shiftTypeLabel = shiftTypeMap[r.shift_type] || r.shift_type
-
-      // Format partial hours if applicable
-      const partialInfo = r.is_partial && partialHours ? ` (${partialHours})` : ""
-
-      // Get list of failed emails from the errors array
-      const failedEmails = result.errors?.map((errorItem: any) => {
-        // Find the corresponding user by email
-        const failedEmail = emails.find((e) => e.to === errorItem.to)
-        if (failedEmail) {
-          const errorMsg = errorItem.error?.message || errorItem.error || "Erreur inconnue"
-          return `${failedEmail.name} (${failedEmail.to}): ${errorMsg}`
-        }
-        return `${errorItem.to}: ${errorItem.error?.message || errorItem.error || "Erreur inconnue"}`
-      })
-
-      const failedEmailsList =
-        failedEmails && failedEmails.length > 0 ? failedEmails.join("\n") : "Erreur générale lors de l'envoi"
-
-      const detailedMessage = `Les emails de notification pour le remplacement #${replacementId} ont échoué.\n\nDétails du remplacement:\n• Pompier à remplacer: ${firefighterToReplaceName}\n• Date: ${shiftDateStr}\n• Type de quart: ${shiftTypeLabel}${partialInfo}\n\nEmails échoués (${result.failed}/${emails.length}):\n${failedEmailsList}`
-
-      for (const admin of admins) {
-        await sql`
-          INSERT INTO notifications (user_id, title, message, type)
-          VALUES (
-            ${admin.id}, 
-            ${"Échec d'envoi d'emails"}, 
-            ${detailedMessage},
-            ${"system"}
-          )
-        `
-      }
+      // The email failures should not create a separate notification card in the history
+      // Email system is being phased out
+      console.log("[v0] Email batch failed, but not creating system notification")
     }
 
     return {
@@ -832,6 +789,8 @@ Votre candidature pour ce remplacement a été refusée.
 
 ${message}`
       break
+
+    // This notification type is no longer supported
   }
 
   if (telegramMessage) {
