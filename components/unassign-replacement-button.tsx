@@ -33,8 +33,8 @@ export function UnassignReplacementButton({ applicationId, firefighterName }: Un
       if (result.success) {
         setIsUpdating(true)
         setTimeout(() => {
-          window.location.replace(window.location.pathname)
-        }, 500)
+          window.location = window.location.href
+        }, 2000)
       } else {
         alert(result.error || "Erreur lors de l'annulation")
         setIsLoading(false)
