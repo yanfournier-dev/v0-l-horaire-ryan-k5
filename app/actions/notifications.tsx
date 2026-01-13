@@ -642,7 +642,7 @@ async function sendTelegramNotificationMessage(
       }
       break
 
-    case "replacement_approved":
+    case "replacement_accepted":
     case "application_approved":
       if (relatedId) {
         const replacement = await sql`
@@ -850,7 +850,7 @@ async function sendEmailNotification(
       }
       break
 
-    case "replacement_approved":
+    case "replacement_accepted":
     case "application_approved":
       if (relatedId) {
         const replacement = await sql`
