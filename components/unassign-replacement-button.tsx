@@ -30,14 +30,14 @@ export function UnassignReplacementButton({ applicationId, firefighterName }: Un
     try {
       const result = await unassignReplacement(applicationId)
       if (result.success) {
-        window.location.reload()
+        window.location.href = window.location.pathname + "?t=" + Date.now()
       } else {
         alert(result.error || "Erreur lors de l'annulation")
+        setIsLoading(false)
       }
     } catch (error) {
       console.error("Error:", error)
       alert("Erreur lors de l'annulation")
-    } finally {
       setIsLoading(false)
     }
   }
