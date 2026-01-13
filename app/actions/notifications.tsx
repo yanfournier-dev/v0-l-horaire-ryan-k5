@@ -163,7 +163,7 @@ export async function createNotification(
     console.log("[v0] User preferences found:", userPrefs.length > 0)
 
     if (userPrefs.length === 0) {
-      console.log("[v0] No user found, skipping email")
+      console.log("[v0] No user found, skipping additional channels")
       deliveryStatus = "skipped"
       errorMessage = "User not found"
       if (notificationId) {
@@ -182,45 +182,6 @@ export async function createNotification(
     const user = userPrefs[0]
     const fullName = `${user.first_name} ${user.last_name}`
 
-    if (user.enable_email === null) {
-      console.log("[v0] No notification preferences found - email notifications disabled by default")
-    }
-
-    console.log("[v0] User email:", user.email)
-    console.log("[v0] Email enabled:", user.enable_email)
-
-    const notificationTypeMap: Record<string, string> = {
-      replacement_available: "notify_replacement_available",
-      replacement_accepted: "notify_replacement_accepted",
-      replacement_rejected: "notify_replacement_rejected",
-      application_approved: "notify_replacement_accepted",
-      application_rejected: "notify_replacement_rejected",
-      replacement_approved: "notify_replacement_accepted",
-    }
-
-    const prefKey = notificationTypeMap[type]
-    console.log("[v0] Notification type preference key:", prefKey)
-    console.log("[v0] Preference value:", user[prefKey])
-
-    if (prefKey && user[prefKey] === false) {
-      console.log("[v0] User disabled this notification type, skipping email")
-    }
-
-    if (user.enable_email === true && user.email) {
-      console.log("[v0] Sending email notification to:", user.email)
-      try {
-        await sendEmailNotification(type, user.email, fullName, message, relatedId, userId)
-        channelsSent.push("email")
-      } catch (emailError) {
-        console.error("[v0] Email sending failed but notification created:", emailError)
-        channelsFailed.push("email")
-        errorMessage = emailError instanceof Error ? emailError.message : String(emailError)
-        await notifyAdminsOfEmailFailure(user.email, type, emailError)
-      }
-    } else {
-      console.log("[v0] Email not sent - enable_email:", user.enable_email, "has email:", !!user.email)
-    }
-
     if (user.enable_telegram === true && user.telegram_chat_id) {
       console.log("[v0] Sending Telegram notification to chat_id:", user.telegram_chat_id)
       try {
@@ -229,9 +190,7 @@ export async function createNotification(
       } catch (telegramError) {
         console.error("[v0] Telegram sending failed but notification created:", telegramError)
         channelsFailed.push("telegram")
-        if (!errorMessage) {
-          errorMessage = telegramError instanceof Error ? telegramError.message : String(telegramError)
-        }
+        errorMessage = telegramError instanceof Error ? telegramError.message : String(telegramError)
       }
     } else {
       console.log(

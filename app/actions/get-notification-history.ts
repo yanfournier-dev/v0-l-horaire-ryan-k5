@@ -3,23 +3,25 @@
 import { sql } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 
-export interface NotificationHistoryItem {
-  id: number
+export interface NotificationRecipient {
   user_id: number
   user_name: string
+  channels_sent: string[] | null
+  channels_failed: string[] | null
+}
+
+export interface NotificationHistoryItem {
+  id: number
   title: string
   message: string
   type: string
   related_id: number | null
   related_type: string | null
   delivery_status: string | null
-  channels_sent: string[] | null
-  channels_failed: string[] | null
-  error_message: string | null
   sent_by: number | null
   sent_by_name: string | null
   created_at: string
-  read: boolean
+  recipients: NotificationRecipient[]
 }
 
 export interface NotificationHistoryFilters {
@@ -56,35 +58,76 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
     if (!type || type === "all") {
       if (!deliveryStatus || deliveryStatus === "all") {
         // No filters
-        countQuery = sql`SELECT COUNT(*) as total FROM notifications n`
+        countQuery = sql`
+          SELECT COUNT(*) as total FROM (
+            SELECT type, related_id
+            FROM notifications
+            GROUP BY type, related_id
+          ) grouped
+        `
         dataQuery = sql`
           SELECT 
-            n.*,
-            u.first_name || ' ' || u.last_name as user_name,
-            sender.first_name || ' ' || sender.last_name as sent_by_name
+            MIN(n.id) as id,
+            n.type,
+            MAX(n.title) as title,
+            MAX(n.message) as message,
+            n.related_id,
+            MAX(n.related_type) as related_type,
+            MAX(n.delivery_status) as delivery_status,
+            MAX(n.sent_by) as sent_by,
+            MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
+            MAX(n.created_at) as created_at,
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'user_id', n.user_id,
+                'user_name', u.first_name || ' ' || u.last_name,
+                'channels_sent', n.channels_sent,
+                'channels_failed', n.channels_failed
+              ) ORDER BY u.last_name, u.first_name
+            ) as recipients
           FROM notifications n
           LEFT JOIN users u ON n.user_id = u.id
           LEFT JOIN users sender ON n.sent_by = sender.id
-          ORDER BY n.created_at DESC
+          GROUP BY n.type, n.related_id
+          ORDER BY created_at DESC
           LIMIT ${limit} OFFSET ${offset}
         `
       } else {
         // Only delivery status filter
         countQuery = sql`
-          SELECT COUNT(*) as total 
-          FROM notifications n 
-          WHERE n.delivery_status = ${deliveryStatus}
+          SELECT COUNT(*) as total FROM (
+            SELECT type, related_id
+            FROM notifications
+            WHERE delivery_status = ${deliveryStatus}
+            GROUP BY type, related_id
+          ) grouped
         `
         dataQuery = sql`
           SELECT 
-            n.*,
-            u.first_name || ' ' || u.last_name as user_name,
-            sender.first_name || ' ' || sender.last_name as sent_by_name
+            MIN(n.id) as id,
+            n.type,
+            MAX(n.title) as title,
+            MAX(n.message) as message,
+            n.related_id,
+            MAX(n.related_type) as related_type,
+            MAX(n.delivery_status) as delivery_status,
+            MAX(n.sent_by) as sent_by,
+            MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
+            MAX(n.created_at) as created_at,
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'user_id', n.user_id,
+                'user_name', u.first_name || ' ' || u.last_name,
+                'channels_sent', n.channels_sent,
+                'channels_failed', n.channels_failed
+              ) ORDER BY u.last_name, u.first_name
+            ) as recipients
           FROM notifications n
           LEFT JOIN users u ON n.user_id = u.id
           LEFT JOIN users sender ON n.sent_by = sender.id
           WHERE n.delivery_status = ${deliveryStatus}
-          ORDER BY n.created_at DESC
+          GROUP BY n.type, n.related_id
+          ORDER BY created_at DESC
           LIMIT ${limit} OFFSET ${offset}
         `
       }
@@ -92,52 +135,80 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
       if (!deliveryStatus || deliveryStatus === "all") {
         // Only type filter
         countQuery = sql`
-          SELECT COUNT(*) as total 
-          FROM notifications n 
-          WHERE n.type = ${type}
+          SELECT COUNT(*) as total FROM (
+            SELECT type, related_id
+            FROM notifications
+            WHERE type = ${type}
+            GROUP BY type, related_id
+          ) grouped
         `
         dataQuery = sql`
           SELECT 
-            n.*,
-            u.first_name || ' ' || u.last_name as user_name,
-            sender.first_name || ' ' || sender.last_name as sent_by_name
+            MIN(n.id) as id,
+            n.type,
+            MAX(n.title) as title,
+            MAX(n.message) as message,
+            n.related_id,
+            MAX(n.related_type) as related_type,
+            MAX(n.delivery_status) as delivery_status,
+            MAX(n.sent_by) as sent_by,
+            MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
+            MAX(n.created_at) as created_at,
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'user_id', n.user_id,
+                'user_name', u.first_name || ' ' || u.last_name,
+                'channels_sent', n.channels_sent,
+                'channels_failed', n.channels_failed
+              ) ORDER BY u.last_name, u.first_name
+            ) as recipients
           FROM notifications n
           LEFT JOIN users u ON n.user_id = u.id
           LEFT JOIN users sender ON n.sent_by = sender.id
           WHERE n.type = ${type}
-          ORDER BY n.created_at DESC
+          GROUP BY n.type, n.related_id
+          ORDER BY created_at DESC
           LIMIT ${limit} OFFSET ${offset}
         `
       } else {
         // Both type and delivery status filters
         countQuery = sql`
-          SELECT COUNT(*) as total 
-          FROM notifications n 
-          WHERE n.type = ${type} AND n.delivery_status = ${deliveryStatus}
+          SELECT COUNT(*) as total FROM (
+            SELECT type, related_id
+            FROM notifications
+            WHERE type = ${type} AND delivery_status = ${deliveryStatus}
+            GROUP BY type, related_id
+          ) grouped
         `
         dataQuery = sql`
           SELECT 
-            n.*,
-            u.first_name || ' ' || u.last_name as user_name,
-            sender.first_name || ' ' || sender.last_name as sent_by_name
+            MIN(n.id) as id,
+            n.type,
+            MAX(n.title) as title,
+            MAX(n.message) as message,
+            n.related_id,
+            MAX(n.related_type) as related_type,
+            MAX(n.delivery_status) as delivery_status,
+            MAX(n.sent_by) as sent_by,
+            MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
+            MAX(n.created_at) as created_at,
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'user_id', n.user_id,
+                'user_name', u.first_name || ' ' || u.last_name,
+                'channels_sent', n.channels_sent,
+                'channels_failed', n.channels_failed
+              ) ORDER BY u.last_name, u.first_name
+            ) as recipients
           FROM notifications n
           LEFT JOIN users u ON n.user_id = u.id
           LEFT JOIN users sender ON n.sent_by = sender.id
           WHERE n.type = ${type} AND n.delivery_status = ${deliveryStatus}
-          ORDER BY n.created_at DESC
+          GROUP BY n.type, n.related_id
+          ORDER BY created_at DESC
           LIMIT ${limit} OFFSET ${offset}
         `
       }
-    }
-
-    // Additional filters for start date and end date
-    if (startDate) {
-      countQuery = sql`${countQuery} AND n.created_at >= ${startDate}`
-      dataQuery = sql`${dataQuery} AND n.created_at >= ${startDate}`
-    }
-    if (endDate) {
-      countQuery = sql`${countQuery} AND n.created_at <= ${endDate}`
-      dataQuery = sql`${dataQuery} AND n.created_at <= ${endDate}`
     }
 
     console.log("[v0] Executing count and data queries")
@@ -146,7 +217,7 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
 
     const notifications = await dataQuery
 
-    console.log(`[v0] getNotificationHistory: Found ${notifications.length} notifications`)
+    console.log(`[v0] getNotificationHistory: Found ${notifications.length} notification events`)
 
     return {
       success: true,

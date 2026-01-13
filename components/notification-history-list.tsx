@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getNotificationHistory, type NotificationHistoryItem } from "@/app/actions/get-notification-history"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react"
 
 const typeLabels: Record<string, string> = {
   manual_message: "📢 Message manuel",
@@ -160,59 +160,96 @@ export function NotificationHistoryList() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {notifications.map((notification) => (
-            <Card key={notification.id} className="hover:bg-muted/50">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">{typeLabels[notification.type] || `📬 ${notification.type}`}</span>
-                      {notification.delivery_status && (
-                        <span
-                          className={`text-sm font-medium ${statusLabels[notification.delivery_status]?.color || ""}`}
-                        >
-                          {statusLabels[notification.delivery_status]?.label || notification.delivery_status}
-                        </span>
-                      )}
-                    </div>
+          {notifications.map((notification) => {
+            const totalFailedChannels =
+              notification.recipients?.reduce((count, recipient) => {
+                return count + (recipient.channels_failed?.length || 0)
+              }, 0) || 0
 
-                    <p className="text-sm text-muted-foreground">{formatDate(notification.created_at)}</p>
+            const hasErrors = totalFailedChannels > 0
 
-                    <div className="rounded-md bg-muted/50 p-3">
-                      <p className="font-medium">{notification.title}</p>
-                      <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <div>
-                        Destinataire: <span className="font-medium text-foreground">{notification.user_name}</span>
+            return (
+              <Card key={notification.id} className="hover:bg-muted/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">{typeLabels[notification.type] || `📬 ${notification.type}`}</span>
+                        {notification.delivery_status && (
+                          <span
+                            className={`text-sm font-medium ${statusLabels[notification.delivery_status]?.color || ""}`}
+                          >
+                            {statusLabels[notification.delivery_status]?.label || notification.delivery_status}
+                          </span>
+                        )}
                       </div>
 
-                      <div>
-                        Envoyé par:{" "}
-                        <span className="font-medium text-foreground">{notification.sent_by_name || "Système"}</span>
+                      <p className="text-sm text-muted-foreground">{formatDate(notification.created_at)}</p>
+
+                      <div className="rounded-md bg-muted/50 p-3">
+                        <p className="font-medium">{notification.title}</p>
+                        <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
                       </div>
 
-                      <div>
-                        Canaux:{" "}
-                        <span className="font-medium text-foreground">
-                          {notification.channels_sent && notification.channels_sent.length > 0
-                            ? notification.channels_sent.join(", ")
-                            : "App uniquement"}
-                        </span>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                        <div>
+                          Envoyé par:{" "}
+                          <span className="font-medium text-foreground">{notification.sent_by_name || "Système"}</span>
+                        </div>
                       </div>
 
-                      {notification.channels_failed && notification.channels_failed.length > 0 && (
-                        <div className="text-red-600">
-                          Échecs: <span className="font-medium">{notification.channels_failed.join(", ")}</span>
+                      <div className="mt-3 rounded-md border bg-card p-3">
+                        <p className="mb-2 text-sm font-medium">
+                          Destinataires ({notification.recipients?.length || 0}):
+                        </p>
+                        <div className="space-y-1">
+                          {notification.recipients?.map((recipient) => (
+                            <div key={recipient.user_id} className="flex items-center gap-2 text-sm">
+                              <span className="font-medium">{recipient.user_name}</span>
+                              <span className="text-muted-foreground">-</span>
+                              <span className="text-muted-foreground">
+                                {recipient.channels_sent && recipient.channels_sent.length > 0
+                                  ? recipient.channels_sent.join(", ")
+                                  : "in_app"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {hasErrors && (
+                        <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3">
+                          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-red-800">
+                            <AlertTriangle className="h-4 w-4" />
+                            Erreurs d'envoi ({totalFailedChannels})
+                          </div>
+                          <div className="space-y-1">
+                            {notification.recipients?.map((recipient) => {
+                              if (!recipient.channels_failed || recipient.channels_failed.length === 0) return null
+                              return (
+                                <div key={recipient.user_id} className="text-sm text-red-700">
+                                  <span className="font-medium">{recipient.user_name}</span>
+                                  <span className="text-red-600">
+                                    {" "}
+                                    - {recipient.channels_failed.join(", ")} échoué(s)
+                                  </span>
+                                  {recipient.error_message && (
+                                    <span className="text-red-500 text-xs block ml-4">
+                                      Raison: {recipient.error_message}
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
