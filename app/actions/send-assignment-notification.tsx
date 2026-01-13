@@ -206,40 +206,6 @@ Votre candidature a été acceptée!
           }
         }
       }
-
-      // Telegram notification for rejected candidate
-      if (rejected.enable_telegram === true && rejected.telegram_chat_id) {
-        const partialHours =
-          r.is_partial && r.start_time && r.end_time
-            ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
-            : null
-
-        const shiftDate = new Date(r.shift_date).toLocaleDateString("fr-CA", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-
-        const message = `❌ <b>Candidature refusée</b>
-
-Votre candidature a été refusée.
-
-📅 Date: ${shiftDate}
-⏰ Quart: ${r.shift_type === "day" ? "Jour (7h-17h)" : "Nuit (17h-7h)"}${partialHours ? `\n⏱️ Heures: ${partialHours}` : ""}
-👤 Remplace: ${r.replaced_name}`
-
-        try {
-          await sendTelegramMessage(rejected.telegram_chat_id, message)
-          console.log("Telegram sent successfully to rejected candidate:", rejected.applicant_id)
-        } catch (telegramError) {
-          console.error("Telegram sending failed for rejected candidate:", rejected.applicant_id, telegramError)
-        }
-      } else {
-        console.log("Telegram NOT sent to rejected candidate:", rejected.applicant_id, {
-          reason: !rejected.enable_telegram ? "Telegram disabled" : "No chat_id",
-        })
-      }
     }
 
     await sql`
