@@ -24,23 +24,32 @@ interface UnassignReplacementButtonProps {
 
 export function UnassignReplacementButton({ applicationId, firefighterName }: UnassignReplacementButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [isUnassigned, setIsUnassigned] = useState(false)
   const router = useRouter()
 
   const handleUnassign = async () => {
     setIsLoading(true)
+    setIsUnassigned(true)
+
     try {
       const result = await unassignReplacement(applicationId)
       if (result.success) {
         router.refresh()
       } else {
+        setIsUnassigned(false)
         alert(result.error || "Erreur lors de l'annulation")
       }
     } catch (error) {
       console.error("Error:", error)
+      setIsUnassigned(false)
       alert("Erreur lors de l'annulation")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isUnassigned) {
+    return null
   }
 
   return (
