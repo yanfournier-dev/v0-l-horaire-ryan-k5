@@ -543,6 +543,31 @@ export async function approveApplication(
       WHERE replacement_id = ${replacementId} AND id != ${applicationId} AND status = 'pending'
     `
 
+    const rejectedApps = await db`
+      SELECT ra.applicant_id, u.first_name, u.last_name
+      FROM replacement_applications ra
+      JOIN users u ON ra.applicant_id = u.id
+      WHERE ra.replacement_id = ${replacementId} 
+        AND ra.id != ${applicationId} 
+        AND ra.status = 'rejected'
+    `
+
+    console.log("[v0] approveApplication: Found", rejectedApps.length, "rejected candidates to notify")
+
+    for (const rejectedApp of rejectedApps) {
+      console.log("[v0] approveApplication: Sending rejection notification to user:", rejectedApp.applicant_id)
+      await createNotification(
+        rejectedApp.applicant_id,
+        "Candidature rejetée",
+        `Votre candidature pour remplacer ${replaced?.first_name} ${replaced?.last_name} le ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"}) a été rejetée.`,
+        "replacement_rejected",
+        replacementId,
+        "replacement",
+        user.id,
+      )
+    }
+    // </CHANGE>
+
     // The rejected candidates will be found by sendAssignmentNotification when "Envoyer" is clicked
 
     await db`
