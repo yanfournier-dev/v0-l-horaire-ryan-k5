@@ -2,6 +2,7 @@
 
 import { sql } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
+import { isUserAdmin } from "@/app/actions/admin"
 
 export interface NotificationRecipient {
   user_id: number
@@ -42,8 +43,9 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
     return { success: false, error: "Non authentifié" }
   }
 
-  if (session.role !== "captain") {
-    console.log("[v0] getNotificationHistory: User not captain")
+  const userIsAdmin = await isUserAdmin()
+  if (!userIsAdmin) {
+    console.log("[v0] getNotificationHistory: User not admin")
     return { success: false, error: "Accès refusé - Réservé aux admins" }
   }
 
@@ -246,7 +248,8 @@ export async function getNotificationDetail(notificationId: number) {
     return { success: false, error: "Non authentifié" }
   }
 
-  if (session.role !== "captain") {
+  const userIsAdmin = await isUserAdmin()
+  if (!userIsAdmin) {
     return { success: false, error: "Accès refusé - Réservé aux admins" }
   }
 
