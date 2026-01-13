@@ -119,6 +119,8 @@ export async function createNotification(
   sentBy?: number,
 ) {
   try {
+    console.log("[v0] createNotification called:", { userId, title, type, relatedId, relatedType })
+
     const channelsSent: string[] = ["in_app"]
     const channelsFailed: string[] = []
     let deliveryStatus = "success"
@@ -177,16 +179,34 @@ export async function createNotification(
     const user = userPrefs[0]
     const fullName = `${user.first_name} ${user.last_name}`
 
+    console.log("[v0] User Telegram preferences:", {
+      enable_telegram: user.enable_telegram,
+      telegram_chat_id: user.telegram_chat_id,
+      type: type,
+    })
+
     if (user.enable_telegram === true && user.telegram_chat_id) {
+      console.log("[v0] Attempting to send Telegram notification...")
       try {
         await sendTelegramNotificationMessage(type, user.telegram_chat_id, fullName, message, relatedId)
         channelsSent.push("telegram")
+        console.log("[v0] Telegram sent successfully!")
       } catch (telegramError) {
-        console.error("Telegram sending failed:", telegramError)
+        console.error("[v0] Telegram sending failed:", telegramError)
         channelsFailed.push("telegram")
         errorMessage = telegramError instanceof Error ? telegramError.message : String(telegramError)
+        console.log("[v0] Telegram added to channelsFailed:", channelsFailed)
       }
+    } else {
+      console.log("[v0] Telegram NOT enabled or no chat_id - skipping Telegram send")
     }
+
+    console.log("[v0] Final notification status:", {
+      channelsSent,
+      channelsFailed,
+      deliveryStatus,
+      errorMessage,
+    })
 
     if (channelsFailed.length > 0 && channelsSent.length === 1) {
       deliveryStatus = "partial"
@@ -214,7 +234,7 @@ export async function createNotification(
       deliveryStatus,
     }
   } catch (error) {
-    console.error("Notification error:", error)
+    console.error("[v0] Notification error:", error)
     return { error: "Erreur lors de la création de la notification" }
   }
 }
