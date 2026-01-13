@@ -207,7 +207,12 @@ export async function createNotification(
       `
     }
 
-    return { success: true }
+    return {
+      success: true,
+      channelsSent,
+      channelsFailed,
+      deliveryStatus,
+    }
   } catch (error) {
     console.error("Notification error:", error)
     return { error: "Erreur lors de la création de la notification" }

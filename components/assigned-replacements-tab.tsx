@@ -252,11 +252,22 @@ export function AssignedReplacementsTab({
                               </span>
                             </>
                           )}
-                          {replacement.sent_by_first_name && (
+                          {replacement.notification_channels_failed &&
+                            replacement.notification_channels_failed.length > 0 && (
+                              <>
+                                <span className="text-muted-foreground">•</span>
+                                <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  Échec: {replacement.notification_channels_failed.join(", ")}
+                                </Badge>
+                              </>
+                            )}
+                          {replacement.notification_sent_by_first_name && (
                             <>
                               <span className="text-muted-foreground">•</span>
                               <span className="text-muted-foreground">
-                                Par {replacement.sent_by_first_name} {replacement.sent_by_last_name}
+                                Par {replacement.notification_sent_by_first_name}{" "}
+                                {replacement.notification_sent_by_last_name}
                               </span>
                             </>
                           )}

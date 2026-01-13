@@ -59,6 +59,7 @@ export async function sendAssignmentNotification(replacementId: number) {
 
     const prefs = userPrefs[0]
     const typesSent: string[] = []
+    const typesFailed: string[] = []
     const fullName = `${r.first_name} ${r.last_name}`
 
     const partialHours =
@@ -70,7 +71,7 @@ export async function sendAssignmentNotification(replacementId: number) {
       ? `Vous avez été assigné pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} de ${partialHours}`
       : `Vous avez été assigné pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} (${r.shift_type})`
 
-    await createNotification(
+    const notificationResult = await createNotification(
       r.assigned_user_id,
       "Remplacement assigné",
       message,
@@ -80,7 +81,12 @@ export async function sendAssignmentNotification(replacementId: number) {
       user.id,
     )
 
-    typesSent.push("app")
+    if (notificationResult.channelsSent) {
+      typesSent.push(...notificationResult.channelsSent)
+    }
+    if (notificationResult.channelsFailed) {
+      typesFailed.push(...notificationResult.channelsFailed)
+    }
 
     // Email notification for accepted candidate
     if (prefs.enable_email === true && r.email) {
@@ -106,6 +112,7 @@ export async function sendAssignmentNotification(replacementId: number) {
         } catch (emailError) {
           console.error("Email sending failed:", emailError)
           await notifyAdminsOfEmailFailure(r.email, "replacement_accepted", emailError)
+          typesFailed.push("email")
         }
       }
     }
@@ -141,7 +148,7 @@ export async function sendAssignmentNotification(replacementId: number) {
         ? `Votre candidature pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} de ${partialHoursRejected} a été rejetée.`
         : `Votre candidature pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} (${r.shift_type}) a été rejetée.`
 
-      await createNotification(
+      const rejectedNotificationResult = await createNotification(
         rejected.applicant_id,
         "Candidature rejetée",
         messageRejected,
@@ -150,6 +157,13 @@ export async function sendAssignmentNotification(replacementId: number) {
         "replacement",
         user.id,
       )
+
+      if (rejectedNotificationResult.channelsSent) {
+        typesSent.push(...rejectedNotificationResult.channelsSent)
+      }
+      if (rejectedNotificationResult.channelsFailed) {
+        typesFailed.push(...rejectedNotificationResult.channelsFailed)
+      }
 
       // Email notification for rejected candidate
       if (rejected.enable_email === true && rejected.email) {
@@ -171,8 +185,10 @@ export async function sendAssignmentNotification(replacementId: number) {
 
           try {
             await sendEmail(rejected.email, emailContent.subject, emailContent.html, emailContent.text)
+            typesSent.push("email")
           } catch (emailError) {
             console.error("Email sending failed for rejected candidate:", emailError)
+            typesFailed.push("email")
           }
         }
       }
@@ -184,7 +200,8 @@ export async function sendAssignmentNotification(replacementId: number) {
         notification_sent = true,
         notification_sent_at = NOW(),
         notification_sent_by = ${user.id},
-        notification_types_sent = ${JSON.stringify(typesSent)}::jsonb
+        notification_types_sent = ${JSON.stringify(typesSent)}::jsonb,
+        notification_channels_failed = ${JSON.stringify(typesFailed)}::jsonb
       WHERE id = ${replacementId}
     `
 
@@ -193,7 +210,8 @@ export async function sendAssignmentNotification(replacementId: number) {
     return {
       success: true,
       typesSent,
-      message: `Notifications envoyées (accepté: ${typesSent.join(", ")}, rejetés: ${rejectedCandidates.length} candidat(s))`,
+      typesFailed,
+      message: `Notifications envoyées (${typesSent.join(", ")})${typesFailed.length > 0 ? ` - Échecs: ${typesFailed.join(", ")}` : ""}`,
     }
   } catch (error) {
     console.error("Send assignment notification error:", error)
