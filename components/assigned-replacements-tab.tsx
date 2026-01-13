@@ -63,6 +63,17 @@ export function AssignedReplacementsTab({
   const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
   const [isUpdating, setIsUpdating] = useState(false)
 
+  console.log(
+    "[v0] assignedReplacements data:",
+    assignedReplacements.map((r) => ({
+      id: r.id,
+      shift_date: r.shift_date,
+      notification_sent: r.notification_sent,
+      notification_types_sent: r.notification_types_sent,
+      notification_channels_failed: r.notification_channels_failed,
+    })),
+  )
+
   const sortedReplacements = [...assignedReplacements].sort((a, b) => {
     const dateA = new Date(a.shift_date).getTime()
     const dateB = new Date(b.shift_date).getTime()
