@@ -80,7 +80,9 @@ export function AssignedReplacementsTab({
     const result = await sendAssignmentNotification(replacementId)
 
     if (result.success) {
-      router.refresh()
+      setTimeout(() => {
+        window.location.href = window.location.pathname + "?t=" + Date.now()
+      }, 300)
     } else {
       setErrorDialog({
         open: true,
