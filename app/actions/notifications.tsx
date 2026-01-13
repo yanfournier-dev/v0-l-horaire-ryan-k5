@@ -533,62 +533,6 @@ export async function sendBatchReplacementEmails(
 
     console.log("[v0] PRODUCTION: sendBatchEmails returned:", result)
 
-    console.log("[v0] PRODUCTION: Checking for Telegram users...")
-    const telegramUsers = eligibleUsers.filter(
-      (user: any) =>
-        user.enable_telegram === true && user.telegram_chat_id && user.notify_replacement_available === true,
-    )
-
-    console.log("[v0] PRODUCTION: Found", telegramUsers.length, "users with Telegram enabled")
-
-    if (telegramUsers.length > 0) {
-      const shiftDateStr = parseLocalDate(r.shift_date).toLocaleDateString("fr-CA", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-
-      const shiftTypeLabels: Record<string, string> = {
-        day: "Jour (7h-17h)",
-        night: "Nuit (17h-7h)",
-      }
-
-      const shiftLabel =
-        r.is_partial && partialHours
-          ? `Partiel (${partialHours})`
-          : shiftTypeLabels[r.shift_type as string] || r.shift_type
-
-      // Send Telegram notifications with delay between each
-      for (const user of telegramUsers) {
-        try {
-          const fullName = `${user.first_name} ${user.last_name}`
-
-          const applyToken = crypto.randomUUID()
-          const expiresAt = new Date()
-          expiresAt.setDate(expiresAt.getDate() + 7)
-
-          await sql`
-            INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
-            VALUES (${applyToken}, ${replacementId}, ${user.id}, ${expiresAt})
-            ON CONFLICT (user_id, replacement_id) 
-            DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
-          `
-
-          const message = `🚒 <b>Nouveau remplacement disponible</b>\n\n📅 <b>Date:</b> ${shiftDateStr}\n⏰ <b>Quart:</b> ${shiftLabel}\n👤 <b>Remplace:</b> ${firefighterToReplaceName}\n⏳ <b>Échéance:</b> ${deadlineLabel}\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL || "https://v0-l-horaire-ryan.vercel.app"}/apply-replacement?token=${applyToken}">Postuler maintenant</a>`
-
-          await sendTelegramMessage(user.telegram_chat_id, message)
-          console.log("[v0] PRODUCTION: Telegram notification sent to", fullName)
-
-          // Add delay to avoid rate limiting
-          await new Promise((resolve) => setTimeout(resolve, 100))
-        } catch (telegramError) {
-          console.error("[v0] PRODUCTION ERROR: Failed to send Telegram to user", user.id, "Error:", telegramError)
-          // Continue with other users even if one fails
-        }
-      }
-    }
-
     if (!result.success) {
       console.error("[v0] PRODUCTION ERROR: Batch emails failed, notifying admins...")
 
@@ -601,19 +545,7 @@ export async function sendBatchReplacementEmails(
       success: result.success,
       sent: result.sent || 0,
       failed: result.failed || 0,
-      recipients: emails.map((email) => {
-        // Check if this email is in the errors array
-        const hasError = result.errors?.some((e: any) => e.to === email.to)
-        const errorItem = result.errors?.find((e: any) => e.to === email.to)
-
-        return {
-          userId: email.userId,
-          name: email.name,
-          email: email.to,
-          success: !hasError,
-          error: errorItem?.error?.message || errorItem?.error,
-        }
-      }),
+      recipients: result.recipients || [],
     }
   } catch (error) {
     console.error("[v0] PRODUCTION: sendBatchReplacementEmails error:", error)
