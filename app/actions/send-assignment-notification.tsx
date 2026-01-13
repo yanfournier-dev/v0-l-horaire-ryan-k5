@@ -4,7 +4,6 @@ import { sql } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
 import { sendEmail, getApplicationApprovedEmail, getApplicationRejectedEmail } from "@/lib/email"
-import { sendTelegramMessage } from "@/lib/telegram"
 import { createNotification } from "@/app/actions/notifications"
 
 export async function sendAssignmentNotification(replacementId: number) {
@@ -108,35 +107,6 @@ export async function sendAssignmentNotification(replacementId: number) {
           console.error("Email sending failed:", emailError)
           await notifyAdminsOfEmailFailure(r.email, "replacement_accepted", emailError)
         }
-      }
-    }
-
-    if (prefs.enable_telegram === true && prefs.telegram_chat_id) {
-      const partialHours =
-        r.is_partial && r.start_time && r.end_time
-          ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
-          : null
-
-      const shiftDate = new Date(r.shift_date).toLocaleDateString("fr-CA", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-
-      const message = `✅ <b>Candidature acceptée</b>
-
-Votre candidature a été acceptée!
-
-📅 Date: ${shiftDate}
-⏰ Quart: ${r.shift_type === "day" ? "Jour (7h-17h)" : "Nuit (17h-7h)"}${partialHours ? `\n⏱️ Heures: ${partialHours}` : ""}
-👤 Remplace: ${r.replaced_name}`
-
-      try {
-        await sendTelegramMessage(prefs.telegram_chat_id, message)
-        typesSent.push("telegram")
-      } catch (telegramError) {
-        console.error("Telegram sending failed:", telegramError)
       }
     }
 
