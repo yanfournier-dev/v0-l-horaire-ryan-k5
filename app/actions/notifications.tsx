@@ -116,14 +116,12 @@ export async function createNotification(
   type: string,
   relatedId?: number,
   relatedType?: string,
-  sentBy?: number, // Added sentBy parameter to track who sent the notification
+  sentBy?: number,
 ) {
   try {
-    console.log("[v0] Creating notification for user:", userId, "type:", type)
-
-    const channelsSent: string[] = ["in_app"] // In-app is always sent
+    const channelsSent: string[] = ["in_app"]
     const channelsFailed: string[] = []
-    let deliveryStatus = "success" // Start optimistic
+    let deliveryStatus = "success"
     let errorMessage: string | null = null
 
     // Create in-app notification
@@ -160,10 +158,7 @@ export async function createNotification(
       WHERE u.id = ${userId}
     `
 
-    console.log("[v0] User preferences found:", userPrefs.length > 0)
-
     if (userPrefs.length === 0) {
-      console.log("[v0] No user found, skipping additional channels")
       deliveryStatus = "skipped"
       errorMessage = "User not found"
       if (notificationId) {
@@ -183,31 +178,21 @@ export async function createNotification(
     const fullName = `${user.first_name} ${user.last_name}`
 
     if (user.enable_telegram === true && user.telegram_chat_id) {
-      console.log("[v0] Sending Telegram notification to chat_id:", user.telegram_chat_id)
       try {
         await sendTelegramNotificationMessage(type, user.telegram_chat_id, fullName, message, relatedId)
         channelsSent.push("telegram")
       } catch (telegramError) {
-        console.error("[v0] Telegram sending failed but notification created:", telegramError)
+        console.error("Telegram sending failed:", telegramError)
         channelsFailed.push("telegram")
         errorMessage = telegramError instanceof Error ? telegramError.message : String(telegramError)
       }
-    } else {
-      console.log(
-        "[v0] Telegram not sent - enable_telegram:",
-        user.enable_telegram,
-        "has chat_id:",
-        !!user.telegram_chat_id,
-      )
     }
 
     if (channelsFailed.length > 0 && channelsSent.length === 1) {
-      // Only in-app succeeded
       deliveryStatus = "partial"
     } else if (channelsFailed.length > 0) {
       deliveryStatus = "partial"
     } else if (channelsSent.length === 1) {
-      // Only in-app, but user has no other channels enabled
       deliveryStatus = "success"
     }
 
@@ -224,7 +209,7 @@ export async function createNotification(
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] Notification error:", error)
+    console.error("Notification error:", error)
     return { error: "Erreur lors de la création de la notification" }
   }
 }
@@ -310,7 +295,7 @@ export async function createBatchNotificationsInApp(
   type: string,
   relatedId?: number,
   relatedType?: string,
-  sentBy?: number, // Added sentBy parameter to track who sent the notification
+  sentBy?: number,
 ) {
   if (userIds.length === 0) return
 
@@ -849,20 +834,8 @@ async function sendEmailNotification(
   userId?: number,
 ) {
   if (process.env.VERCEL_ENV !== "production") {
-    console.log("[v0] Skipping email in preview - notification created in-app only")
     return
   }
-
-  console.log(
-    "[v0] sendEmailNotification called - type:",
-    type,
-    "email:",
-    email,
-    "relatedId:",
-    relatedId,
-    "userId:",
-    userId,
-  )
 
   let emailContent
   let applyToken: string | undefined
@@ -870,7 +843,6 @@ async function sendEmailNotification(
   switch (type) {
     case "replacement_available":
       if (relatedId && userId) {
-        console.log("[v0] Fetching replacement details for relatedId:", relatedId)
         const replacement = await sql`
           SELECT 
             r.shift_date, 
@@ -883,7 +855,6 @@ async function sendEmailNotification(
           LEFT JOIN users u ON r.user_id = u.id
           WHERE r.id = ${relatedId}
         `
-        console.log("[v0] Replacement found:", replacement.length > 0)
 
         if (replacement.length > 0) {
           const r = replacement[0]
@@ -893,27 +864,22 @@ async function sendEmailNotification(
               : null
 
           applyToken = crypto.randomUUID()
-          console.log("[v0] Generated applyToken:", applyToken)
 
           const expiresAt = new Date()
-          expiresAt.setDate(expiresAt.getDate() + 7) // Token valid for 7 days
-          console.log("[v0] Token expires at:", expiresAt)
+          expiresAt.setDate(expiresAt.getDate() + 7)
 
           try {
-            console.log("[v0] Inserting token into database...")
             await sql`
               INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
               VALUES (${applyToken}, ${relatedId}, ${userId}, ${expiresAt})
               ON CONFLICT (user_id, replacement_id) 
               DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
             `
-            console.log("[v0] Token inserted successfully")
           } catch (error) {
-            console.error("[v0] Error creating application token:", error)
+            console.error("Error creating application token:", error)
             applyToken = undefined
           }
 
-          console.log("[v0] Calling getReplacementAvailableEmail with applyToken:", applyToken)
           emailContent = await getReplacementAvailableEmail(
             name,
             parseLocalDate(r.shift_date).toLocaleDateString("fr-CA"),
@@ -924,8 +890,6 @@ async function sendEmailNotification(
             applyToken,
           )
         }
-      } else {
-        console.log("[v0] Missing relatedId or userId - cannot generate token")
       }
       break
 

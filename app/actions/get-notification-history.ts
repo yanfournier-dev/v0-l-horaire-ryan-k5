@@ -35,17 +35,13 @@ export interface NotificationHistoryFilters {
 }
 
 export async function getNotificationHistory(filters: NotificationHistoryFilters = {}) {
-  console.log("[v0] getNotificationHistory: Starting with filters", filters)
-
   const session = await getSession()
   if (!session) {
-    console.log("[v0] getNotificationHistory: No session")
     return { success: false, error: "Non authentifié" }
   }
 
   const userIsAdmin = await isUserAdmin()
   if (!userIsAdmin) {
-    console.log("[v0] getNotificationHistory: User not admin")
     return { success: false, error: "Accès refusé - Réservé aux admins" }
   }
 
@@ -213,13 +209,10 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
       }
     }
 
-    console.log("[v0] Executing count and data queries")
     const countResult = await countQuery
     const totalCount = Number.parseInt(countResult[0]?.total || "0")
 
     const notifications = await dataQuery
-
-    console.log(`[v0] getNotificationHistory: Found ${notifications.length} notification events`)
 
     return {
       success: true,
@@ -232,7 +225,7 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
       },
     }
   } catch (error) {
-    console.error("[v0] getNotificationHistory: Error", error)
+    console.error("getNotificationHistory: Error", error)
     return {
       success: false,
       error: "Erreur lors de la récupération de l'historique",
@@ -241,8 +234,6 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
 }
 
 export async function getNotificationDetail(notificationId: number) {
-  console.log("[v0] getNotificationDetail: Starting", notificationId)
-
   const session = await getSession()
   if (!session) {
     return { success: false, error: "Non authentifié" }
@@ -269,14 +260,12 @@ export async function getNotificationDetail(notificationId: number) {
       return { success: false, error: "Notification introuvable" }
     }
 
-    console.log("[v0] getNotificationDetail: Found notification")
-
     return {
       success: true,
       notification: result[0] as NotificationHistoryItem,
     }
   } catch (error) {
-    console.error("[v0] getNotificationDetail: Error", error)
+    console.error("getNotificationDetail: Error", error)
     return {
       success: false,
       error: "Erreur lors de la récupération des détails",

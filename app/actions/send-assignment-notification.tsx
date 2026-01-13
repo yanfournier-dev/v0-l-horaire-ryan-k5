@@ -8,15 +8,10 @@ import { sendTelegramMessage } from "@/lib/telegram"
 import { createNotification } from "@/app/actions/notifications"
 
 export async function sendAssignmentNotification(replacementId: number) {
-  console.log("[v0] sendAssignmentNotification called for replacementId:", replacementId)
-
   const user = await getSession()
   if (!user || !user.is_admin) {
-    console.log("[v0] sendAssignmentNotification: User not authorized")
     return { error: "Non autorisé" }
   }
-
-  console.log("[v0] sendAssignmentNotification: User authorized, userId:", user.id)
 
   try {
     const replacement = await sql`
@@ -34,12 +29,6 @@ export async function sendAssignmentNotification(replacementId: number) {
       WHERE r.id = ${replacementId}
     `
 
-    console.log("[v0] sendAssignmentNotification: Replacement found:", {
-      id: replacement[0]?.id,
-      assigned_user_id: replacement[0]?.assigned_user_id,
-      notification_sent: replacement[0]?.notification_sent,
-    })
-
     if (replacement.length === 0) {
       return { error: "Remplacement non trouvé" }
     }
@@ -47,12 +36,10 @@ export async function sendAssignmentNotification(replacementId: number) {
     const r = replacement[0]
 
     if (r.notification_sent === true) {
-      console.log("[v0] sendAssignmentNotification: Notification already sent")
       return { error: "La notification a déjà été envoyée" }
     }
 
     if (!r.assigned_user_id) {
-      console.log("[v0] sendAssignmentNotification: No assigned user")
       return { error: "Aucun pompier assigné à ce remplacement" }
     }
 
@@ -75,14 +62,6 @@ export async function sendAssignmentNotification(replacementId: number) {
     const typesSent: string[] = []
     const fullName = `${r.first_name} ${r.last_name}`
 
-    console.log("[v0] sendAssignmentNotification: User preferences:", {
-      enable_app: prefs.enable_app,
-      enable_email: prefs.enable_email,
-      enable_telegram: prefs.enable_telegram,
-      notify_replacement_accepted: prefs.notify_replacement_accepted,
-    })
-
-    console.log("[v0] sendAssignmentNotification: Creating in-app notification (mandatory)")
     const partialHours =
       r.is_partial && r.start_time && r.end_time
         ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
@@ -92,14 +71,6 @@ export async function sendAssignmentNotification(replacementId: number) {
       ? `Vous avez été assigné pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} de ${partialHours}`
       : `Vous avez été assigné pour remplacer ${r.replaced_name} le ${new Date(r.shift_date).toLocaleDateString("fr-CA")} (${r.shift_type})`
 
-    console.log("[v0] sendAssignmentNotification: About to call createNotification with:", {
-      userId: r.assigned_user_id,
-      title: "Remplacement assigné",
-      type: "replacement_accepted",
-      relatedId: replacementId,
-      sentBy: user.id,
-    })
-
     await createNotification(
       r.assigned_user_id,
       "Remplacement assigné",
@@ -107,10 +78,9 @@ export async function sendAssignmentNotification(replacementId: number) {
       "replacement_accepted",
       replacementId,
       "replacement",
-      user.id, // sentBy
+      user.id,
     )
 
-    console.log("[v0] sendAssignmentNotification: createNotification completed successfully")
     typesSent.push("app")
 
     // Email notification for accepted candidate
@@ -135,7 +105,7 @@ export async function sendAssignmentNotification(replacementId: number) {
           await sendEmail(r.email, emailContent.subject, emailContent.html, emailContent.text)
           typesSent.push("email")
         } catch (emailError) {
-          console.error("[v0] Email sending failed:", emailError)
+          console.error("Email sending failed:", emailError)
           await notifyAdminsOfEmailFailure(r.email, "replacement_accepted", emailError)
         }
       }
@@ -166,39 +136,10 @@ Votre candidature a été acceptée!
         await sendTelegramMessage(prefs.telegram_chat_id, message)
         typesSent.push("telegram")
       } catch (telegramError) {
-        console.error("[v0] Telegram sending failed:", telegramError)
+        console.error("Telegram sending failed:", telegramError)
       }
     }
 
-    const allRejectedCandidates = await sql`
-      SELECT 
-        ra.id,
-        ra.applicant_id,
-        ra.status,
-        u.first_name,
-        u.last_name,
-        np.notify_replacement_rejected
-      FROM replacement_applications ra
-      JOIN users u ON ra.applicant_id = u.id
-      LEFT JOIN notification_preferences np ON u.id = np.user_id
-      WHERE ra.replacement_id = ${replacementId}
-        AND ra.status = 'rejected'
-    `
-
-    console.log(
-      "[v0] sendAssignmentNotification: ALL rejected candidates (before filtering):",
-      allRejectedCandidates.length,
-    )
-    allRejectedCandidates.forEach((c) => {
-      console.log("[v0] Rejected candidate:", {
-        id: c.id,
-        applicant_id: c.applicant_id,
-        name: `${c.first_name} ${c.last_name}`,
-        notify_replacement_rejected: c.notify_replacement_rejected,
-      })
-    })
-
-    // Get rejected candidates to notify
     const rejectedCandidates = await sql`
       SELECT 
         ra.applicant_id,
@@ -218,21 +159,7 @@ Votre candidature a été acceptée!
         AND (np.notify_replacement_rejected IS NULL OR np.notify_replacement_rejected = true)
     `
 
-    console.log(
-      "[v0] sendAssignmentNotification: Found",
-      rejectedCandidates.length,
-      "rejected candidates (after filtering)",
-    )
-
     for (const rejected of rejectedCandidates) {
-      console.log("[v0] sendAssignmentNotification: Processing rejected candidate:", {
-        applicant_id: rejected.applicant_id,
-        name: `${rejected.first_name} ${rejected.last_name}`,
-        enable_telegram: rejected.enable_telegram,
-        has_telegram_chat_id: !!rejected.telegram_chat_id,
-        notify_replacement_rejected: rejected.notify_replacement_rejected,
-      })
-
       const rejectedFullName = `${rejected.first_name} ${rejected.last_name}`
 
       const partialHoursRejected =
@@ -251,7 +178,7 @@ Votre candidature a été acceptée!
         "replacement_rejected",
         replacementId,
         "replacement",
-        user.id, // sentBy
+        user.id,
       )
 
       // Email notification for rejected candidate
@@ -275,15 +202,13 @@ Votre candidature a été acceptée!
           try {
             await sendEmail(rejected.email, emailContent.subject, emailContent.html, emailContent.text)
           } catch (emailError) {
-            console.error("[v0] Email sending failed for rejected candidate:", emailError)
+            console.error("Email sending failed for rejected candidate:", emailError)
           }
         }
       }
 
       // Telegram notification for rejected candidate
       if (rejected.enable_telegram === true && rejected.telegram_chat_id) {
-        console.log("[v0] sendAssignmentNotification: Sending Telegram to rejected candidate:", rejected.applicant_id)
-
         const partialHours =
           r.is_partial && r.start_time && r.end_time
             ? `${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
@@ -306,25 +231,14 @@ Votre candidature a été refusée.
 
         try {
           await sendTelegramMessage(rejected.telegram_chat_id, message)
-          console.log(
-            "[v0] sendAssignmentNotification: Telegram sent successfully to rejected candidate:",
-            rejected.applicant_id,
-          )
+          console.log("Telegram sent successfully to rejected candidate:", rejected.applicant_id)
         } catch (telegramError) {
-          console.error(
-            "[v0] sendAssignmentNotification: Telegram sending failed for rejected candidate:",
-            rejected.applicant_id,
-            telegramError,
-          )
+          console.error("Telegram sending failed for rejected candidate:", rejected.applicant_id, telegramError)
         }
       } else {
-        console.log(
-          "[v0] sendAssignmentNotification: Telegram NOT sent to rejected candidate:",
-          rejected.applicant_id,
-          {
-            reason: !rejected.enable_telegram ? "Telegram disabled" : "No chat_id",
-          },
-        )
+        console.log("Telegram NOT sent to rejected candidate:", rejected.applicant_id, {
+          reason: !rejected.enable_telegram ? "Telegram disabled" : "No chat_id",
+        })
       }
     }
 
@@ -338,8 +252,6 @@ Votre candidature a été refusée.
       WHERE id = ${replacementId}
     `
 
-    console.log("[v0] sendAssignmentNotification: All notifications sent successfully")
-
     revalidatePath("/dashboard/replacements")
 
     return {
@@ -348,7 +260,7 @@ Votre candidature a été refusée.
       message: `Notifications envoyées (accepté: ${typesSent.join(", ")}, rejetés: ${rejectedCandidates.length} candidat(s))`,
     }
   } catch (error) {
-    console.error("[v0] Send assignment notification error:", error)
+    console.error("Send assignment notification error:", error)
     return { error: "Erreur lors de l'envoi de la notification" }
   }
 }
@@ -373,6 +285,6 @@ async function notifyAdminsOfEmailFailure(recipientEmail: string, notificationTy
       `
     }
   } catch (notifyError) {
-    console.error("[v0] Failed to notify admins of email failure:", notifyError)
+    console.error("Failed to notify admins of email failure:", notifyError)
   }
 }

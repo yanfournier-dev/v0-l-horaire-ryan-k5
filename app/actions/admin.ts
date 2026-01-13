@@ -7,12 +7,10 @@ import { getSession } from "@/app/actions/auth"
 export async function isUserAdmin(userId?: number): Promise<boolean> {
   try {
     const session = await getSession()
-    console.log("[v0] isUserAdmin: Session", session ? `User ID: ${session.id}` : "No session")
 
     if (!session) return false
 
     const userIdToCheck = userId || session.id
-    console.log("[v0] isUserAdmin: Checking user ID", userIdToCheck)
 
     const result = await sql`
       SELECT role, is_admin
@@ -20,28 +18,22 @@ export async function isUserAdmin(userId?: number): Promise<boolean> {
       WHERE id = ${userIdToCheck}
     `
 
-    console.log("[v0] isUserAdmin: Query result", result)
-
     if (result.length === 0) {
-      console.log("[v0] isUserAdmin: User not found")
       return false
     }
 
     const user = result[0]
     const isAdmin = user.role === "captain" || user.is_admin === true
-    console.log("[v0] isUserAdmin: User role:", user.role, "is_admin:", user.is_admin, "Result:", isAdmin)
 
     // Captains are always admin OR user has is_admin flag
     return isAdmin
   } catch (error) {
-    console.error("[v0] isUserAdmin: Error", error)
+    console.error("isUserAdmin: Error", error)
     return false
   }
 }
 
 export async function getAllUsersWithAdminStatus() {
-  console.log("[v0] getAllUsersWithAdminStatus: Starting")
-
   const session = await getSession()
   if (!session) {
     return { success: false, error: "Non authentifié" }
@@ -75,8 +67,6 @@ export async function getAllUsersWithAdminStatus() {
         first_name
     `
 
-    console.log(`[v0] getAllUsersWithAdminStatus: Found ${users.length} users`)
-
     return {
       success: true,
       users: users.map((user) => ({
@@ -87,7 +77,7 @@ export async function getAllUsersWithAdminStatus() {
       })),
     }
   } catch (error) {
-    console.error("[v0] getAllUsersWithAdminStatus: Error", error)
+    console.error("getAllUsersWithAdminStatus: Error", error)
     return {
       success: false,
       error: "Erreur lors de la récupération des utilisateurs",
@@ -96,8 +86,6 @@ export async function getAllUsersWithAdminStatus() {
 }
 
 export async function toggleUserAdminStatus(userId: number, makeAdmin: boolean) {
-  console.log("[v0] toggleUserAdminStatus:", userId, makeAdmin)
-
   const session = await getSession()
   if (!session) {
     return { success: false, error: "Non authentifié" }
@@ -133,14 +121,12 @@ export async function toggleUserAdminStatus(userId: number, makeAdmin: boolean) 
       WHERE id = ${userId}
     `
 
-    console.log(`[v0] toggleUserAdminStatus: Updated user ${userId} to admin=${makeAdmin}`)
-
     return {
       success: true,
       message: makeAdmin ? "Utilisateur promu administrateur" : "Privilèges administrateur retirés",
     }
   } catch (error) {
-    console.error("[v0] toggleUserAdminStatus: Error", error)
+    console.error("toggleUserAdminStatus: Error", error)
     return {
       success: false,
       error: "Erreur lors de la modification du statut",
