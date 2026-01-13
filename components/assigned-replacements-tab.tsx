@@ -4,13 +4,22 @@ import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Bell, Check, Send, ArrowUpDown } from "lucide-react"
+import { Bell, Check, Send, ArrowUpDown, AlertCircle } from "lucide-react"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { formatShortDate, formatLocalDateTime } from "@/lib/date-utils"
 import { sendAssignmentNotification } from "@/app/actions/send-assignment-notification"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface AssignedReplacementsTabProps {
   assignedReplacements: any[]
@@ -51,6 +60,7 @@ export function AssignedReplacementsTab({
   const [sendingIds, setSendingIds] = useState<Set<number>>(new Set())
   const [dateFilter, setDateFilter] = useState<"all" | "upcoming" | "7days" | "30days">("upcoming")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
 
   const sortedReplacements = [...assignedReplacements].sort((a, b) => {
     const dateA = new Date(a.shift_date).getTime()
@@ -72,7 +82,10 @@ export function AssignedReplacementsTab({
     if (result.success) {
       router.refresh()
     } else {
-      alert(result.error || "Erreur lors de l'envoi de la notification")
+      setErrorDialog({
+        open: true,
+        message: result.error || "Erreur lors de l'envoi de la notification",
+      })
     }
 
     setSendingIds((prev) => {
@@ -258,6 +271,23 @@ export function AssignedReplacementsTab({
           ))}
         </div>
       )}
+
+      <AlertDialog open={errorDialog.open} onOpenChange={(open) => setErrorDialog({ ...errorDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+                <AlertCircle className="h-5 w-5 text-orange-600" />
+              </div>
+              <AlertDialogTitle>Notification non envoyée</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-base pt-2">{errorDialog.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setErrorDialog({ open: false, message: "" })}>Compris</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
