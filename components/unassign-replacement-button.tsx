@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { XCircle } from "lucide-react"
+import { XCircle, Loader2 } from "lucide-react"
 
 interface UnassignReplacementButtonProps {
   applicationId: number
@@ -23,6 +23,7 @@ interface UnassignReplacementButtonProps {
 
 export function UnassignReplacementButton({ applicationId, firefighterName }: UnassignReplacementButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const handleUnassign = async () => {
     setIsLoading(true)
@@ -30,9 +31,10 @@ export function UnassignReplacementButton({ applicationId, firefighterName }: Un
     try {
       const result = await unassignReplacement(applicationId)
       if (result.success) {
+        setIsUpdating(true)
         setTimeout(() => {
           window.location.href = window.location.pathname + "?t=" + Date.now()
-        }, 300)
+        }, 500)
       } else {
         alert(result.error || "Erreur lors de l'annulation")
         setIsLoading(false)
@@ -42,6 +44,15 @@ export function UnassignReplacementButton({ applicationId, firefighterName }: Un
       alert("Erreur lors de l'annulation")
       setIsLoading(false)
     }
+  }
+
+  if (isUpdating) {
+    return (
+      <Button variant="outline" size="sm" disabled className="text-orange-600 border-orange-600 bg-orange-50">
+        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+        Mise à jour...
+      </Button>
+    )
   }
 
   return (
