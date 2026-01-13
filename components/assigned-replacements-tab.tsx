@@ -61,6 +61,7 @@ export function AssignedReplacementsTab({
   const [dateFilter, setDateFilter] = useState<"all" | "upcoming" | "7days" | "30days">("upcoming")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const sortedReplacements = [...assignedReplacements].sort((a, b) => {
     const dateA = new Date(a.shift_date).getTime()
@@ -80,9 +81,12 @@ export function AssignedReplacementsTab({
     const result = await sendAssignmentNotification(replacementId)
 
     if (result.success) {
+      setIsUpdating(true)
       setTimeout(() => {
-        window.location.href = window.location.pathname + "?t=" + Date.now()
-      }, 300)
+        const url = new URL(window.location.href)
+        url.searchParams.set("tab", "assigned")
+        window.location = url.href
+      }, 2000)
     } else {
       setErrorDialog({
         open: true,
@@ -100,14 +104,27 @@ export function AssignedReplacementsTab({
   const handleSendAllNotifications = async () => {
     const unsentReplacements = assignedReplacements.filter((r) => !r.notification_sent)
 
+    setIsUpdating(true)
+
     for (const replacement of unsentReplacements) {
-      await handleSendNotification(replacement.id)
+      setSendingIds((prev) => new Set(prev).add(replacement.id))
+      await sendAssignmentNotification(replacement.id)
+      setSendingIds((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(replacement.id)
+        return newSet
+      })
     }
+
+    setTimeout(() => {
+      const url = new URL(window.location.href)
+      url.searchParams.set("tab", "assigned")
+      window.location = url.href
+    }, 2000)
   }
 
   const handleDateFilterChange = (value: string) => {
     setDateFilter(value as "all" | "upcoming" | "7days" | "30days")
-    // Refresh with new filter
     const params = new URLSearchParams(window.location.search)
     params.set("dateFilter", value)
     params.set("sortOrder", sortOrder)
@@ -117,7 +134,6 @@ export function AssignedReplacementsTab({
   const handleSortOrderToggle = () => {
     const newOrder = sortOrder === "desc" ? "asc" : "desc"
     setSortOrder(newOrder)
-    // Refresh with new sort order
     const params = new URLSearchParams(window.location.search)
     params.set("dateFilter", dateFilter)
     params.set("sortOrder", newOrder)
@@ -128,6 +144,13 @@ export function AssignedReplacementsTab({
 
   return (
     <div className="space-y-4">
+      {isUpdating && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+          <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-blue-900">Mise à jour en cours...</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={dateFilter} onValueChange={handleDateFilterChange}>
@@ -163,7 +186,7 @@ export function AssignedReplacementsTab({
         </div>
 
         {unsentCountCurrent > 0 && (
-          <Button onClick={handleSendAllNotifications} className="gap-2">
+          <Button onClick={handleSendAllNotifications} className="gap-2" disabled={isUpdating}>
             <Send className="h-4 w-4" />
             Envoyer toutes les notifications ({unsentCountCurrent})
           </Button>
@@ -260,10 +283,10 @@ export function AssignedReplacementsTab({
                         size="sm"
                         className="h-8 text-xs px-2 w-[100px]"
                         onClick={() => handleSendNotification(replacement.id)}
-                        disabled={sendingIds.has(replacement.id)}
+                        disabled={sendingIds.has(replacement.id) || isUpdating}
                       >
                         <Send className="h-3 w-3 mr-1" />
-                        Envoyer
+                        {sendingIds.has(replacement.id) ? "..." : "Envoyer"}
                       </Button>
                     )}
                   </div>
