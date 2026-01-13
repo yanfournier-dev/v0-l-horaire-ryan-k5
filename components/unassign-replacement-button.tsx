@@ -33,7 +33,7 @@ export function UnassignReplacementButton({ applicationId, firefighterName }: Un
       if (result.success) {
         setIsUpdating(true)
         setTimeout(() => {
-          window.location.href = window.location.pathname + "?t=" + Date.now()
+          window.location.replace(window.location.pathname)
         }, 500)
       } else {
         alert(result.error || "Erreur lors de l'annulation")
