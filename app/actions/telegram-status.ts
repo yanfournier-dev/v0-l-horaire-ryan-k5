@@ -104,6 +104,14 @@ export async function toggleTelegramRequirement(userId: number, required: boolea
       WHERE id = ${userId}
     `
 
+    if (required) {
+      await sql`
+        UPDATE notification_preferences 
+        SET enable_telegram = true
+        WHERE user_id = ${userId}
+      `
+    }
+
     await sql`
       INSERT INTO audit_logs (
         user_id,
