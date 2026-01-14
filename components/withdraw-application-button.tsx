@@ -84,7 +84,7 @@ export function WithdrawApplicationButton({ applicationId, shiftDate, shiftType 
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Annuler</AlertDialogCancel>
-          <AlertDialogAction onClick={handleWithdraw} className="bg-destructive text-destructive-foreground">
+          <AlertDialogAction onClick={handleWithdraw} className="bg-destructive text-white hover:bg-destructive/90">
             Retirer
           </AlertDialogAction>
         </AlertDialogFooter>
