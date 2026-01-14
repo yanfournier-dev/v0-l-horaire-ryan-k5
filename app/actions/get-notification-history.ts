@@ -9,6 +9,7 @@ export interface NotificationRecipient {
   user_name: string
   channels_sent: string[] | null
   channels_failed: string[] | null
+  created_at: string
 }
 
 export interface NotificationHistoryItem {
@@ -80,8 +81,9 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
                 'user_id', n.user_id,
                 'user_name', u.first_name || ' ' || u.last_name,
                 'channels_sent', n.channels_sent,
-                'channels_failed', n.channels_failed
-              ) ORDER BY u.last_name, u.first_name
+                'channels_failed', n.channels_failed,
+                'created_at', n.created_at
+              ) ORDER BY n.created_at
             ) as recipients
           FROM notifications n
           LEFT JOIN users u ON n.user_id = u.id
@@ -117,8 +119,9 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
                 'user_id', n.user_id,
                 'user_name', u.first_name || ' ' || u.last_name,
                 'channels_sent', n.channels_sent,
-                'channels_failed', n.channels_failed
-              ) ORDER BY u.last_name, u.first_name
+                'channels_failed', n.channels_failed,
+                'created_at', n.created_at
+              ) ORDER BY n.created_at
             ) as recipients
           FROM notifications n
           LEFT JOIN users u ON n.user_id = u.id
@@ -157,8 +160,9 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
                 'user_id', n.user_id,
                 'user_name', u.first_name || ' ' || u.last_name,
                 'channels_sent', n.channels_sent,
-                'channels_failed', n.channels_failed
-              ) ORDER BY u.last_name, u.first_name
+                'channels_failed', n.channels_failed,
+                'created_at', n.created_at
+              ) ORDER BY n.created_at
             ) as recipients
           FROM notifications n
           LEFT JOIN users u ON n.user_id = u.id
@@ -195,8 +199,9 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
                 'user_id', n.user_id,
                 'user_name', u.first_name || ' ' || u.last_name,
                 'channels_sent', n.channels_sent,
-                'channels_failed', n.channels_failed
-              ) ORDER BY u.last_name, u.first_name
+                'channels_failed', n.channels_failed,
+                'created_at', n.created_at
+              ) ORDER BY n.created_at
             ) as recipients
           FROM notifications n
           LEFT JOIN users u ON n.user_id = u.id

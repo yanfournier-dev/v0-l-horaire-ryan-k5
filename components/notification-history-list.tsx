@@ -83,6 +83,14 @@ export function NotificationHistoryList() {
     })
   }
 
+  const formatTimeOnly = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString("fr-CA", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
   return (
     <div className="space-y-6">
       {/* Filtres */}
@@ -203,8 +211,8 @@ export function NotificationHistoryList() {
                           Destinataires ({notification.recipients?.length || 0}):
                         </p>
                         <div className="space-y-1">
-                          {notification.recipients?.map((recipient) => (
-                            <div key={recipient.user_id} className="flex items-center gap-2 text-sm">
+                          {notification.recipients?.map((recipient, index) => (
+                            <div key={`${recipient.user_id}-${index}`} className="flex items-center gap-2 text-sm">
                               <span className="font-medium">{recipient.user_name}</span>
                               <span className="text-muted-foreground">-</span>
                               <span className="text-muted-foreground">
@@ -212,6 +220,11 @@ export function NotificationHistoryList() {
                                   ? recipient.channels_sent.join(", ")
                                   : "in_app"}
                               </span>
+                              {recipient.created_at && (
+                                <span className="text-xs text-muted-foreground/60">
+                                  ({formatTimeOnly(recipient.created_at)})
+                                </span>
+                              )}
                             </div>
                           ))}
                         </div>
