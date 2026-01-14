@@ -154,7 +154,8 @@ export async function createNotification(
         np.notify_replacement_available,
         np.notify_replacement_accepted,
         np.notify_replacement_rejected,
-        np.notify_schedule_change
+        np.notify_schedule_change,
+        u.telegram_required
       FROM users u
       LEFT JOIN notification_preferences np ON u.id = np.user_id
       WHERE u.id = ${userId}
@@ -241,8 +242,12 @@ export async function createNotification(
 
 export async function getUserPreferences(userId: number) {
   const prefs = await sql`
-    SELECT * FROM notification_preferences
-    WHERE user_id = ${userId}
+    SELECT 
+      np.*,
+      u.telegram_required
+    FROM notification_preferences np
+    LEFT JOIN users u ON u.id = np.user_id
+    WHERE np.user_id = ${userId}
   `
   return prefs[0] || null
 }

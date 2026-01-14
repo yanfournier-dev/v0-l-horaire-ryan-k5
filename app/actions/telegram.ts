@@ -83,6 +83,20 @@ export async function disconnectTelegram() {
   const userId = session.id
 
   try {
+    const userCheck = await sql`
+      SELECT telegram_required
+      FROM users
+      WHERE id = ${userId}
+    `
+
+    if (userCheck.length > 0 && userCheck[0].telegram_required === true) {
+      console.log("[v0] Telegram disconnection blocked - telegram_required is true for user:", userId)
+      return {
+        success: false,
+        error: "Déconnexion non autorisée - Telegram est obligatoire pour votre compte",
+      }
+    }
+
     // Remove telegram_chat_id and disable telegram notifications
     await sql`
       UPDATE notification_preferences

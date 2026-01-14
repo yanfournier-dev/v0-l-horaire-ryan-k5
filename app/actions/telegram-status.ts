@@ -105,9 +105,17 @@ export async function toggleTelegramRequirement(userId: number, required: boolea
     `
 
     if (required) {
+      // Activate Telegram notifications when made required
       await sql`
         UPDATE notification_preferences 
         SET enable_telegram = true
+        WHERE user_id = ${userId}
+      `
+    } else {
+      // Deactivate Telegram notifications when no longer required
+      await sql`
+        UPDATE notification_preferences 
+        SET enable_telegram = false
         WHERE user_id = ${userId}
       `
     }
