@@ -5,9 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { getRoleLabel } from "@/lib/role-labels"
 import { formatDistanceToNow } from "date-fns"
 import { fr } from "date-fns/locale"
+import { toggleTelegramRequirement } from "@/app/actions/telegram-status"
+import { toast } from "sonner"
 
 type User = {
   id: number
@@ -15,15 +18,26 @@ type User = {
   last_name: string
   email: string
   role: string
+  is_owner: boolean
+  telegram_required: boolean
   telegram_chat_id: string | null
   telegram_username: string | null
   user_created_at: string
   telegram_connected_at: string | null
 }
 
-export function TelegramStatusTable({ users }: { users: User[] }) {
+export function TelegramStatusTable({
+  users,
+  currentUserId,
+  currentUserIsOwner,
+}: {
+  users: User[]
+  currentUserId: number
+  currentUserIsOwner: boolean
+}) {
   const [filter, setFilter] = useState<"all" | "connected" | "notConnected">("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [togglingUserId, setTogglingUserId] = useState<number | null>(null)
 
   const filteredUsers = users.filter((user) => {
     // Filter by connection status
@@ -42,6 +56,23 @@ export function TelegramStatusTable({ users }: { users: User[] }) {
 
     return true
   })
+
+  const handleToggleRequirement = async (userId: number, currentValue: boolean) => {
+    setTogglingUserId(userId)
+    try {
+      const result = await toggleTelegramRequirement(userId, !currentValue)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success("Obligation Telegram modifiée")
+        window.location.reload() // Refresh to show updated data
+      }
+    } catch (error) {
+      toast.error("Erreur lors de la modification")
+    } finally {
+      setTogglingUserId(null)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -80,6 +111,7 @@ export function TelegramStatusTable({ users }: { users: User[] }) {
               <TableHead>Nom</TableHead>
               <TableHead>Rôle</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Telegram obligatoire</TableHead>
               <TableHead>Statut Telegram</TableHead>
               <TableHead>Date de connexion</TableHead>
             </TableRow>
@@ -87,7 +119,7 @@ export function TelegramStatusTable({ users }: { users: User[] }) {
           <TableBody>
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Aucun utilisateur trouvé
                 </TableCell>
               </TableRow>
@@ -101,6 +133,17 @@ export function TelegramStatusTable({ users }: { users: User[] }) {
                     <Badge variant="outline">{getRoleLabel(user.role)}</Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
+                  <TableCell>
+                    {currentUserIsOwner ? (
+                      <Switch
+                        checked={user.telegram_required}
+                        onCheckedChange={() => handleToggleRequirement(user.id, user.telegram_required)}
+                        disabled={togglingUserId === user.id}
+                      />
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{user.telegram_required ? "Oui" : "Non"}</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {user.telegram_chat_id ? (
                       <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">

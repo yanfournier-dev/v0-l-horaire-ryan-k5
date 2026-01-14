@@ -24,7 +24,7 @@ export default async function TelegramStatusPage() {
     )
   }
 
-  const { users, stats } = data
+  const { users, stats, currentUserId, currentUserIsOwner } = data
 
   return (
     <div className="p-4 md:p-6">
@@ -77,7 +77,7 @@ export default async function TelegramStatusPage() {
         </Card>
       </div>
 
-      <TelegramStatusTable users={users} />
+      <TelegramStatusTable users={users} currentUserId={currentUserId} currentUserIsOwner={currentUserIsOwner} />
     </div>
   )
 }

@@ -11,6 +11,7 @@ export interface User {
   last_name: string
   role: "captain" | "lieutenant" | "firefighter"
   is_admin: boolean
+  is_owner?: boolean // Added optional is_owner field for owner permissions
   phone?: string
 }
 
@@ -158,7 +159,7 @@ export async function getSession(): Promise<User | null> {
       try {
         // Cache miss or expired, fetch from database
         const result = await sql`
-          SELECT id, email, first_name, last_name, role, is_admin, phone
+          SELECT id, email, first_name, last_name, role, is_admin, is_owner, phone
           FROM users
           WHERE id = ${Number.parseInt(userId)}
         `
@@ -235,7 +236,7 @@ export async function login(formData: FormData) {
 
   try {
     const result = await sql`
-      SELECT id, email, password_hash, first_name, last_name, role, is_admin
+      SELECT id, email, password_hash, first_name, last_name, role, is_admin, is_owner
       FROM users
       WHERE email = ${email}
     `
@@ -341,7 +342,8 @@ export async function createOrResetAdmin() {
             first_name = 'Admin',
             last_name = 'Caserne',
             role = 'captain',
-            is_admin = true
+            is_admin = true,
+            is_owner = true
         WHERE email = 'admin@caserne.ca'
       `
       console.log("[v0] Admin account updated successfully")
@@ -349,8 +351,8 @@ export async function createOrResetAdmin() {
       // Create new admin account
       console.log("[v0] Creating new admin account...")
       await sql`
-        INSERT INTO users (email, password_hash, first_name, last_name, role, is_admin)
-        VALUES ('admin@caserne.ca', ${passwordHash}, 'Admin', 'Caserne', 'captain', true)
+        INSERT INTO users (email, password_hash, first_name, last_name, role, is_admin, is_owner)
+        VALUES ('admin@caserne.ca', ${passwordHash}, 'Admin', 'Caserne', 'captain', true, true)
       `
       console.log("[v0] Admin account created successfully")
     }

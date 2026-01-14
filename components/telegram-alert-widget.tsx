@@ -5,20 +5,21 @@ import Link from "next/link"
 export async function TelegramAlertWidget() {
   const data = await getTelegramConnectionStatus()
 
-  if ("error" in data || data.stats.notConnected === 0) {
+  if ("error" in data || data.stats.requiredNotConnected === 0) {
     return null
   }
 
   const { stats } = data
 
-  // Transformed into compact horizontal alert banner
+  // Compact horizontal alert banner
   return (
     <div className="rounded-md border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 px-4 py-2">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-sm">
           <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400 flex-shrink-0" />
           <span className="text-orange-900 dark:text-orange-100">
-            {stats.notConnected} pompier{stats.notConnected > 1 ? "s n'ont" : " n'a"} pas connecté Telegram
+            {stats.requiredNotConnected} pompier{stats.requiredNotConnected > 1 ? "s n'ont" : " n'a"} pas connecté
+            Telegram
           </span>
         </div>
         <Link

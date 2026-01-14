@@ -54,6 +54,7 @@ export async function getAllUsersWithAdminStatus() {
         email,
         role,
         is_admin,
+        is_owner,
         created_at
       FROM users
       ORDER BY 

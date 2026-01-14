@@ -20,29 +20,37 @@ export async function getTelegramConnectionStatus() {
         u.last_name,
         u.email,
         u.role,
+        u.is_owner,
+        u.telegram_required,
         np.telegram_chat_id,
         np.enable_telegram,
         u.created_at as user_created_at,
         np.updated_at as telegram_updated_at
       FROM users u
       LEFT JOIN notification_preferences np ON u.id = np.user_id
-      WHERE u.is_admin = false
       ORDER BY 
         CASE WHEN np.telegram_chat_id IS NOT NULL THEN 0 ELSE 1 END,
         u.last_name, 
         u.first_name
     `
 
+    const requiredUsers = users.filter((u: any) => u.telegram_required)
     const connectedCount = users.filter((u: any) => u.telegram_chat_id).length
+    const connectedRequiredCount = requiredUsers.filter((u: any) => u.telegram_chat_id).length
     const totalCount = users.length
+    const totalRequiredCount = requiredUsers.length
 
     return {
       users,
+      currentUserId: user.id,
+      currentUserIsOwner: user.is_owner || false,
       stats: {
         connected: connectedCount,
         notConnected: totalCount - connectedCount,
         total: totalCount,
         percentage: totalCount > 0 ? Math.round((connectedCount / totalCount) * 100) : 0,
+        requiredNotConnected: totalRequiredCount - connectedRequiredCount,
+        requiredTotal: totalRequiredCount,
       },
     }
   } catch (error) {
@@ -66,5 +74,59 @@ export async function checkUserTelegramStatus(userId: number) {
   } catch (error) {
     console.error("checkUserTelegramStatus error:", error)
     return { isConnected: false, chatId: null }
+  }
+}
+
+export async function toggleTelegramRequirement(userId: number, required: boolean) {
+  const currentUser = await getSession()
+
+  if (!currentUser?.is_owner) {
+    return { error: "Seul le propriétaire peut modifier cette option" }
+  }
+
+  try {
+    const userResult = await sql`
+      SELECT first_name, last_name, telegram_required 
+      FROM users 
+      WHERE id = ${userId}
+    `
+
+    if (userResult.length === 0) {
+      return { error: "Utilisateur introuvable" }
+    }
+
+    const user = userResult[0]
+    const oldValue = user.telegram_required
+
+    await sql`
+      UPDATE users 
+      SET telegram_required = ${required}
+      WHERE id = ${userId}
+    `
+
+    await sql`
+      INSERT INTO audit_logs (
+        user_id,
+        action_type,
+        table_name,
+        record_id,
+        old_values,
+        new_values,
+        description
+      ) VALUES (
+        ${currentUser.id},
+        'telegram_requirement_changed',
+        'users',
+        ${userId},
+        ${JSON.stringify({ telegram_required: oldValue })},
+        ${JSON.stringify({ telegram_required: required })},
+        ${`Modification de l'obligation Telegram pour ${user.first_name} ${user.last_name}: ${oldValue ? "Obligatoire" : "Optionnel"} → ${required ? "Obligatoire" : "Optionnel"}`}
+      )
+    `
+
+    return { success: true }
+  } catch (error) {
+    console.error("toggleTelegramRequirement error:", error)
+    return { error: "Erreur lors de la modification" }
   }
 }

@@ -15,6 +15,7 @@ interface UserWithAdminStatus {
   email: string
   role: string
   is_admin: boolean
+  is_owner?: boolean
   isAdmin: boolean
   canModifyAdmin: boolean
   created_at: string
@@ -92,6 +93,12 @@ export function ManageAdminsClient({ users }: ManageAdminsClientProps) {
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge className={roleColors[user.role]}>{roleLabels[user.role] || user.role}</Badge>
+                  {user.is_owner && (
+                    <Badge className="bg-purple-100 text-purple-800">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Propriétaire
+                    </Badge>
+                  )}
                   <Badge className="bg-green-100 text-green-800">
                     <Shield className="h-3 w-3 mr-1" />
                     Admin
@@ -132,6 +139,12 @@ export function ManageAdminsClient({ users }: ManageAdminsClientProps) {
                 </div>
                 <div className="flex items-center gap-4">
                   <Badge className={roleColors[user.role]}>{roleLabels[user.role] || user.role}</Badge>
+                  {user.is_owner && (
+                    <Badge className="bg-purple-100 text-purple-800">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Propriétaire
+                    </Badge>
+                  )}
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{user.isAdmin ? "Admin" : "Non admin"}</span>
                     <Switch
