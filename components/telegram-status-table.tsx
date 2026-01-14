@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation" // Added for smooth refresh
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -35,6 +36,7 @@ export function TelegramStatusTable({
   currentUserId: number
   currentUserIsOwner: boolean
 }) {
+  const router = useRouter() // Added router for refresh
   const [filter, setFilter] = useState<"all" | "connected" | "notConnected">("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [togglingUserId, setTogglingUserId] = useState<number | null>(null)
@@ -65,7 +67,7 @@ export function TelegramStatusTable({
         toast.error(result.error)
       } else {
         toast.success("Obligation Telegram modifiée")
-        window.location.reload() // Refresh to show updated data
+        router.refresh() // Use router.refresh() instead of window.location.reload() to keep scroll position
       }
     } catch (error) {
       toast.error("Erreur lors de la modification")
