@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { updateUserPreferences } from "@/app/actions/notifications"
 import { generateTelegramLink, disconnectTelegram } from "@/app/actions/telegram"
 import { Bell, MessageSquare, ExternalLink } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 interface NotificationPreferencesFormProps {
   userId: number
@@ -16,12 +17,12 @@ interface NotificationPreferencesFormProps {
 
 export function NotificationPreferencesForm({ userId, initialPreferences }: NotificationPreferencesFormProps) {
   const [preferences, setPreferences] = useState({
-    enable_app: true,
+    enable_app: initialPreferences?.enable_app ?? true,
     enable_email: initialPreferences?.enable_email ?? false,
-    enable_telegram: initialPreferences?.enable_telegram ?? false,
+    enable_telegram: initialPreferences?.enable_telegram ?? true,
     telegram_chat_id: initialPreferences?.telegram_chat_id ?? null,
-    notify_replacement_available: initialPreferences?.notify_replacement_available ?? false,
-    notify_replacement_accepted: initialPreferences?.notify_replacement_accepted ?? false,
+    notify_replacement_available: true,
+    notify_replacement_accepted: true,
     notify_replacement_rejected: initialPreferences?.notify_replacement_rejected ?? false,
   })
 
@@ -29,17 +30,13 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
   const [connectingTelegram, setConnectingTelegram] = useState(false)
 
   const handleToggle = async (key: string, value: boolean) => {
-    // Update local state immediately for responsive UI
     const newPreferences = { ...preferences, [key]: value }
     setPreferences(newPreferences)
 
-    // Mark this toggle as saving
     setSavingToggles((prev) => new Set(prev).add(key))
 
-    // Save to database
     await updateUserPreferences(userId, newPreferences)
 
-    // Remove from saving state after a short delay
     setTimeout(() => {
       setSavingToggles((prev) => {
         const next = new Set(prev)
@@ -54,7 +51,6 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
     try {
       const result = await generateTelegramLink()
       if (result.success && result.link) {
-        // On iOS, window.open() with _blank can be blocked, use location.href instead
         window.location.href = result.link
       } else {
         console.error("[v0] Failed to generate Telegram link:", result.error)
@@ -78,7 +74,6 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
           enable_telegram: false,
         }
         setPreferences(newPreferences)
-        // Auto-save after disconnect
         await updateUserPreferences(userId, newPreferences)
       }
     } catch (error) {
@@ -96,85 +91,62 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
         </p>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-muted/50 p-4 rounded-lg border border-muted">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div className="flex items-center gap-3 flex-1">
               <Bell className="h-5 w-5 text-muted-foreground" />
               <div>
-                <Label className="font-medium">Notifications dans l'application</Label>
-                <p className="text-sm text-muted-foreground">Toujours activées (obligatoire)</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-green-600 font-medium">✓ Activé</span>
-            </div>
-          </div>
-
-          {/* 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <Label htmlFor="enable_email" className="font-medium">
-                  Notifications par email
-                </Label>
-                <p className="text-sm text-muted-foreground">Recevez des emails pour les événements importants</p>
-              </div>
-            </div>
-            <Switch
-              id="enable_email"
-              checked={preferences.enable_email}
-              onCheckedChange={(checked) => handleToggle("enable_email", checked)}
-              disabled={savingToggles.has("enable_email")}
-            />
-          </div>
-          */}
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <MessageSquare className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <Label htmlFor="enable_telegram" className="font-medium">
-                  Notifications par Telegram
+                <Label htmlFor="enable-app" className="text-base font-medium">
+                  Notifications dans l'application
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  {preferences.telegram_chat_id ? (
-                    <span className="text-green-600 font-medium">✓ Connecté</span>
-                  ) : (
-                    "Recevez des notifications instantanées sur Telegram"
-                  )}
+                  Recevez les notifications dans l'interface de l'application
                 </p>
-                {!preferences.telegram_chat_id && (
+              </div>
+            </div>
+            <Switch
+              id="enable-app"
+              checked={preferences.enable_app}
+              onCheckedChange={(value) => handleToggle("enable_app", value)}
+              disabled={savingToggles.has("enable_app")}
+            />
+          </div>
+
+          <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-950 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+            <div className="flex items-center gap-3 flex-1">
+              <MessageSquare className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Label className="text-base font-medium">Notifications par Telegram</Label>
+                  <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
+                    Obligatoire
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Telegram est obligatoire pour recevoir les notifications critiques de remplacement
+                </p>
+                {preferences.telegram_chat_id ? (
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      Connecté
+                    </Badge>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleTelegramDisconnect}>
+                      Déconnecter
+                    </Button>
+                  </div>
+                ) : (
                   <Button
-                    type="button"
-                    variant="outline"
                     size="sm"
-                    className="mt-2 bg-transparent"
                     onClick={handleTelegramConnect}
                     disabled={connectingTelegram}
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Connecter Telegram
-                  </Button>
-                )}
-                {preferences.telegram_chat_id && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 text-red-600 hover:text-red-700"
-                    onClick={handleTelegramDisconnect}
-                  >
-                    Déconnecter
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    {connectingTelegram ? "Connexion..." : "Connecter Telegram"}
+                    <ExternalLink className="h-3 w-3 ml-2" />
                   </Button>
                 )}
               </div>
             </div>
-            <Switch
-              id="enable_telegram"
-              checked={preferences.enable_telegram}
-              onCheckedChange={(checked) => handleToggle("enable_telegram", checked)}
-              disabled={!preferences.telegram_chat_id || savingToggles.has("enable_telegram")}
-            />
           </div>
         </div>
       </Card>
@@ -187,47 +159,43 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
         </p>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between bg-muted/50 p-4 rounded-lg border">
             <div>
-              <Label htmlFor="notify_replacement_available" className="font-medium">
-                Remplacements disponibles
-              </Label>
+              <div className="flex items-center gap-2 mb-1">
+                <Label className="text-base font-medium">Remplacements disponibles</Label>
+                <Badge variant="outline" className="text-xs">
+                  Obligatoire
+                </Badge>
+              </div>
               <p className="text-sm text-muted-foreground">Quand un nouveau remplacement est publié</p>
             </div>
-            <Switch
-              id="notify_replacement_available"
-              checked={preferences.notify_replacement_available}
-              onCheckedChange={(checked) => handleToggle("notify_replacement_available", checked)}
-              disabled={savingToggles.has("notify_replacement_available")}
-            />
+            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Toujours activé</Badge>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between bg-muted/50 p-4 rounded-lg border">
             <div>
-              <Label htmlFor="notify_replacement_accepted" className="font-medium">
-                Remplacement accepté
-              </Label>
+              <div className="flex items-center gap-2 mb-1">
+                <Label className="text-base font-medium">Remplacement accepté</Label>
+                <Badge variant="outline" className="text-xs">
+                  Obligatoire
+                </Badge>
+              </div>
               <p className="text-sm text-muted-foreground">Quand votre candidature est acceptée</p>
             </div>
-            <Switch
-              id="notify_replacement_accepted"
-              checked={preferences.notify_replacement_accepted}
-              onCheckedChange={(checked) => handleToggle("notify_replacement_accepted", checked)}
-              disabled={savingToggles.has("notify_replacement_accepted")}
-            />
+            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Toujours activé</Badge>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="notify_replacement_rejected" className="font-medium">
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div className="flex-1">
+              <Label htmlFor="notify-rejected" className="text-base font-medium">
                 Remplacement refusé
               </Label>
               <p className="text-sm text-muted-foreground">Quand votre candidature est refusée</p>
             </div>
             <Switch
-              id="notify_replacement_rejected"
+              id="notify-rejected"
               checked={preferences.notify_replacement_rejected}
-              onCheckedChange={(checked) => handleToggle("notify_replacement_rejected", checked)}
+              onCheckedChange={(value) => handleToggle("notify_replacement_rejected", value)}
               disabled={savingToggles.has("notify_replacement_rejected")}
             />
           </div>

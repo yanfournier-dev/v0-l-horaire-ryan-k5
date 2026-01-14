@@ -6,6 +6,7 @@ import { getUserApplications, getReplacementsAdminActionCount } from "@/app/acti
 import { getExchangesAdminActionCount } from "@/app/actions/exchanges"
 import { Badge } from "@/components/ui/badge"
 import { getRoleLabel } from "@/lib/role-labels"
+import { TelegramAlertWidget } from "@/components/telegram-alert-widget"
 
 export const dynamic = "force-dynamic"
 
@@ -38,6 +39,12 @@ export default async function DashboardPage() {
           {user.is_admin && " (Administrateur)"}
         </p>
       </div>
+
+      {user.is_admin && (
+        <div className="mb-6">
+          <TelegramAlertWidget />
+        </div>
+      )}
 
       <div className="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <Link href="/dashboard/calendar?scrollToToday=true" scroll={false}>
