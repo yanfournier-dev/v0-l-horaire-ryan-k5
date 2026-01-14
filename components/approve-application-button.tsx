@@ -206,9 +206,7 @@ export function ApproveApplicationButton({
       setSelectedLieutenantId("")
       setSelectedCaptainId("")
 
-      const currentPath = window.location.pathname + window.location.search
-      router.push(currentPath)
-      router.refresh()
+      router.push("/dashboard/replacements?tab=ready")
     } else if (result.error) {
       toast.error(result.error || "Erreur lors de l'assignation")
     }
