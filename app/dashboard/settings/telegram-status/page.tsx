@@ -60,7 +60,7 @@ export default async function TelegramStatusPage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardDescription>Non connectés</CardDescription>
+            <CardDescription>Non connectés (obligatoire)</CardDescription>
             <CardTitle className="text-3xl text-red-600 dark:text-red-400">{stats.notConnected}</CardTitle>
           </CardHeader>
           <CardContent>

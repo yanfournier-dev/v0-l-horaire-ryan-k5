@@ -35,9 +35,7 @@ export async function getTelegramConnectionStatus() {
     `
 
     const requiredUsers = users.filter((u: any) => u.telegram_required)
-    const connectedCount = users.filter((u: any) => u.telegram_chat_id).length
     const connectedRequiredCount = requiredUsers.filter((u: any) => u.telegram_chat_id).length
-    const totalCount = users.length
     const totalRequiredCount = requiredUsers.length
 
     return {
@@ -45,12 +43,10 @@ export async function getTelegramConnectionStatus() {
       currentUserId: user.id,
       currentUserIsOwner: user.is_owner || false,
       stats: {
-        connected: connectedCount,
-        notConnected: totalCount - connectedCount,
-        total: totalCount,
-        percentage: totalCount > 0 ? Math.round((connectedCount / totalCount) * 100) : 0,
-        requiredNotConnected: totalRequiredCount - connectedRequiredCount,
-        requiredTotal: totalRequiredCount,
+        connected: connectedRequiredCount,
+        notConnected: totalRequiredCount - connectedRequiredCount,
+        total: totalRequiredCount,
+        percentage: totalRequiredCount > 0 ? Math.round((connectedRequiredCount / totalRequiredCount) * 100) : 0,
       },
     }
   } catch (error) {

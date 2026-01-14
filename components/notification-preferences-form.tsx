@@ -120,14 +120,14 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
             />
           </div>
 
-          <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-950 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+          <div className="flex items-center justify-between bg-red-50 dark:bg-red-950 p-4 rounded-lg border border-red-200 dark:border-red-800">
             <div className="flex items-center gap-3 flex-1">
-              <MessageSquare className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              <MessageSquare className="h-5 w-5 text-red-600 dark:text-red-400" />
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <Label className="text-base font-medium">Notifications par Telegram</Label>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-base font-semibold">Notifications par Telegram</h3>
                   {preferences.telegram_required && (
-                    <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
+                    <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-xs">
                       Géré par l'administrateur
                     </Badge>
                   )}
@@ -159,7 +159,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
                     size="sm"
                     onClick={handleTelegramConnect}
                     disabled={connectingTelegram}
-                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                    className="bg-red-600 hover:bg-red-700 text-white"
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
                     {connectingTelegram ? "Connexion..." : "Connecter Telegram"}
@@ -183,7 +183,10 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
           <div className="flex items-center justify-between bg-muted/50 p-4 rounded-lg border">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Label className="text-base font-medium">Remplacements disponibles</Label>
+                <Label className="text-base font-medium">
+                  Remplacements disponibles{" "}
+                  <span className="text-muted-foreground font-normal">(24h et 15 minutes)</span>
+                </Label>
                 <Badge variant="outline" className="text-xs">
                   Obligatoire
                 </Badge>

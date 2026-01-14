@@ -11,20 +11,19 @@ export async function TelegramAlertWidget() {
 
   const { stats } = data
 
-  // Compact horizontal alert banner
   return (
-    <div className="rounded-md border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 px-4 py-2">
+    <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-4 py-2">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-sm">
-          <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400 flex-shrink-0" />
-          <span className="text-orange-900 dark:text-orange-100">
+          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+          <span className="text-red-900 dark:text-red-100">
             {stats.requiredNotConnected} pompier{stats.requiredNotConnected > 1 ? "s n'ont" : " n'a"} pas connecté
             Telegram
           </span>
         </div>
         <Link
           href="/dashboard/settings/telegram-status"
-          className="text-sm text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-100 underline underline-offset-4 whitespace-nowrap"
+          className="text-sm text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 underline underline-offset-4 whitespace-nowrap"
         >
           Voir les statuts
         </Link>
