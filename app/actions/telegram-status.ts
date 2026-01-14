@@ -1,9 +1,7 @@
 "use server"
 
-import { neon } from "@neondatabase/serverless"
+import { sql } from "@/lib/db"
 import { getSession } from "./auth"
-
-const sql = neon(process.env.DATABASE_URL!)
 
 export async function getTelegramConnectionStatus() {
   const user = await getSession()
@@ -45,6 +43,7 @@ export async function getTelegramConnectionStatus() {
       stats: {
         connected: connectedRequiredCount,
         notConnected: totalRequiredCount - connectedRequiredCount,
+        requiredNotConnected: totalRequiredCount - connectedRequiredCount,
         total: totalRequiredCount,
         percentage: totalRequiredCount > 0 ? Math.round((connectedRequiredCount / totalRequiredCount) * 100) : 0,
       },
