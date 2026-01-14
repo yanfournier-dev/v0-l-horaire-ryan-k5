@@ -2,7 +2,6 @@ import { getAuditLogs } from "@/app/actions/audit"
 import { AuditLogsTable } from "@/components/audit-logs-table"
 
 export const dynamic = "force-dynamic"
-export const revalidate = 0
 
 export default async function AuditLogsPage({
   searchParams,
