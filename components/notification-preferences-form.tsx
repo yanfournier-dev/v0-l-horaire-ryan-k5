@@ -9,7 +9,6 @@ import { updateUserPreferences } from "@/app/actions/notifications"
 import { generateTelegramLink, disconnectTelegram } from "@/app/actions/telegram"
 import { Bell, MessageSquare, ExternalLink } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface NotificationPreferencesFormProps {
   userId: number
@@ -143,25 +142,7 @@ export function NotificationPreferencesForm({ userId, initialPreferences }: Noti
                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                       Connecté
                     </Badge>
-                    {preferences.telegram_required ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 text-xs cursor-not-allowed opacity-50"
-                              disabled
-                            >
-                              Déconnecter
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Déconnexion non autorisée - Telegram obligatoire</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ) : (
+                    {!preferences.telegram_required && (
                       <Button
                         variant="ghost"
                         size="sm"
