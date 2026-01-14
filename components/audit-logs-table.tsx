@@ -293,9 +293,21 @@ export function AuditLogsTable({ logs, pagination }: AuditLogsTableProps) {
                 Précédent
               </Button>
 
-              <span className="text-sm text-muted-foreground">
-                Page {pagination.page} sur {pagination.totalPages}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Page</span>
+                <select
+                  value={pagination.page}
+                  onChange={(e) => handlePageChange(Number(e.target.value))}
+                  className="h-8 rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <option key={pageNum} value={pageNum}>
+                      {pageNum}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-sm text-muted-foreground">sur {pagination.totalPages}</span>
+              </div>
 
               <Button
                 variant="outline"

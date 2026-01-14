@@ -1,9 +1,7 @@
 "use server"
-
-import { neon } from "@neondatabase/serverless"
 import { headers } from "next/headers"
-
-const sql = neon(process.env.DATABASE_URL!)
+import { unstable_noStore as noStore } from "next/cache"
+import { sql } from "@neondatabase/serverless"
 
 export type AuditActionType =
   | "ASSIGNMENT_CREATED"
@@ -81,6 +79,8 @@ export async function getAuditLogs(options: {
   startDate?: string
   endDate?: string
 }) {
+  noStore()
+
   const page = options.page || 1
   const limit = options.limit || 50
   const offset = (page - 1) * limit
