@@ -10,7 +10,6 @@ import { checkConsecutiveHours } from "@/lib/consecutive-hours"
 
 export async function checkExchangeTablesExist() {
   try {
-    console.log("[v0] Checking if exchange tables exist...")
     const result = await sql`
       SELECT COUNT(*) as count
       FROM information_schema.tables
@@ -18,15 +17,9 @@ export async function checkExchangeTablesExist() {
       AND table_name IN ('shift_exchanges', 'user_exchange_counts')
     `
 
-    console.log("[v0] Table check result:", result)
-    console.log("[v0] Count value:", result[0].count)
-    console.log("[v0] Count type:", typeof result[0].count)
-
     const count = Number(result[0].count)
     const exists = count === 2
-    console.log("[v0] Tables exist:", exists)
 
-    // Both tables should exist (count = 2)
     return { exists }
   } catch (error: any) {
     console.error("[v0] Error checking tables:", error)
@@ -40,8 +33,6 @@ export async function getUserShiftsForExchange(userId: number, selectedDate?: st
     if (!user) {
       return { error: "Non autorisé" }
     }
-
-    console.log("[v0] getUserShiftsForExchange called with userId:", userId, "selectedDate:", selectedDate)
 
     if (selectedDate) {
       // Get cycle configuration
@@ -64,8 +55,6 @@ export async function getUserShiftsForExchange(userId: number, selectedDate?: st
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
       const cycleDay = (diffDays % cycle_length_days) + 1
 
-      console.log("[v0] Calculated cycle_day:", cycleDay, "for date:", selectedDate)
-
       // Get user's shifts for this cycle day based on team membership
       const shifts = await sql`
         SELECT DISTINCT
@@ -83,8 +72,6 @@ export async function getUserShiftsForExchange(userId: number, selectedDate?: st
         AND s.cycle_day = ${cycleDay}
         ORDER BY s.shift_type
       `
-
-      console.log("[v0] Found shifts for cycle_day", cycleDay, ":", shifts.length, shifts)
 
       return { shifts }
     } else {
@@ -105,8 +92,6 @@ export async function getUserShiftsForExchange(userId: number, selectedDate?: st
         ORDER BY s.cycle_day, s.shift_type
       `
 
-      console.log("[v0] Found all shifts:", shifts.length, shifts)
-
       return { shifts }
     }
   } catch (error) {
@@ -125,15 +110,6 @@ export async function getAvailableFirefightersForExchange(
     if (!user) {
       return { error: "Non autorisé" }
     }
-
-    console.log(
-      "[v0] getAvailableFirefightersForExchange called with requesterId:",
-      requesterId,
-      "targetDate:",
-      targetDate,
-      "targetShiftType:",
-      targetShiftType,
-    )
 
     // Get cycle configuration
     const cycleConfig = await sql`
@@ -155,8 +131,6 @@ export async function getAvailableFirefightersForExchange(
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
     const cycleDay = (diffDays % cycle_length_days) + 1
 
-    console.log("[v0] Calculated cycle_day:", cycleDay, "for target date:", targetDate)
-
     const requesterTeams = await sql`
       SELECT team_id
       FROM team_members
@@ -164,7 +138,6 @@ export async function getAvailableFirefightersForExchange(
     `
 
     const requesterTeamIds = requesterTeams.map((t: any) => t.team_id)
-    console.log("[v0] Requester team IDs:", requesterTeamIds)
 
     const firefighters = await sql`
       SELECT DISTINCT
@@ -185,8 +158,6 @@ export async function getAvailableFirefightersForExchange(
       AND NOT (t.id = ANY(${requesterTeamIds}))
       ORDER BY t.name, u.last_name, u.first_name
     `
-
-    console.log("[v0] Found available firefighters:", firefighters.length, firefighters)
 
     return { firefighters }
   } catch (error) {
@@ -478,11 +449,7 @@ export async function approveExchange(exchangeId: number, forceConsecutiveHours 
       warning = `Attention: Le pompier a déjà ${count} échanges approuvés pour l'année ${requesterShiftYear}. La limite recommandée est de 8 échanges par année.`
     }
 
-    console.log("[v0] Approving exchange:", exchangeId, exchange)
-
     if (!forceConsecutiveHours) {
-      console.log("[v0] Checking consecutive hours for exchange approval")
-
       const requesterShiftDateStr = new Date(exchange.target_shift_date).toISOString().split("T")[0]
       const targetShiftDateStr = new Date(exchange.requester_shift_date).toISOString().split("T")[0]
 
@@ -523,10 +490,8 @@ export async function approveExchange(exchangeId: number, forceConsecutiveHours 
           userId: exchange.target_id,
         }
       }
-
-      console.log("[v0] Consecutive hours check passed for both firefighters")
     } else {
-      console.log("[v0] Consecutive hours check bypassed (forced approval)")
+      // Consecutive hours check bypassed (forced approval)
     }
 
     // Start transaction
@@ -574,15 +539,11 @@ export async function approveExchange(exchangeId: number, forceConsecutiveHours 
 
       const targetShiftId = targetShifts[0].id
 
-      console.log("[v0] Requester shift_id:", requesterShiftId, "Target shift_id:", targetShiftId)
-
       await sql`
         DELETE FROM shift_assignments
         WHERE (shift_id = ${requesterShiftId} AND user_id IN (${exchange.requester_id}, ${exchange.target_id}))
         OR (shift_id = ${targetShiftId} AND user_id IN (${exchange.requester_id}, ${exchange.target_id}))
       `
-
-      console.log("[v0] Deleted all conflicting assignments")
 
       await sql`
         INSERT INTO shift_assignments (user_id, shift_id, is_extra, is_partial, start_time, end_time)
@@ -590,8 +551,6 @@ export async function approveExchange(exchangeId: number, forceConsecutiveHours 
           (${exchange.target_id}, ${requesterShiftId}, false, ${exchange.is_partial}, ${exchange.requester_start_time || null}, ${exchange.requester_end_time || null}),
           (${exchange.requester_id}, ${targetShiftId}, false, ${exchange.is_partial}, ${exchange.target_start_time || null}, ${exchange.target_end_time || null})
       `
-
-      console.log("[v0] Created swapped assignments")
 
       await sql`
         INSERT INTO user_exchange_counts (user_id, year, exchange_count)
@@ -603,8 +562,6 @@ export async function approveExchange(exchangeId: number, forceConsecutiveHours 
       `
 
       await sql`COMMIT`
-
-      console.log("[v0] Exchange approved successfully:", exchangeId)
 
       const users = await sql`
         SELECT id, email, first_name, last_name
@@ -737,8 +694,6 @@ export async function rejectExchange(exchangeId: number, reason?: string) {
       AND status = 'pending'
     `
 
-    console.log("[v0] Exchange rejected:", exchangeId)
-
     const users = await sql`
       SELECT id, email, first_name, last_name
       FROM users
@@ -830,6 +785,143 @@ export async function rejectExchange(exchangeId: number, reason?: string) {
   } catch (error) {
     console.error("[v0] Error rejecting exchange:", error)
     return { error: "Erreur lors du rejet de l'échange" }
+  }
+}
+
+export async function deleteApprovedExchange(exchangeId: number) {
+  try {
+    const user = await getSession()
+    if (!user || !user.is_admin) {
+      return { error: "Non autorisé" }
+    }
+
+    // Get exchange details
+    const exchanges = await sql`
+      SELECT * FROM shift_exchanges
+      WHERE id = ${exchangeId}
+      AND status = 'approved'
+    `
+
+    if (exchanges.length === 0) {
+      return { error: "Échange approuvé non trouvé" }
+    }
+
+    const exchange = exchanges[0]
+
+    await sql`BEGIN`
+
+    try {
+      // Find the swapped assignments
+      const requesterAssignments = await sql`
+        SELECT sa.id, sa.shift_id
+        FROM shift_assignments sa
+        JOIN shifts s ON sa.shift_id = s.id
+        WHERE sa.user_id = ${exchange.target_id}
+        AND s.team_id = ${exchange.requester_team_id}
+        AND s.shift_type = ${exchange.requester_shift_type}
+        AND NOT sa.is_extra
+        LIMIT 1
+      `
+
+      const targetAssignments = await sql`
+        SELECT sa.id, sa.shift_id
+        FROM shift_assignments sa
+        JOIN shifts s ON sa.shift_id = s.id
+        WHERE sa.user_id = ${exchange.requester_id}
+        AND s.team_id = ${exchange.target_team_id}
+        AND s.shift_type = ${exchange.target_shift_type}
+        AND NOT sa.is_extra
+        LIMIT 1
+      `
+
+      if (requesterAssignments.length > 0 && targetAssignments.length > 0) {
+        const requesterShiftId = requesterAssignments[0].shift_id
+        const targetShiftId = targetAssignments[0].shift_id
+
+        // Delete the swapped assignments
+        await sql`
+          DELETE FROM shift_assignments
+          WHERE id IN (${requesterAssignments[0].id}, ${targetAssignments[0].id})
+        `
+
+        // Recreate original assignments with ON CONFLICT to handle existing assignments
+        await sql`
+          INSERT INTO shift_assignments (user_id, shift_id, is_extra, is_partial, start_time, end_time)
+          VALUES 
+            (${exchange.requester_id}, ${requesterShiftId}, false, false, NULL, NULL),
+            (${exchange.target_id}, ${targetShiftId}, false, false, NULL, NULL)
+          ON CONFLICT (shift_id, user_id) DO UPDATE SET
+            is_extra = false,
+            is_partial = false,
+            start_time = NULL,
+            end_time = NULL
+        `
+
+        const requesterShiftYear = new Date(exchange.requester_shift_date).getFullYear()
+        await sql`
+          UPDATE user_exchange_counts
+          SET 
+            exchange_count = GREATEST(0, exchange_count - 1)
+          WHERE user_id = ${exchange.requester_id}
+          AND year = ${requesterShiftYear}
+        `
+      }
+
+      // Update exchange status to cancelled
+      await sql`
+        UPDATE shift_exchanges
+        SET 
+          status = 'cancelled'
+        WHERE id = ${exchangeId}
+      `
+
+      await sql`COMMIT`
+      console.log("[v0] Approved exchange deleted:", exchangeId, "by admin:", user.id)
+
+      const users = await sql`
+        SELECT id, first_name, last_name
+        FROM users
+        WHERE id IN (${exchange.requester_id}, ${exchange.target_id})
+      `
+      const requester = users.find((u: any) => u.id === exchange.requester_id)
+      const target = users.find((u: any) => u.id === exchange.target_id)
+
+      await createAuditLog({
+        userId: user.id,
+        actionType: "EXCHANGE_APPROVED_DELETED",
+        tableName: "shift_exchanges",
+        recordId: exchangeId,
+        description: `Échange approuvé supprimé: ${requester?.first_name} ${requester?.last_name} ↔ ${target?.first_name} ${target?.last_name}`,
+        oldValues: { status: "approved" },
+        newValues: { status: "cancelled" },
+      })
+
+      // Optionally notify the users
+      try {
+        // You could send cancellation emails here if needed
+        console.log("[v0] Approved exchange deleted - notifying users")
+      } catch (emailError) {
+        console.error("[v0] Error notifying users:", emailError)
+      }
+
+      revalidatePath("/dashboard/exchanges")
+      revalidatePath("/dashboard/calendar")
+
+      try {
+        invalidateCache()
+      } catch (cacheError) {
+        console.error("[v0] Error invalidating cache:", cacheError)
+      }
+
+      return { success: true }
+    } catch (error) {
+      await sql`ROLLBACK`
+      console.error("[v0] Error deleting approved exchange:", error)
+      return { error: "Erreur lors de la suppression de l'échange" }
+    }
+  } catch (error) {
+    console.error("[v0] Error deleting approved exchange:", error)
+    return { error: "Erreur lors de la suppression de l'échange" }
   }
 }
 
@@ -939,7 +1031,7 @@ export async function cancelExchangeRequest(exchangeId: number) {
         `
 
         await sql`COMMIT`
-        console.log("[v0] Approved exchange deleted and reverted:", exchangeId, "by admin:", user.id)
+        console.log("[v0] Approved exchange cancelled and reverted:", exchangeId, "by admin:", user.id)
 
         await createAuditLog({
           userId: user.id,
@@ -1002,8 +1094,8 @@ export async function cancelExchangeRequest(exchangeId: number) {
 
     return { success: true }
   } catch (error) {
-    console.error("[v0] Error cancelling exchange request:", error)
-    return { error: "Erreur lors de l'annulation de la demande d'échange" }
+    console.error("[v0] Error cancelling exchange:", error)
+    return { error: "Erreur lors de l'annulation de l'échange" }
   }
 }
 
@@ -1013,8 +1105,6 @@ export async function getAllExchanges() {
     if (!user || !user.is_admin) {
       return { error: "Non autorisé" }
     }
-
-    console.log("[v0] Getting all exchanges for admin (including past exchanges)")
 
     const exchanges = await sql`
       SELECT 
@@ -1042,8 +1132,6 @@ export async function getAllExchanges() {
         END,
         se.created_at DESC
     `
-
-    console.log("[v0] Found", exchanges.length, "exchanges")
 
     return { exchanges }
   } catch (error: any) {
@@ -1093,8 +1181,6 @@ export async function createExchangeAsAdmin(data: {
     }
 
     if (data.autoApprove && !data.forceConsecutiveHours) {
-      console.log("[v0] Checking consecutive hours for admin exchange creation")
-
       // Check requester (taking target's shift)
       const requesterCheck = await checkConsecutiveHours(data.requesterId, data.targetShiftDate, data.targetShiftType)
 
@@ -1124,10 +1210,8 @@ export async function createExchangeAsAdmin(data: {
           userId: data.targetId,
         }
       }
-
-      console.log("[v0] Consecutive hours check passed for both firefighters")
     } else if (data.autoApprove) {
-      console.log("[v0] Consecutive hours check bypassed (forced approval)")
+      // Consecutive hours check bypassed (forced approval)
     }
 
     // Create the exchange request
@@ -1205,15 +1289,11 @@ export async function createExchangeAsAdmin(data: {
 
         const targetShiftId = targetShifts[0].id
 
-        console.log("[v0] Requester shift_id:", requesterShiftId, "Target shift_id:", targetShiftId)
-
         await sql`
           DELETE FROM shift_assignments
           WHERE (shift_id = ${requesterShiftId} AND user_id IN (${data.requesterId}, ${data.targetId}))
           OR (shift_id = ${targetShiftId} AND user_id IN (${data.requesterId}, ${data.targetId}))
         `
-
-        console.log("[v0] Deleted all conflicting assignments")
 
         await sql`
           INSERT INTO shift_assignments (user_id, shift_id, is_extra, is_partial, start_time, end_time)
@@ -1221,8 +1301,6 @@ export async function createExchangeAsAdmin(data: {
             (${data.targetId}, ${requesterShiftId}, false, ${data.isPartial}, ${data.requesterStartTime || null}, ${data.requesterEndTime || null}),
             (${data.requesterId}, ${targetShiftId}, false, ${data.isPartial}, ${data.targetStartTime || null}, ${data.targetEndTime || null})
         `
-
-        console.log("[v0] Created swapped assignments")
 
         await sql`
           INSERT INTO user_exchange_counts (user_id, year, exchange_count)
@@ -1234,7 +1312,6 @@ export async function createExchangeAsAdmin(data: {
         `
 
         await sql`COMMIT`
-        console.log("[v0] Exchange created and approved by admin:", exchangeId)
       } catch (error) {
         await sql`ROLLBACK`
         console.error("[v0] Error in transaction:", error)

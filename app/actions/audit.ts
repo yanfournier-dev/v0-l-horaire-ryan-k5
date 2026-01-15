@@ -62,8 +62,6 @@ export async function createAuditLog(params: AuditLogParams): Promise<void> {
         ${ipAddress}
       )
     `
-
-    console.log("[v0] Audit log created:", params.actionType, "by user", params.userId)
   } catch (error) {
     console.error("[v0] Error creating audit log:", error)
     // Ne pas faire échouer l'opération principale si le logging échoue
@@ -169,7 +167,6 @@ export async function cleanupOldAuditLogs(): Promise<number> {
       RETURNING id
     `
 
-    console.log(`[v0] Cleaned up ${result.length} old audit logs`)
     return result.length
   } catch (error) {
     console.error("[v0] Error cleaning up old audit logs:", error)

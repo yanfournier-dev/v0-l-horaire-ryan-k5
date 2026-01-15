@@ -209,12 +209,6 @@ export async function getAllShiftsWithAssignments(startDate: Date, endDate: Date
 
   const shiftsData = shiftsResult as unknown as Shift[]
 
-  console.log(
-    "[v0] getAllShiftsWithAssignments: Returning",
-    shiftsData.length,
-    "base shifts (without direct assignments)",
-  )
-
   return shiftsData
 }
 
@@ -275,13 +269,6 @@ export async function getActingDesignationsForRange(startDate: string, endDate: 
         AND sa.shift_date >= ${startDate}
         AND sa.shift_date <= ${endDate}
     `
-
-    console.log("[v0] getActingDesignationsForRange - Found designations:", designations.length)
-    designations.forEach((d: any) => {
-      console.log(
-        `[v0]   - ${d.first_name} ${d.last_name} (userId: ${d.user_id}) on shift ${d.shift_id} (date: ${d.shift_date}, cycle_day: ${d.cycle_day}, team: ${d.team_id}) - Cpt: ${d.is_acting_captain}, Lt: ${d.is_acting_lieutenant}, isDirect: ${d.is_direct_assignment}, replacedUserId: ${d.replaced_user_id}`,
-      )
-    })
 
     return designations.map((row: any) => ({
       user_id: row.user_id,
@@ -745,7 +732,6 @@ export async function getExtraFirefightersForDateRange(startDate: string, endDat
         AND r.status != 'cancelled'
     `
 
-    console.log("[v0] getExtraFirefightersForDateRange: Found", extraFirefighters.length, "extra firefighters")
     return extraFirefighters
   } catch (error: any) {
     console.error("[v0] getExtraFirefightersForDateRange: Query failed", error?.message || error)
@@ -912,8 +898,6 @@ export async function getDirectAssignmentsForDateRange(startDate: Date, endDate:
         AND sa.shift_date <= ${endDateStr}::date
       ORDER BY sa.shift_date, sa.replacement_order
     `
-
-    console.log(`[v0] getDirectAssignmentsForDateRange: Found ${result.length} direct assignments`)
 
     return result
   } catch (error: any) {

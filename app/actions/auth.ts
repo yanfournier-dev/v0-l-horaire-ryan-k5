@@ -187,17 +187,12 @@ export async function getSession(): Promise<User | null> {
           retries--
 
           if (retries > 0) {
-            console.log(`[v0] getSession: Rate limit hit, retrying in ${delay}ms... (${retries} retries left)`)
             // Wait before retrying
             await new Promise((resolve) => setTimeout(resolve, delay))
             delay *= 2 // Exponential backoff
             continue
           } else {
-            console.error(
-              "[v0] getSession: Rate limiting detected after all retries. Returning cached data if available.",
-            )
             if (cached) {
-              console.log("[v0] getSession: Using stale cache due to rate limiting")
               return cached.user
             }
           }
@@ -322,11 +317,8 @@ export async function logout() {
 
 export async function createOrResetAdmin() {
   try {
-    console.log("[v0] Creating/resetting admin account...")
-
     // Hash the password using PBKDF2
     const passwordHash = await hashPassword("admin123")
-    console.log("[v0] Password hashed successfully")
 
     // Check if admin account exists
     const existing = await sql`
@@ -335,7 +327,6 @@ export async function createOrResetAdmin() {
 
     if (existing.length > 0) {
       // Update existing admin account
-      console.log("[v0] Updating existing admin account...")
       await sql`
         UPDATE users
         SET password_hash = ${passwordHash},
@@ -346,15 +337,12 @@ export async function createOrResetAdmin() {
             is_owner = true
         WHERE email = 'admin@caserne.ca'
       `
-      console.log("[v0] Admin account updated successfully")
     } else {
       // Create new admin account
-      console.log("[v0] Creating new admin account...")
       await sql`
         INSERT INTO users (email, password_hash, first_name, last_name, role, is_admin, is_owner)
         VALUES ('admin@caserne.ca', ${passwordHash}, 'Admin', 'Caserne', 'captain', true, true)
       `
-      console.log("[v0] Admin account created successfully")
     }
 
     return {

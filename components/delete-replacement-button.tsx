@@ -65,7 +65,7 @@ export function DeleteReplacementButton({
         if (onSuccess) {
           await onSuccess()
         } else {
-          router.refresh()
+          router.push("/dashboard/replacements?tab=assigned")
         }
 
         setTimeout(() => {

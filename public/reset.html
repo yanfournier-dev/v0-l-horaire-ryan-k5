@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réinitialisation des mots de passe</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #dc2626;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+        button:hover {
+            background: #b91c1c;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 6px;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .loading {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Réinitialisation des mots de passe</h1>
+        <p><strong>ATTENTION:</strong> Cette action va réinitialiser le mot de passe de TOUS les utilisateurs à <code>SSIV2026</code></p>
+        
+        <button id="resetBtn" onclick="resetPasswords()">
+            Réinitialiser tous les mots de passe
+        </button>
+        
+        <div id="message"></div>
+    </div>
+
+    <script>
+        async function resetPasswords() {
+            const btn = document.getElementById('resetBtn');
+            const messageDiv = document.getElementById('message');
+            
+            btn.disabled = true;
+            messageDiv.className = 'message loading';
+            messageDiv.textContent = '⏳ Réinitialisation en cours...';
+            
+            try {
+                const response = await fetch('/api/emergency-reset-passwords', {
+                    method: 'POST',
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    messageDiv.className = 'message success';
+                    messageDiv.innerHTML = `
+                        ✅ <strong>Succès!</strong><br>
+                        ${data.count} utilisateur(s) réinitialisé(s).<br>
+                        Mot de passe: <strong>SSIV2026</strong><br><br>
+                        <a href="/login">Aller à la page de connexion</a>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Erreur inconnue');
+                }
+            } catch (error) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = `❌ Erreur: ${error.message}`;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

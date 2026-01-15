@@ -110,8 +110,6 @@ export async function addPartialVariablesToTemplates(): Promise<{
   }
 
   try {
-    console.log("[v0] Starting to update email templates with firefighter to replace...")
-
     await sql`
       UPDATE email_templates
       SET 
@@ -136,7 +134,6 @@ export async function addPartialVariablesToTemplates(): Promise<{
         updated_at = CURRENT_TIMESTAMP
       WHERE type = 'replacement_available'
     `
-    console.log("[v0] Updated replacement_available template")
 
     await sql`
       UPDATE email_templates
@@ -159,7 +156,6 @@ export async function addPartialVariablesToTemplates(): Promise<{
         updated_at = CURRENT_TIMESTAMP
       WHERE type = 'application_approved'
     `
-    console.log("[v0] Updated application_approved template")
 
     await sql`
       UPDATE email_templates
@@ -182,9 +178,7 @@ export async function addPartialVariablesToTemplates(): Promise<{
         updated_at = CURRENT_TIMESTAMP
       WHERE type = 'application_rejected'
     `
-    console.log("[v0] Updated application_rejected template")
 
-    console.log("[v0] Successfully updated all email templates with firefighter to replace")
     return {
       success: true,
       message:
@@ -208,9 +202,6 @@ export async function syncEmailTemplatesFromCode(): Promise<{
   }
 
   try {
-    console.log("[v0] Starting to sync email templates from code to database...")
-
-    // Define all fallback templates from lib/email.tsx
     const fallbackTemplates = [
       {
         type: "replacement_available",
@@ -394,13 +385,11 @@ export async function syncEmailTemplatesFromCode(): Promise<{
     let updated = 0
 
     for (const template of fallbackTemplates) {
-      // Check if template exists in database
       const existing = await sql`
         SELECT id FROM email_templates WHERE type = ${template.type}
       `
 
       if (existing.length > 0) {
-        // Update existing template
         await sql`
           UPDATE email_templates
           SET 
@@ -412,10 +401,8 @@ export async function syncEmailTemplatesFromCode(): Promise<{
             updated_at = CURRENT_TIMESTAMP
           WHERE type = ${template.type}
         `
-        console.log(`[v0] Updated template: ${template.type}`)
         updated++
       } else {
-        // Insert new template
         await sql`
           INSERT INTO email_templates (type, name, subject, body, variables, description)
           VALUES (
@@ -427,12 +414,10 @@ export async function syncEmailTemplatesFromCode(): Promise<{
             ${template.description}
           )
         `
-        console.log(`[v0] Created template: ${template.type}`)
         updated++
       }
     }
 
-    console.log(`[v0] Successfully synced ${updated} email templates from code to database`)
     return {
       success: true,
       message: `${updated} templates d'email ont été synchronisés avec succès`,

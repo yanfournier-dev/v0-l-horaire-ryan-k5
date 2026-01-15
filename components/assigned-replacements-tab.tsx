@@ -256,7 +256,7 @@ export function AssignedReplacementsTab({
                                     if (type === "email") return "Email"
                                     if (type === "sms") return "SMS"
                                     if (type === "telegram") return "Telegram"
-                                    if (type === "app") return "App"
+                                    if (type === "app" || type === "in_app") return "App"
                                     return type
                                   })
                                   .join(", ")}
