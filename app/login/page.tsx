@@ -63,9 +63,7 @@ export default function LoginPage() {
               <Input id="email" name="email" type="email" placeholder="pompier@caserne.ca" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">
-                Mot de passe <span className="text-muted-foreground text-sm">(optionnel pendant les tests)</span>
-              </Label>
+              <Label htmlFor="password">Mot de passe</Label>
               <Input id="password" name="password" type="password" />
             </div>
             <SubmitButton />
