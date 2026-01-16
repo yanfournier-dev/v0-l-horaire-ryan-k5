@@ -42,17 +42,31 @@ export async function POST(request: NextRequest) {
             throw new Error("Replacement not found")
           }
 
-          // Edit the message to show confirmation (without date/time)
-          await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          console.log("[v0] Database updated successfully for replacement:", replacementId)
+
+          await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              callback_query_id: callbackQuery.id,
+              text: "✅ Réception confirmée",
+              show_alert: false,
+            }),
+          })
+
+          console.log("[v0] Confirmation sent to user")
+
+          await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée</b>`,
-              parse_mode: "HTML",
+              reply_markup: { inline_keyboard: [] }, // Remove button
             }),
           })
+
+          console.log("[v0] Button removed from message")
 
           console.log("[v0] Replacement confirmed successfully:", replacementId)
         } catch (error) {
