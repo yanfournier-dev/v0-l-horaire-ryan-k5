@@ -47,7 +47,27 @@ export async function POST(request: NextRequest) {
           const originalText = callbackQuery.message.text || ""
           console.log("[v0] Original message text:", originalText)
 
-          const confirmationText = `${originalText}\n\n✅ <b>Réception confirmée</b>`
+          const now = new Date()
+          const formatter = new Intl.DateTimeFormat("fr-CA", {
+            timeZone: "America/Toronto",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })
+
+          const parts = formatter.formatToParts(now)
+          const year = parts.find((p) => p.type === "year")?.value
+          const month = parts.find((p) => p.type === "month")?.value
+          const day = parts.find((p) => p.type === "day")?.value
+          const hour = parts.find((p) => p.type === "hour")?.value
+          const minute = parts.find((p) => p.type === "minute")?.value
+
+          const formattedDate = `${year}-${month}-${day} à ${hour}:${minute}`
+
+          const confirmationText = `${originalText}\n\n✅ <b>Réception confirmée le ${formattedDate}</b>`
           console.log("[v0] New message text:", confirmationText)
           console.log("[v0] Chat ID:", chatId, "Message ID:", messageId)
 
