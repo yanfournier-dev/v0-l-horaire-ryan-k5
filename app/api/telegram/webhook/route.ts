@@ -30,10 +30,10 @@ export async function POST(request: NextRequest) {
         console.log("[v0] Confirming replacement:", replacementId)
 
         try {
-          // Update replacement with timezone-aware confirmation
+          // Update replacement with current timestamp (stored as UTC in DB)
           await sql`
             UPDATE replacements 
-            SET confirmed_at = (NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'America/Toronto', 
+            SET confirmed_at = NOW(), 
                 confirmed_via = 'telegram' 
             WHERE id = ${replacementId}
           `
@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
             minute: "2-digit",
             second: "2-digit",
             hour12: false,
+            timeZone: "America/Toronto",
           }).format(new Date(result[0].confirmed_at))
 
           // Edit message to show confirmed status
