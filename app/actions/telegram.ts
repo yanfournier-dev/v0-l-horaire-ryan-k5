@@ -160,6 +160,7 @@ export async function setupTelegramWebhook() {
 
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN
+    const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
 
     if (!botToken) {
       return { success: false, error: "Token Telegram non configuré" }
@@ -172,7 +173,12 @@ export async function setupTelegramWebhook() {
       return { success: false, error: "URL de l'application non configurée" }
     }
 
-    const webhookUrl = `${appUrl.startsWith("http") ? appUrl : `https://${appUrl}`}/api/telegram/webhook`
+    let webhookUrl = `${appUrl.startsWith("http") ? appUrl : `https://${appUrl}`}/api/telegram/webhook`
+
+    // Add bypass secret as query parameter if available
+    if (bypassSecret) {
+      webhookUrl += `?x-vercel-protection-bypass=${bypassSecret}`
+    }
 
     // Call Telegram API to set webhook
     const response = await fetch(
