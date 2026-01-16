@@ -30,72 +30,33 @@ export async function POST(request: NextRequest) {
         console.log("[v0] Confirming replacement:", replacementId)
 
         try {
-          console.log("[v0] About to UPDATE replacement in DB")
-
           const result = await sql`
             UPDATE replacements 
             SET confirmed_at = NOW(), 
                 confirmed_via = 'telegram' 
             WHERE id = ${replacementId}
-            RETURNING id, confirmed_at
+            RETURNING id
           `
 
-          console.log("[v0] DB UPDATE complete, result:", result[0])
-
-          if (!result[0]?.confirmed_at) {
-            throw new Error("No confirmation time returned from database")
+          if (!result[0]) {
+            throw new Error("Replacement not found")
           }
 
-          // Get current date to check if DST is in effect
-          const now = new Date()
-          const janOffset = new Date(now.getFullYear(), 0, 1).getTimezoneOffset()
-          const julOffset = new Date(now.getFullYear(), 6, 1).getTimezoneOffset()
-          const isDST = Math.max(janOffset, julOffset) !== now.getTimezoneOffset()
-
-          // EST is UTC-5, EDT is UTC-4
-          const offsetHours = isDST ? 4 : 5
-
-          // Convert UTC to local time
-          const confirmedDate = new Date(result[0].confirmed_at)
-          const localDate = new Date(confirmedDate.getTime() - offsetHours * 60 * 60 * 1000)
-
-          const year = localDate.getUTCFullYear()
-          const month = String(localDate.getUTCMonth() + 1).padStart(2, "0")
-          const day = String(localDate.getUTCDate()).padStart(2, "0")
-          const hour = String(localDate.getUTCHours()).padStart(2, "0")
-          const minute = String(localDate.getUTCMinutes()).padStart(2, "0")
-          const second = String(localDate.getUTCSeconds()).padStart(2, "0")
-
-          const formattedDate = `${year}-${month}-${day} ${hour} h ${minute} min ${second} s`
-
-          console.log("[v0] UTC date:", confirmedDate.toISOString())
-          console.log("[v0] Formatted local date:", formattedDate)
-
-          console.log("[v0] About to edit Telegram message")
-          const editResponse = await fetch(
-            `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée le ${formattedDate}</b>`,
-                parse_mode: "HTML",
-              }),
-            },
-          )
-
-          const editResult = await editResponse.json()
-          console.log("[v0] Telegram editMessageText response:", editResult)
+          // Edit the message to show confirmation (without date/time)
+          await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée</b>`,
+              parse_mode: "HTML",
+            }),
+          })
 
           console.log("[v0] Replacement confirmed successfully:", replacementId)
         } catch (error) {
           console.error("[v0] Error confirming replacement:", error)
-          if (error instanceof Error) {
-            console.error("[v0] Error message:", error.message)
-            console.error("[v0] Error stack:", error.stack)
-          }
 
           await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
             method: "POST",
