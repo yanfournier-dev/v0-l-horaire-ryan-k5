@@ -2,12 +2,15 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
-  const userId = request.cookies.get("userId")?.value
   const pathname = request.nextUrl.pathname
 
-  if (pathname.startsWith("/api/telegram/webhook")) {
+  // This must be the FIRST check before anything else
+  if (pathname === "/api/telegram/webhook") {
+    // Return immediately with no modifications
     return NextResponse.next()
   }
+
+  const userId = request.cookies.get("userId")?.value
 
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register")
   const isPublicPage = pathname === "/"
@@ -26,5 +29,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/telegram/webhook).*)"],
 }
