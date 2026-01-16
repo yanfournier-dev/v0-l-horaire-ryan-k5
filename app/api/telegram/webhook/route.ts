@@ -44,29 +44,48 @@ export async function POST(request: NextRequest) {
 
           console.log("[v0] Database updated successfully for replacement:", replacementId)
 
+          const originalText = callbackQuery.message.text || ""
+          console.log("[v0] Original message text:", originalText)
+
+          const confirmationText = `${originalText}\n\n✅ <b>Réception confirmée</b>`
+          console.log("[v0] New message text:", confirmationText)
+          console.log("[v0] Chat ID:", chatId, "Message ID:", messageId)
+
+          console.log("[v0] Calling editMessageText...")
+          const editResponse = await fetch(
+            `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: confirmationText,
+                parse_mode: "HTML",
+                reply_markup: { inline_keyboard: [] }, // Remove button
+              }),
+            },
+          )
+
+          const editResponseText = await editResponse.text()
+          console.log("[v0] editMessageText response status:", editResponse.status)
+          console.log("[v0] editMessageText response body:", editResponseText)
+
+          if (!editResponse.ok) {
+            console.error("[v0] Failed to edit message. Full error:", editResponseText)
+          } else {
+            console.log("[v0] Message updated with confirmation text successfully")
+          }
+
           await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               callback_query_id: callbackQuery.id,
-              text: "✅ Réception confirmée",
+              text: "✅ Confirmé",
               show_alert: false,
             }),
           })
-
-          console.log("[v0] Confirmation sent to user")
-
-          await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              reply_markup: { inline_keyboard: [] }, // Remove button
-            }),
-          })
-
-          console.log("[v0] Button removed from message")
 
           console.log("[v0] Replacement confirmed successfully:", replacementId)
         } catch (error) {
