@@ -3,8 +3,14 @@ import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
   const userId = request.cookies.get("userId")?.value
-  const isAuthPage = request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/register")
-  const isPublicPage = request.nextUrl.pathname === "/"
+  const pathname = request.nextUrl.pathname
+
+  if (pathname.startsWith("/api/telegram/webhook")) {
+    return NextResponse.next()
+  }
+
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register")
+  const isPublicPage = pathname === "/"
 
   // Redirect to login if not authenticated and trying to access protected pages
   if (!userId && !isAuthPage && !isPublicPage) {
@@ -20,5 +26,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 }
