@@ -35,18 +35,38 @@ export async function POST(request: NextRequest) {
             SET confirmed_at = NOW(), 
                 confirmed_via = 'telegram' 
             WHERE id = ${replacementId}
-            RETURNING 
-              id,
-              TO_CHAR(NOW() AT TIME ZONE 'America/Toronto', 'YYYY-MM-DD HH24 "h" MI "min" SS "s"') as formatted_date
+            RETURNING id, confirmed_at
           `
 
-          const confirmedDate = result[0]?.formatted_date
-
-          if (!confirmedDate) {
-            throw new Error("No formatted date returned from database")
+          if (!result[0]?.confirmed_at) {
+            throw new Error("No confirmation time returned from database")
           }
 
-          console.log("[v0] Formatted date for Telegram:", confirmedDate)
+          // Convert UTC to America/Toronto timezone in JavaScript
+          const confirmedDate = new Date(result[0].confirmed_at)
+          const formatter = new Intl.DateTimeFormat("fr-CA", {
+            timeZone: "America/Toronto",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          })
+
+          const parts = formatter.formatToParts(confirmedDate)
+          const year = parts.find((p) => p.type === "year")?.value
+          const month = parts.find((p) => p.type === "month")?.value
+          const day = parts.find((p) => p.type === "day")?.value
+          const hour = parts.find((p) => p.type === "hour")?.value
+          const minute = parts.find((p) => p.type === "minute")?.value
+          const second = parts.find((p) => p.type === "second")?.value
+
+          const formattedDate = `${year}-${month}-${day} ${hour} h ${minute} min ${second} s`
+
+          console.log("[v0] UTC time:", result[0].confirmed_at)
+          console.log("[v0] Formatted date for Telegram:", formattedDate)
 
           // Edit message to show confirmed status
           await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
@@ -55,7 +75,7 @@ export async function POST(request: NextRequest) {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée le ${confirmedDate}</b>`,
+              text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée le ${formattedDate}</b>`,
               parse_mode: "HTML",
             }),
           })
