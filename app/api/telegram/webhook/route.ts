@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               callback_query_id: callbackQuery.id,
-              text: "✅ TEST VERSION 2026-01-16-15h30 - Réception confirmée",
+              text: "✅ Réception confirmée",
               show_alert: false,
             }),
           })
