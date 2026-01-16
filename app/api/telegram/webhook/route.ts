@@ -31,65 +31,43 @@ export async function POST(request: NextRequest) {
 
         try {
           // Update replacement with confirmation
-          const result = await sql`
+          await sql`
             UPDATE replacements
             SET confirmed_at = NOW(),
                 confirmed_via = 'telegram'
             WHERE id = ${replacementId}
-            RETURNING id, shift_date
           `
 
-          if (result.length > 0) {
-            const date = new Date(result[0].shift_date).toLocaleDateString("fr-CA", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })
+          await sql`
+            UPDATE replacements 
+            SET confirmed_at = NOW() AT TIME ZONE 'America/Toronto', confirmed_via = 'telegram' 
+            WHERE id = ${replacementId}
+          `
 
-            // Answer callback query with success message
-            await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                callback_query_id: callbackQuery.id,
-                text: "✅ Réception confirmée!",
-                show_alert: false,
-              }),
-            })
+          const confirmedDate = new Intl.DateTimeFormat("fr-CA", {
+            timeZone: "America/Toronto",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          }).format(new Date())
 
-            const now = new Date()
-            // Eastern time offset: UTC-5 (standard) or UTC-4 (daylight saving)
-            // January is standard time, so UTC-5
-            const easternOffset = -5 * 60 // minutes
-            const utcOffset = now.getTimezoneOffset() // minutes
-            const easternTime = new Date(now.getTime() + (utcOffset + easternOffset) * 60 * 1000)
+          // Edit message to show confirmed status
+          await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée le ${confirmedDate}</b>`,
+              parse_mode: "HTML",
+            }),
+          })
 
-            const confirmedDate = easternTime.toLocaleString("fr-CA", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })
-
-            // Edit message to show confirmed status
-            await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée le ${confirmedDate}</b>`,
-                parse_mode: "HTML",
-              }),
-            })
-
-            console.log("[v0] Replacement confirmed successfully:", replacementId)
-          } else {
-            throw new Error("Replacement not found")
-          }
+          console.log("[v0] Replacement confirmed successfully:", replacementId)
         } catch (error) {
           console.error("[v0] Error confirming replacement:", error)
           await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
