@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
             WHERE id = ${replacementId}
             RETURNING 
               id,
-              TO_CHAR(confirmed_at AT TIME ZONE 'America/Toronto', 'YYYY-MM-DD HH24 "h" MI "min" SS "s"') as formatted_date
+              TO_CHAR(confirmed_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Toronto', 'YYYY-MM-DD HH24 "h" MI "min" SS "s"') as formatted_date
           `
 
           const confirmedDate = result[0]?.formatted_date
