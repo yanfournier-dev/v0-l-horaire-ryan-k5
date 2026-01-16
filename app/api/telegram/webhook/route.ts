@@ -59,15 +59,23 @@ export async function POST(request: NextRequest) {
             })
 
             // Edit message to show confirmed status
+            const confirmedDate = new Date().toLocaleString("fr-CA", {
+              timeZone: "America/Toronto",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })
+
             await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text:
-                  callbackQuery.message.text +
-                  `\n\n✅ <b>Réception confirmée le ${new Date().toLocaleString("fr-CA")}</b>`,
+                text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée le ${confirmedDate}</b>`,
                 parse_mode: "HTML",
               }),
             })
