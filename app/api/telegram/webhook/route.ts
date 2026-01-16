@@ -46,32 +46,30 @@ export async function POST(request: NextRequest) {
             throw new Error("No confirmation time returned from database")
           }
 
-          // Convert UTC to America/Toronto timezone in JavaScript
+          // Get current date to check if DST is in effect
+          const now = new Date()
+          const janOffset = new Date(now.getFullYear(), 0, 1).getTimezoneOffset()
+          const julOffset = new Date(now.getFullYear(), 6, 1).getTimezoneOffset()
+          const isDST = Math.max(janOffset, julOffset) !== now.getTimezoneOffset()
+
+          // EST is UTC-5, EDT is UTC-4
+          const offsetHours = isDST ? 4 : 5
+
+          // Convert UTC to local time
           const confirmedDate = new Date(result[0].confirmed_at)
-          console.log("[v0] Raw UTC date from DB:", confirmedDate.toISOString())
+          const localDate = new Date(confirmedDate.getTime() - offsetHours * 60 * 60 * 1000)
 
-          const formatter = new Intl.DateTimeFormat("fr-CA", {
-            timeZone: "America/Toronto",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-          })
-
-          const parts = formatter.formatToParts(confirmedDate)
-          const year = parts.find((p) => p.type === "year")?.value
-          const month = parts.find((p) => p.type === "month")?.value
-          const day = parts.find((p) => p.type === "day")?.value
-          const hour = parts.find((p) => p.type === "hour")?.value
-          const minute = parts.find((p) => p.type === "minute")?.value
-          const second = parts.find((p) => p.type === "second")?.value
+          const year = localDate.getUTCFullYear()
+          const month = String(localDate.getUTCMonth() + 1).padStart(2, "0")
+          const day = String(localDate.getUTCDate()).padStart(2, "0")
+          const hour = String(localDate.getUTCHours()).padStart(2, "0")
+          const minute = String(localDate.getUTCMinutes()).padStart(2, "0")
+          const second = String(localDate.getUTCSeconds()).padStart(2, "0")
 
           const formattedDate = `${year}-${month}-${day} ${hour} h ${minute} min ${second} s`
 
-          console.log("[v0] Formatted date for Telegram:", formattedDate)
+          console.log("[v0] UTC date:", confirmedDate.toISOString())
+          console.log("[v0] Formatted local date:", formattedDate)
 
           console.log("[v0] About to edit Telegram message")
           const editResponse = await fetch(
