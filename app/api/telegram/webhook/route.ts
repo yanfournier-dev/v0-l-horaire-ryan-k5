@@ -58,9 +58,14 @@ export async function POST(request: NextRequest) {
               }),
             })
 
-            // Edit message to show confirmed status
-            const confirmedDate = new Date().toLocaleString("fr-CA", {
-              timeZone: "America/Toronto",
+            const now = new Date()
+            // Eastern time offset: UTC-5 (standard) or UTC-4 (daylight saving)
+            // January is standard time, so UTC-5
+            const easternOffset = -5 * 60 // minutes
+            const utcOffset = now.getTimezoneOffset() // minutes
+            const easternTime = new Date(now.getTime() + (utcOffset + easternOffset) * 60 * 1000)
+
+            const confirmedDate = easternTime.toLocaleString("fr-CA", {
               year: "numeric",
               month: "2-digit",
               day: "2-digit",
@@ -69,6 +74,7 @@ export async function POST(request: NextRequest) {
               second: "2-digit",
             })
 
+            // Edit message to show confirmed status
             await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
