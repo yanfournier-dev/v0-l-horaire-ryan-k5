@@ -21,11 +21,13 @@ export async function sendTelegramMessage(
   console.log("[v0] sendTelegramMessage called for chat:", chatId)
 
   if (!TELEGRAM_BOT_TOKEN) {
-    console.error("[v0] TELEGRAM_BOT_TOKEN is not configured")
-    return { success: false, error: "Bot token not configured" }
+    throw new Error("Bot token not configured")
   }
 
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
+
     const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,20 +37,25 @@ export async function sendTelegramMessage(
         parse_mode: options?.parse_mode || "HTML",
         reply_markup: options?.reply_markup,
       }),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeoutId)
 
     const data = await response.json()
 
     if (!response.ok) {
-      console.error("[v0] Telegram API error:", data)
-      return { success: false, error: data.description }
+      throw new Error(data.description || `Telegram API error: ${response.status}`)
     }
 
     console.log("[v0] Telegram message sent successfully")
     return { success: true, data }
   } catch (error: any) {
     console.error("[v0] Error sending Telegram message:", error)
-    return { success: false, error: error.message }
+    if (error.name === "AbortError") {
+      throw new Error("Telegram request timeout (10s)")
+    }
+    throw new Error(error.message || "Unknown Telegram error")
   }
 }
 

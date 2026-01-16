@@ -329,22 +329,172 @@ export async function createBatchNotificationsInApp(
 ) {
   if (userIds.length === 0) return
 
+  console.log(`[v0] Starting parallel notification creation for ${userIds.length} users`)
+  const startTime = Date.now()
+
   try {
-    console.log(`[v0] Creating ${userIds.length} notifications with sequential createNotification calls`)
+    // Create all notifications in parallel with Promise.allSettled
+    // This ensures ALL notifications are attempted, even if some fail
+    const results = await Promise.allSettled(
+      userIds.map(async (userId) => {
+        let deliveryStatus: "pending" | "success" | "failed" | "partial" | "skipped" = "pending"
+        const channelsSent: string[] = ["in_app"]
+        const channelsFailed: string[] = []
+        let errorMessage: string | null = null
+        let notificationId: number | null = null
 
-    for (let i = 0; i < userIds.length; i++) {
-      const userId = userIds[i]
+        try {
+          // Insert notification in database
+          await sql`
+            INSERT INTO notifications (user_id, title, message, type, related_id, related_type, sent_by)
+            VALUES (${userId}, ${title}, ${message}, ${type}, ${relatedId || null}, ${relatedType || null}, ${sentBy || null})
+          `
 
-      await createNotification(userId, title, message, type, relatedId, relatedType, sentBy)
+          // Get the notification ID
+          const notificationResult = await sql`
+            SELECT id FROM notifications 
+            WHERE user_id = ${userId} 
+            AND type = ${type}
+            AND created_at >= NOW() - INTERVAL '5 seconds'
+            ORDER BY created_at DESC 
+            LIMIT 1
+          `
+          notificationId = notificationResult[0]?.id || null
 
-      if (i < userIds.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 150))
+          // Get user preferences
+          const userPrefs = await sql`
+            SELECT 
+              u.email,
+              u.first_name,
+              u.last_name,
+              np.enable_telegram,
+              np.telegram_chat_id,
+              np.notify_replacement_available,
+              np.notify_replacement_accepted,
+              np.notify_replacement_rejected,
+              u.telegram_required
+            FROM users u
+            LEFT JOIN notification_preferences np ON u.id = np.user_id
+            WHERE u.id = ${userId}
+          `
+
+          if (userPrefs.length === 0) {
+            deliveryStatus = "skipped"
+            errorMessage = "User not found"
+          } else {
+            const user = userPrefs[0]
+            const fullName = `${user.first_name} ${user.last_name}`
+
+            // Check if user should receive this notification type
+            let shouldReceive = true
+            if (type === "replacement_available") {
+              shouldReceive = user.notify_replacement_available !== false
+            } else if (type === "replacement_accepted") {
+              shouldReceive = user.notify_replacement_accepted !== false
+            } else if (type === "replacement_rejected") {
+              shouldReceive = user.notify_replacement_rejected !== false
+            }
+
+            if (!shouldReceive) {
+              deliveryStatus = "skipped"
+              errorMessage = "User opted out of this notification type"
+            } else if (user.enable_telegram === true && user.telegram_chat_id) {
+              // Send Telegram with retry
+              console.log(`[v0] Sending Telegram to ${fullName} (${userId})`)
+              const telegramResult = await sendTelegramWithRetry(
+                type,
+                user.telegram_chat_id,
+                fullName,
+                message,
+                relatedId || null,
+              )
+
+              if (telegramResult.success) {
+                channelsSent.push("telegram")
+                deliveryStatus = "success"
+                console.log(`[v0] ✓ Telegram delivered to ${fullName}`)
+              } else {
+                channelsFailed.push("telegram")
+                errorMessage = telegramResult.error || "Telegram send failed"
+                deliveryStatus = "partial"
+                console.error(`[v0] ✗ Telegram failed for ${fullName}: ${errorMessage}`)
+              }
+            } else {
+              deliveryStatus = "success"
+              console.log(`[v0] Telegram not enabled for ${fullName}, in-app only`)
+            }
+          }
+
+          // Update notification with delivery status
+          if (notificationId) {
+            await sql`
+              UPDATE notifications 
+              SET delivery_status = ${deliveryStatus},
+                  channels_sent = ${channelsSent},
+                  channels_failed = ${channelsFailed},
+                  error_message = ${errorMessage}
+              WHERE id = ${notificationId}
+            `
+          }
+
+          return { userId, success: true, deliveryStatus, channelsSent, channelsFailed }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error)
+          console.error(`[v0] Critical error for user ${userId}:`, errorMsg)
+
+          // Try to update notification status even on critical error
+          if (notificationId) {
+            try {
+              await sql`
+                UPDATE notifications 
+                SET delivery_status = 'failed',
+                    channels_failed = ${["telegram", "in_app"]},
+                    error_message = ${errorMsg}
+                WHERE id = ${notificationId}
+              `
+            } catch (updateError) {
+              console.error(`[v0] Failed to update notification ${notificationId}:`, updateError)
+            }
+          }
+
+          return { userId, success: false, error: errorMsg }
+        }
+      }),
+    )
+
+    // Analyze results
+    const successful = results.filter((r) => r.status === "fulfilled" && r.value.success).length
+    const failed = results.filter(
+      (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.success),
+    ).length
+    const telegramSent = results.filter(
+      (r) => r.status === "fulfilled" && r.value.channelsSent?.includes("telegram"),
+    ).length
+    const telegramFailed = results.filter(
+      (r) => r.status === "fulfilled" && r.value.channelsFailed?.includes("telegram"),
+    ).length
+
+    const duration = Date.now() - startTime
+    console.log(`[v0] ═══════════════════════════════════════════════`)
+    console.log(`[v0] Batch notification summary:`)
+    console.log(`[v0] Total users: ${userIds.length}`)
+    console.log(`[v0] Successful: ${successful}`)
+    console.log(`[v0] Failed: ${failed}`)
+    console.log(`[v0] Telegram sent: ${telegramSent}`)
+    console.log(`[v0] Telegram failed: ${telegramFailed}`)
+    console.log(`[v0] Duration: ${duration}ms (avg ${Math.round(duration / userIds.length)}ms/user)`)
+    console.log(`[v0] ═══════════════════════════════════════════════`)
+
+    // Log any failures with details
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.error(`[v0] User ${userIds[index]} rejected:`, result.reason)
+      } else if (result.status === "fulfilled" && !result.value.success) {
+        console.error(`[v0] User ${userIds[index]} failed:`, result.value.error)
       }
-    }
-
-    console.log(`[v0] Created ${userIds.length} notifications successfully`)
+    })
   } catch (error) {
-    console.error("[v0] Batch notification creation error:", error)
+    console.error("[v0] Fatal error in batch notification creation:", error)
     throw error
   }
 }
@@ -980,4 +1130,35 @@ async function sendEmailNotification(
   } else {
     console.log("[v0] No email content generated for type:", type)
   }
+}
+
+async function sendTelegramWithRetry(
+  type: string,
+  chatId: string,
+  fullName: string,
+  message: string,
+  relatedId: number | null,
+  maxRetries = 3,
+): Promise<{ success: boolean; error?: string }> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[v0] Telegram attempt ${attempt}/${maxRetries} for chat ${chatId}`)
+      await sendTelegramNotificationMessage(type, chatId, fullName, message, relatedId)
+      console.log(`[v0] Telegram sent successfully on attempt ${attempt}`)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error(`[v0] Telegram attempt ${attempt} failed:`, errorMessage)
+
+      if (attempt < maxRetries) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = Math.pow(2, attempt - 1) * 1000
+        console.log(`[v0] Waiting ${delay}ms before retry...`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      } else {
+        return { success: false, error: errorMessage }
+      }
+    }
+  }
+  return { success: false, error: "Max retries exceeded" }
 }
