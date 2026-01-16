@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
         console.log("[v0] Confirming replacement:", replacementId)
 
         try {
+          console.log("[v0] About to UPDATE replacement in DB")
+
           const result = await sql`
             UPDATE replacements 
             SET confirmed_at = NOW(), 
@@ -38,12 +40,16 @@ export async function POST(request: NextRequest) {
             RETURNING id, confirmed_at
           `
 
+          console.log("[v0] DB UPDATE complete, result:", result[0])
+
           if (!result[0]?.confirmed_at) {
             throw new Error("No confirmation time returned from database")
           }
 
           // Convert UTC to America/Toronto timezone in JavaScript
           const confirmedDate = new Date(result[0].confirmed_at)
+          console.log("[v0] Raw UTC date from DB:", confirmedDate.toISOString())
+
           const formatter = new Intl.DateTimeFormat("fr-CA", {
             timeZone: "America/Toronto",
             year: "numeric",
@@ -65,24 +71,34 @@ export async function POST(request: NextRequest) {
 
           const formattedDate = `${year}-${month}-${day} ${hour} h ${minute} min ${second} s`
 
-          console.log("[v0] UTC time:", result[0].confirmed_at)
           console.log("[v0] Formatted date for Telegram:", formattedDate)
 
-          // Edit message to show confirmed status
-          await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée le ${formattedDate}</b>`,
-              parse_mode: "HTML",
-            }),
-          })
+          console.log("[v0] About to edit Telegram message")
+          const editResponse = await fetch(
+            `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: callbackQuery.message.text + `\n\n✅ <b>Réception confirmée le ${formattedDate}</b>`,
+                parse_mode: "HTML",
+              }),
+            },
+          )
+
+          const editResult = await editResponse.json()
+          console.log("[v0] Telegram editMessageText response:", editResult)
 
           console.log("[v0] Replacement confirmed successfully:", replacementId)
         } catch (error) {
           console.error("[v0] Error confirming replacement:", error)
+          if (error instanceof Error) {
+            console.error("[v0] Error message:", error.message)
+            console.error("[v0] Error stack:", error.stack)
+          }
+
           await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
