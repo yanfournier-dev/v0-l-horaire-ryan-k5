@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
           // Update replacement with current timestamp (stored as UTC in DB) and get formatted date
           const result = await sql`
             UPDATE replacements 
-            SET confirmed_at = NOW(), 
+            SET confirmed_at = (NOW() AT TIME ZONE 'UTC' AT TIME ZONE 'America/Toronto'), 
                 confirmed_via = 'telegram' 
             WHERE id = ${replacementId}
-            RETURNING TO_CHAR(confirmed_at AT TIME ZONE 'America/Toronto', 'YYYY-MM-DD HH24 "h" MI "min" SS "s"') as formatted_date
+            RETURNING TO_CHAR(confirmed_at, 'YYYY-MM-DD HH24 "h" MI "min" SS "s"') as formatted_date
           `
 
           const confirmedDate = result[0].formatted_date
