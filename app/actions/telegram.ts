@@ -201,3 +201,56 @@ export async function setupTelegramWebhook() {
     }
   }
 }
+
+/**
+ * Gets the current webhook info from Telegram (owner only)
+ * Useful for debugging webhook issues
+ */
+export async function getTelegramWebhookInfo() {
+  const session = await getSession()
+
+  if (!session?.id || !session.is_owner) {
+    return { success: false, error: "Non autorisé - Propriétaire uniquement" }
+  }
+
+  try {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN
+
+    if (!botToken) {
+      return { success: false, error: "Token Telegram non configuré" }
+    }
+
+    // Call Telegram API to get webhook info
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`, { method: "GET" })
+
+    const data = await response.json()
+
+    if (data.ok) {
+      return {
+        success: true,
+        webhookInfo: {
+          url: data.result.url || "Non configuré",
+          hasCustomCertificate: data.result.has_custom_certificate,
+          pendingUpdateCount: data.result.pending_update_count,
+          lastErrorDate: data.result.last_error_date
+            ? new Date(data.result.last_error_date * 1000).toLocaleString("fr-CA")
+            : null,
+          lastErrorMessage: data.result.last_error_message || null,
+          maxConnections: data.result.max_connections,
+          allowedUpdates: data.result.allowed_updates,
+        },
+      }
+    } else {
+      return {
+        success: false,
+        error: `Erreur Telegram: ${data.description || "Échec de récupération"}`,
+      }
+    }
+  } catch (error: any) {
+    console.error("[v0] Error getting webhook info:", error)
+    return {
+      success: false,
+      error: `Erreur réseau: ${error.message}`,
+    }
+  }
+}
