@@ -120,3 +120,5 @@ export async function setTelegramWebhook(webhookUrl: string) {
     return { success: false, error: error.message }
   }
 }
+
+// Additional updates can be inserted here if needed

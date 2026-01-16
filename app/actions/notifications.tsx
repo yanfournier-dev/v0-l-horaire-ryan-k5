@@ -674,7 +674,7 @@ export async function sendBatchReplacementEmails(
           await sql`
             INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
             VALUES (${applyToken}, ${replacementId}, ${user.id}, ${expiresAt})
-            ON CONFLICT (user_id, replacement_id) 
+            ON CONFLICT (user_id, ${replacementId}) 
             DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
           `
           console.log("[v0] Token inserted successfully")
@@ -801,11 +801,11 @@ async function sendTelegramNotificationMessage(
     case "application_approved":
       if (relatedId) {
         const replacement = await sql`
-          SELECT 
-            r.shift_date, 
-            r.shift_type, 
-            r.is_partial, 
-            r.start_time, 
+          SELECT
+            r.shift_date,
+            r.shift_type,
+            r.is_partial,
+            r.start_time,
             r.end_time,
             u.first_name || ' ' || u.last_name as firefighter_to_replace
           FROM replacements r
@@ -835,6 +835,21 @@ Félicitations! Votre candidature a été acceptée.
 📅 Date: ${date}
 🕐 Quart: ${shiftTypeLabel}${partialInfo}
 👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}`
+
+          await sendTelegramMessage(chatId, telegramMessage, {
+            parse_mode: "HTML",
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "✓ Confirmer la réception",
+                    callback_data: `confirm_replacement_${relatedId}`,
+                  },
+                ],
+              ],
+            },
+          })
+          return // Exit early since we already sent the message with button
         }
       }
       break
@@ -890,17 +905,10 @@ ${message}`
     // This notification type is no longer supported
   }
 
-  if (telegramMessage) {
-    console.log("[v0] Sending Telegram message...")
-    const result = await sendTelegramMessage(chatId, telegramMessage)
-    console.log("[v0] Telegram message result:", result)
-
-    if (!result.success) {
-      throw new Error(result.error || "Telegram sending failed")
-    }
-  } else {
-    console.log("[v0] No Telegram message generated for type:", type)
-  }
+  // Send message without button for other notification types
+  await sendTelegramMessage(chatId, telegramMessage || message, {
+    parse_mode: "HTML",
+  })
 }
 
 async function notifyAdminsOfEmailFailure(recipientEmail: string, notificationType: string, error: any) {
@@ -984,7 +992,7 @@ async function sendEmailNotification(
             await sql`
               INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
               VALUES (${applyToken}, ${relatedId}, ${userId}, ${expiresAt})
-              ON CONFLICT (user_id, replacement_id) 
+              ON CONFLICT (user_id, ${relatedId}) 
               DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
             `
           } catch (error) {

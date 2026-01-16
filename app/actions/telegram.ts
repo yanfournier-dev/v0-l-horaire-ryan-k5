@@ -146,3 +146,58 @@ export async function checkTelegramStatus() {
     return { connected: false }
   }
 }
+
+/**
+ * Sets up the Telegram webhook (owner only)
+ * Securely configures the webhook URL with Telegram's API
+ */
+export async function setupTelegramWebhook() {
+  const session = await getSession()
+
+  if (!session?.id || !session.is_owner) {
+    return { success: false, error: "Non autorisé - Propriétaire uniquement" }
+  }
+
+  try {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN
+
+    if (!botToken) {
+      return { success: false, error: "Token Telegram non configuré" }
+    }
+
+    // Get the app URL from environment or construct it
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+
+    if (!appUrl) {
+      return { success: false, error: "URL de l'application non configurée" }
+    }
+
+    const webhookUrl = `${appUrl.startsWith("http") ? appUrl : `https://${appUrl}`}/api/telegram/webhook`
+
+    // Call Telegram API to set webhook
+    const response = await fetch(
+      `https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`,
+      { method: "POST" },
+    )
+
+    const data = await response.json()
+
+    if (data.ok) {
+      return {
+        success: true,
+        message: `Webhook configuré avec succès!\nURL: ${webhookUrl}`,
+      }
+    } else {
+      return {
+        success: false,
+        error: `Erreur Telegram: ${data.description || "Configuration échouée"}`,
+      }
+    }
+  } catch (error: any) {
+    console.error("[v0] Error setting up webhook:", error)
+    return {
+      success: false,
+      error: `Erreur réseau: ${error.message}`,
+    }
+  }
+}

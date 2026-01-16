@@ -15,6 +15,84 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log("[v0] Telegram update:", JSON.stringify(body, null, 2))
 
+    // Handle callback queries (button clicks)
+    const callbackQuery = body.callback_query
+    if (callbackQuery) {
+      const chatId = callbackQuery.message.chat.id.toString()
+      const callbackData = callbackQuery.data
+      const messageId = callbackQuery.message.message_id
+
+      console.log("[v0] Callback query received:", callbackData)
+
+      // Handle replacement confirmation
+      if (callbackData?.startsWith("confirm_replacement_")) {
+        const replacementId = Number.parseInt(callbackData.replace("confirm_replacement_", ""))
+        console.log("[v0] Confirming replacement:", replacementId)
+
+        try {
+          // Update replacement with confirmation
+          const result = await sql`
+            UPDATE replacements
+            SET confirmed_at = NOW(),
+                confirmed_via = 'telegram'
+            WHERE id = ${replacementId}
+            RETURNING id, shift_date
+          `
+
+          if (result.length > 0) {
+            const date = new Date(result[0].shift_date).toLocaleDateString("fr-CA", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })
+
+            // Answer callback query with success message
+            await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                callback_query_id: callbackQuery.id,
+                text: "✅ Réception confirmée!",
+                show_alert: false,
+              }),
+            })
+
+            // Edit message to show confirmed status
+            await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text:
+                  callbackQuery.message.text +
+                  `\n\n✅ <b>Réception confirmée le ${new Date().toLocaleString("fr-CA")}</b>`,
+                parse_mode: "HTML",
+              }),
+            })
+
+            console.log("[v0] Replacement confirmed successfully:", replacementId)
+          } else {
+            throw new Error("Replacement not found")
+          }
+        } catch (error) {
+          console.error("[v0] Error confirming replacement:", error)
+          await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              callback_query_id: callbackQuery.id,
+              text: "❌ Erreur lors de la confirmation",
+              show_alert: true,
+            }),
+          })
+        }
+      }
+
+      return NextResponse.json({ ok: true })
+    }
+
     // Extract message data
     const message = body.message
     if (!message) {
