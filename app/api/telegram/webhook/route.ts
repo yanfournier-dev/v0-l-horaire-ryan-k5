@@ -30,22 +30,21 @@ export async function POST(request: NextRequest) {
         console.log("[v0] Confirming replacement:", replacementId)
 
         try {
-          // Update replacement with confirmation
+          // Update replacement with timezone-aware confirmation
           await sql`
-            UPDATE replacements
-            SET confirmed_at = NOW(),
-                confirmed_via = 'telegram'
+            UPDATE replacements 
+            SET confirmed_at = (NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'America/Toronto', 
+                confirmed_via = 'telegram' 
             WHERE id = ${replacementId}
           `
 
-          await sql`
-            UPDATE replacements 
-            SET confirmed_at = NOW() AT TIME ZONE 'America/Toronto', confirmed_via = 'telegram' 
+          const result = await sql`
+            SELECT confirmed_at 
+            FROM replacements 
             WHERE id = ${replacementId}
           `
 
           const confirmedDate = new Intl.DateTimeFormat("fr-CA", {
-            timeZone: "America/Toronto",
             year: "numeric",
             month: "2-digit",
             day: "2-digit",
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
             minute: "2-digit",
             second: "2-digit",
             hour12: false,
-          }).format(new Date())
+          }).format(new Date(result[0].confirmed_at))
 
           // Edit message to show confirmed status
           await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
