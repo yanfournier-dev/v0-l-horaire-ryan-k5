@@ -1931,10 +1931,12 @@ export async function getAssignedReplacementsNeedingAttention() {
         assigned_user.last_name as assigned_last_name
       FROM replacements r
       LEFT JOIN teams t ON r.team_id = t.id
-      LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
-      LEFT JOIN users assigned_user ON r.assigned_to = assigned_user.id
+      LEFT JOIN users replaced_user ON r.replaced_user_id = replaced_user.id
+      INNER JOIN replacement_applications ra_approved 
+        ON r.id = ra_approved.replacement_id 
+        AND ra_approved.status = 'approved'
+      INNER JOIN users assigned_user ON ra_approved.applicant_id = assigned_user.id
       WHERE r.status = 'assigned'
-        AND r.assigned_to IS NOT NULL
         AND r.shift_date >= CURRENT_DATE
         AND (
           r.notification_sent_at IS NULL
