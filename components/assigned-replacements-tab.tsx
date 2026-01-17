@@ -289,6 +289,28 @@ export function AssignedReplacementsTab({
                           <span className="text-orange-600 font-medium">Notification non envoyée</span>
                         </div>
                       )}
+
+                      {replacement.confirmed_at ? (
+                        <div className="flex items-center gap-1.5 text-xs mt-1">
+                          <Check className="h-3.5 w-3.5 text-blue-600" />
+                          <span className="text-blue-600 font-medium">
+                            Réception confirmée {formatLocalDateTime(replacement.confirmed_at)}
+                          </span>
+                          {replacement.confirmed_via && (
+                            <>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="text-muted-foreground capitalize">
+                                {replacement.confirmed_via === "telegram" ? "Telegram" : replacement.confirmed_via}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      ) : replacement.notification_sent ? (
+                        <div className="flex items-center gap-1.5 text-xs mt-1">
+                          <div className="h-3.5 w-3.5 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
+                          <span className="text-orange-600">En attente de confirmation</span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
