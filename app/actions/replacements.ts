@@ -1913,3 +1913,50 @@ export async function getAssignedReplacements(
     }
   }
 }
+
+export async function getAssignedReplacementsNeedingAttention() {
+  try {
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
+
+    const replacements = await db`
+      SELECT 
+        r.*,
+        t.name as team_name,
+        replaced_user.first_name as first_name,
+        replaced_user.last_name as last_name,
+        assigned_user.first_name as assigned_first_name,
+        assigned_user.last_name as assigned_last_name
+      FROM replacements r
+      LEFT JOIN teams t ON r.team_id = t.id
+      LEFT JOIN users replaced_user ON r.user_id = replaced_user.id
+      LEFT JOIN users assigned_user ON r.assigned_to = assigned_user.id
+      WHERE r.status = 'assigned'
+        AND r.assigned_to IS NOT NULL
+        AND r.shift_date >= CURRENT_DATE
+        AND (
+          r.notification_sent_at IS NULL
+          OR (
+            r.notification_sent_at IS NOT NULL 
+            AND r.confirmed_at IS NULL
+            AND (
+              (r.deadline_duration IN (900, -1) AND EXTRACT(EPOCH FROM (NOW() - r.notification_sent_at)) >= 0)
+              OR (r.deadline_duration = 86400 AND EXTRACT(EPOCH FROM (NOW() - r.notification_sent_at)) >= 3600)
+            )
+          )
+        )
+      ORDER BY 
+        CASE WHEN r.notification_sent_at IS NULL THEN 0 ELSE 1 END,
+        CASE WHEN r.deadline_duration IN (900, -1) THEN 0 ELSE 1 END,
+        r.shift_date ASC
+      LIMIT 5
+    `
+
+    return replacements
+  } catch (error) {
+    console.error("getAssignedReplacementsNeedingAttention: Error", error)
+    return []
+  }
+}

@@ -7,6 +7,7 @@ import { getExchangesAdminActionCount } from "@/app/actions/exchanges"
 import { Badge } from "@/components/ui/badge"
 import { getRoleLabel } from "@/lib/role-labels"
 import { TelegramAlertWidget } from "@/components/telegram-alert-widget"
+import { AssignedReplacementsAlertWidget } from "@/components/assigned-replacements-alert-widget"
 
 export const dynamic = "force-dynamic"
 
@@ -43,6 +44,12 @@ export default async function DashboardPage() {
       {user.is_admin && (
         <div className="mb-6">
           <TelegramAlertWidget />
+        </div>
+      )}
+
+      {user.is_admin && (
+        <div className="mb-6">
+          <AssignedReplacementsAlertWidget />
         </div>
       )}
 
