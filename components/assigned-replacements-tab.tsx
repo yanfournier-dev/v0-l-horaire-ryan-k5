@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Bell, Check, Send, ArrowUpDown, AlertCircle, RefreshCw } from "lucide-react"
+import { Check, Send, ArrowUpDown, AlertCircle, RefreshCw } from "lucide-react"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { formatShortDate, formatLocalDateTime } from "@/lib/date-utils"
 import { sendAssignmentNotification } from "@/app/actions/send-assignment-notification"
@@ -277,15 +277,7 @@ export function AssignedReplacementsTab({
                             <>
                               <span className="text-muted-foreground">•</span>
                               <span className="text-muted-foreground">
-                                {replacement.notification_types_sent
-                                  .map((type: string) => {
-                                    if (type === "email") return "Email"
-                                    if (type === "sms") return "SMS"
-                                    if (type === "telegram") return "Telegram"
-                                    if (type === "app" || type === "in_app") return "App"
-                                    return type
-                                  })
-                                  .join(", ")}
+                                {replacement.notification_types_sent.join(", ")}
                               </span>
                             </>
                           )}
@@ -311,8 +303,8 @@ export function AssignedReplacementsTab({
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 text-xs">
-                          <Bell className="h-3.5 w-3.5 text-orange-600" />
-                          <span className="text-orange-600 font-medium">Notification non envoyée</span>
+                          <AlertCircle className="h-3.5 w-3.5 text-red-600" />
+                          <span className="text-red-600 font-medium">Notification non envoyée</span>
                         </div>
                       )}
 

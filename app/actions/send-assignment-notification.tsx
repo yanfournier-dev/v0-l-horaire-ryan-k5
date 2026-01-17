@@ -34,10 +34,6 @@ export async function sendAssignmentNotification(replacementId: number) {
 
     const r = replacement[0]
 
-    if (r.notification_sent === true) {
-      return { error: "La notification a déjà été envoyée" }
-    }
-
     if (!r.assigned_user_id) {
       return { error: "Aucun pompier assigné à ce remplacement" }
     }
