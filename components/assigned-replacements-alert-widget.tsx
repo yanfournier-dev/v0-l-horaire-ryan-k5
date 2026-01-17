@@ -6,11 +6,17 @@ import { getAssignedReplacementsNeedingAttention } from "@/app/actions/replaceme
 import { Badge } from "@/components/ui/badge"
 
 export async function AssignedReplacementsAlertWidget() {
+  console.log("[v0] AssignedReplacementsAlertWidget: Fetching replacements needing attention")
   const replacements = await getAssignedReplacementsNeedingAttention()
+  console.log("[v0] AssignedReplacementsAlertWidget: Received replacements:", replacements?.length || 0)
+  console.log("[v0] AssignedReplacementsAlertWidget: Replacements data:", JSON.stringify(replacements, null, 2))
 
   if (replacements.length === 0) {
+    console.log("[v0] AssignedReplacementsAlertWidget: No replacements found, hiding widget")
     return null
   }
+
+  console.log("[v0] AssignedReplacementsAlertWidget: Displaying widget with", replacements.length, "items")
 
   const unsentCount = replacements.filter((r: any) => !r.notification_sent_at).length
   const unconfirmedCount = replacements.filter((r: any) => r.notification_sent_at && !r.confirmed_at).length
