@@ -28,7 +28,7 @@ export async function AssignedReplacementsAlertWidget() {
             <div key={replacement.id} className="flex items-center gap-1.5 text-xs">
               <span className="flex-shrink-0">{isUnsent ? "🔴" : "🟠"}</span>
               <span className="text-muted-foreground truncate">
-                {formatLocalDate(replacement.shift_date)} - {replacement.first_name} {replacement.last_name} →{" "}
+                {formatLocalDate(replacement.shift_date)} {replacement.first_name} {replacement.last_name} →{" "}
                 {replacement.assigned_first_name} {replacement.assigned_last_name}
               </span>
               <span className="text-muted-foreground">•</span>

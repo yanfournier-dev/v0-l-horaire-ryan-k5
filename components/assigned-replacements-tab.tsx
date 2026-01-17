@@ -243,7 +243,16 @@ export function AssignedReplacementsTab({
       ) : (
         <div className="space-y-2">
           {filteredReplacements.map((replacement: any) => (
-            <Card key={replacement.id} className="overflow-hidden">
+            <Card
+              key={replacement.id}
+              className={`overflow-hidden ${
+                !replacement.notification_sent
+                  ? "border-red-500" // Red border for unsent notifications
+                  : !replacement.confirmed_at
+                    ? "border-orange-500" // Orange border for sent but not confirmed
+                    : "" // Default gray border for confirmed
+              }`}
+            >
               <CardContent className="p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">

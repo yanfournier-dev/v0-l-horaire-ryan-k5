@@ -120,12 +120,9 @@ export function ReplacementsTabs({
     : userApplications.filter((app: any) => app.status === "pending")
 
   const getAssignedBadge = () => {
-    if (assignedUnsentCount > 0 && assignedUnconfirmedCount > 0) {
-      return `[${assignedUnsentCount}|${assignedUnconfirmedCount}]`
-    } else if (assignedUnsentCount > 0) {
-      return `[${assignedUnsentCount}]`
-    } else if (assignedUnconfirmedCount > 0) {
-      return `[${assignedUnconfirmedCount}]`
+    const total = assignedUnsentCount + assignedUnconfirmedCount
+    if (total > 0) {
+      return `[${total}]`
     }
     return ""
   }
