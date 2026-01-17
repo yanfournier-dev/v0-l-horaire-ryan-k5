@@ -1895,11 +1895,13 @@ export async function getAssignedReplacements(
     // Count total and unsent
     const totalCount = replacements.length
     const unsentCount = replacements.filter((r: any) => !r.notification_sent).length
+    const unconfirmedCount = replacements.filter((r: any) => r.notification_sent && !r.confirmed_at).length
 
     return {
       replacements,
       totalCount,
       unsentCount,
+      unconfirmedCount, // Added unconfirmed count
     }
   } catch (error) {
     console.error("getAssignedReplacements: Error", error instanceof Error ? error.message : String(error))
@@ -1907,6 +1909,7 @@ export async function getAssignedReplacements(
       replacements: [],
       totalCount: 0,
       unsentCount: 0,
+      unconfirmedCount: 0, // Added unconfirmed count
     }
   }
 }

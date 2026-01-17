@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Bell, Check, Send, ArrowUpDown, AlertCircle } from "lucide-react"
+import { Bell, Check, Send, ArrowUpDown, AlertCircle, RefreshCw } from "lucide-react"
 import { getShiftTypeColor, getShiftTypeLabel } from "@/lib/colors"
 import { formatShortDate, formatLocalDateTime } from "@/lib/date-utils"
 import { sendAssignmentNotification } from "@/app/actions/send-assignment-notification"
@@ -152,6 +152,32 @@ export function AssignedReplacementsTab({
   }
 
   const unsentCountCurrent = assignedReplacements.filter((r) => !r.notification_sent).length
+
+  const handleResendNotification = async (replacementId: number) => {
+    setSendingIds((prev) => new Set(prev).add(replacementId))
+
+    const result = await sendAssignmentNotification(replacementId)
+
+    if (result.success) {
+      setIsUpdating(true)
+      setTimeout(() => {
+        const url = new URL(window.location.href)
+        url.searchParams.set("tab", "assigned")
+        window.location = url.href
+      }, 2000)
+    } else {
+      setErrorDialog({
+        open: true,
+        message: result.error || "Erreur lors du renvoi de la notification",
+      })
+    }
+
+    setSendingIds((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(replacementId)
+      return newSet
+    })
+  }
 
   return (
     <div className="space-y-4">
@@ -321,7 +347,7 @@ export function AssignedReplacementsTab({
                       </Button>
                     </Link>
 
-                    {!replacement.notification_sent && (
+                    {!replacement.notification_sent ? (
                       <Button
                         variant="default"
                         size="sm"
@@ -331,6 +357,17 @@ export function AssignedReplacementsTab({
                       >
                         <Send className="h-3 w-3 mr-1" />
                         {sendingIds.has(replacement.id) ? "..." : "Envoyer"}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs px-2 w-[100px] bg-transparent"
+                        onClick={() => handleResendNotification(replacement.id)}
+                        disabled={sendingIds.has(replacement.id) || isUpdating}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        {sendingIds.has(replacement.id) ? "..." : "Renvoyer"}
                       </Button>
                     )}
                   </div>

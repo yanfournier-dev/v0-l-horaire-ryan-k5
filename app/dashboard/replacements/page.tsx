@@ -46,7 +46,7 @@ export default async function ReplacementsPage({
     user.is_admin ? getExpiredReplacements() : Promise.resolve([]),
     user.is_admin
       ? getAssignedReplacements(dateFilter, sortOrder)
-      : Promise.resolve({ replacements: [], unsentCount: 0 }), // Pass filters and get unsent count
+      : Promise.resolve({ replacements: [], unsentCount: 0, unconfirmedCount: 0 }), // Added unconfirmedCount
   ])
 
   const initialTab = searchParams.tab || "available"
@@ -69,8 +69,9 @@ export default async function ReplacementsPage({
         userRequests={userRequests}
         expiredReplacements={expiredReplacements}
         directAssignments={directAssignments}
-        assignedReplacements={assignedReplacementsData.replacements} // Pass replacements array
-        assignedUnsentCount={assignedReplacementsData.unsentCount} // Pass unsent count
+        assignedReplacements={assignedReplacementsData.replacements}
+        assignedUnsentCount={assignedReplacementsData.unsentCount}
+        assignedUnconfirmedCount={assignedReplacementsData.unconfirmedCount} // Added unconfirmed count
         isAdmin={user.is_admin}
         userId={user.id}
         initialTab={initialTab}

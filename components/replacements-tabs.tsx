@@ -30,6 +30,7 @@ interface ReplacementsTabsProps {
   directAssignments: any[]
   assignedReplacements: any[]
   assignedUnsentCount: number // Added unsent count prop
+  assignedUnconfirmedCount: number // Added unconfirmed count prop
   isAdmin: boolean
   userId: number
   initialTab?: string
@@ -46,6 +47,7 @@ export function ReplacementsTabs({
   directAssignments,
   assignedReplacements,
   assignedUnsentCount, // Added unsent count
+  assignedUnconfirmedCount, // Added unconfirmed count
   isAdmin,
   userId,
   initialTab = "available",
@@ -117,6 +119,28 @@ export function ReplacementsTabs({
     ? userApplications
     : userApplications.filter((app: any) => app.status === "pending")
 
+  const getAssignedBadge = () => {
+    if (assignedUnsentCount > 0 && assignedUnconfirmedCount > 0) {
+      return `[${assignedUnsentCount}|${assignedUnconfirmedCount}]`
+    } else if (assignedUnsentCount > 0) {
+      return `[${assignedUnsentCount}]`
+    } else if (assignedUnconfirmedCount > 0) {
+      return `[${assignedUnconfirmedCount}]`
+    }
+    return ""
+  }
+
+  const getAssignedBadgeColor = () => {
+    if (assignedUnsentCount > 0) {
+      return "data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold"
+    } else if (assignedUnconfirmedCount > 0) {
+      return "data-[state=inactive]:text-orange-600 data-[state=inactive]:font-semibold"
+    }
+    return ""
+  }
+
+  const badgeText = getAssignedBadge()
+
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
       <div className="flex justify-end gap-2 mb-4">
@@ -141,13 +165,8 @@ export function ReplacementsTabs({
           </TabsTrigger>
         )}
         {isAdmin && (
-          <TabsTrigger
-            value="assigned"
-            className={
-              assignedUnsentCount > 0 ? "data-[state=inactive]:text-red-600 data-[state=inactive]:font-semibold" : ""
-            }
-          >
-            Remplacements assignés ({assignedUnsentCount})
+          <TabsTrigger value="assigned" className={getAssignedBadgeColor()}>
+            Remplacements assignés {badgeText}
           </TabsTrigger>
         )}
         <TabsTrigger value="direct-assignments">Assignations directes ({directAssignments.length})</TabsTrigger>
@@ -290,10 +309,7 @@ export function ReplacementsTabs({
 
       {isAdmin && (
         <TabsContent value="assigned">
-          <AssignedReplacementsTab
-            assignedReplacements={assignedReplacements}
-            unsentCount={assignedUnsentCount} // Pass unsent count
-          />
+          <AssignedReplacementsTab assignedReplacements={assignedReplacements} unsentCount={assignedUnsentCount} />
         </TabsContent>
       )}
 
