@@ -1252,6 +1252,20 @@ export async function requestReplacement(
   disableWarningInBrowsers: true,
   })
   
+  // Vérifier si l'utilisateur a déjà une demande pending, approved ou open pour ce quart
+  const existingRequest = await db`
+    SELECT id FROM replacements
+    WHERE shift_date = ${shiftDate} 
+      AND shift_type = ${shiftType} 
+      AND team_id = ${teamId} 
+      AND user_id = ${user.id}
+      AND status IN ('pending', 'approved', 'open')
+  `
+
+  if (existingRequest.length > 0) {
+    return { error: "Vous avez déjà une demande de remplacement pour ce quart" }
+  }
+  
   await db`
   INSERT INTO replacements (
   shift_date, shift_type, team_id, user_id, status, is_partial, start_time, end_time,

@@ -15,6 +15,7 @@ import { getUserAssignedShifts } from "@/app/actions/shift-assignments"
 import { useRouter } from "next/navigation"
 import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 import { LeaveBankSelector } from "@/components/leave-bank-selector"
+import { useToast } from "@/hooks/use-toast"
 
 interface RequestReplacementDialogProps {
   open: boolean
@@ -35,6 +36,7 @@ interface AssignedShift {
 
 export function RequestReplacementDialog({ open, onOpenChange, userId }: RequestReplacementDialogProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [loadingShifts, setLoadingShifts] = useState(false)
   const [selectedDate, setSelectedDate] = useState("")
@@ -116,15 +118,23 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
       isPartial,
       isPartial ? startTime : undefined,
       isPartial ? endTime : undefined,
-      leaveBank1 || null,
-      leaveHours1 || null,
-      leaveBank2 || null,
-      leaveHours2 || null,
+      leaveBank1 && leaveBank1 !== "none" ? leaveBank1 : null,
+      leaveHours1 && leaveHours1 !== "none" ? leaveHours1 : null,
+      leaveBank2 && leaveBank2 !== "none" ? leaveBank2 : null,
+      leaveHours2 && leaveHours2 !== "none" ? leaveHours2 : null,
     )
 
     if (result.error) {
-      alert(result.error)
+      toast({
+        title: "Erreur",
+        description: result.error,
+        variant: "destructive",
+      })
     } else {
+      toast({
+        title: "Demande envoyée",
+        description: "Votre demande de remplacement a été envoyée avec succès.",
+      })
       onOpenChange(false)
       router.refresh()
     }
@@ -184,14 +194,14 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
           </div>
 
           <LeaveBankSelector
-            leaveBank1={leaveBank1}
-            setLeaveBank1={setLeaveBank1}
-            leaveHours1={leaveHours1}
-            setLeaveHours1={setLeaveHours1}
-            leaveBank2={leaveBank2}
-            setLeaveBank2={setLeaveBank2}
-            leaveHours2={leaveHours2}
-            setLeaveHours2={setLeaveHours2}
+            bank1={leaveBank1}
+            hours1={leaveHours1}
+            bank2={leaveBank2}
+            hours2={leaveHours2}
+            onBank1Change={setLeaveBank1}
+            onHours1Change={setLeaveHours1}
+            onBank2Change={setLeaveBank2}
+            onHours2Change={setLeaveHours2}
           />
 
           <div className="flex items-center space-x-2">
