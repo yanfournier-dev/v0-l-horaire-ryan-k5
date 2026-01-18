@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter, Roboto_Mono } from "next/font/google"
 import "./globals.css"
 import { Suspense } from "react"
+import { Toaster } from "@/components/ui/toaster"
 
 const geistSans = Inter({
   subsets: ["latin"],
@@ -41,6 +42,7 @@ export default function RootLayout({
       </head>
       <body className={`font-sans ${geistSans.variable} ${geistMono.variable}`}>
         <Suspense fallback={null}>{children}</Suspense>
+        <Toaster />
       </body>
     </html>
   )

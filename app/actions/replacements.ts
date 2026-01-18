@@ -1237,12 +1237,29 @@ export async function requestReplacement(
   leaveBank2?: string | null,
   leaveHours2?: string | null,
   ) {
+  console.log("[v0] requestReplacement - Function called with:", {
+    shiftDate,
+    shiftType,
+    teamId,
+    isPartial,
+    startTime,
+    endTime,
+    leaveBank1,
+    leaveHours1,
+    leaveBank2,
+    leaveHours2,
+  })
+
   const user = await getSession()
+  console.log("[v0] requestReplacement - User:", user)
+  
   if (!user) {
+  console.log("[v0] requestReplacement - No user session")
   return { error: "Non authentifié" }
   }
   
   if (!shiftDate || !shiftType || !teamId) {
+  console.log("[v0] requestReplacement - Missing required fields")
   return { error: "Tous les champs sont requis" }
   }
   
@@ -1252,6 +1269,7 @@ export async function requestReplacement(
   disableWarningInBrowsers: true,
   })
   
+  console.log("[v0] requestReplacement - Checking for existing requests")
   // Vérifier si l'utilisateur a déjà une demande pending, approved ou open pour ce quart
   const existingRequest = await db`
     SELECT id FROM replacements
@@ -1262,7 +1280,10 @@ export async function requestReplacement(
       AND status IN ('pending', 'approved', 'open')
   `
 
+  console.log("[v0] requestReplacement - Existing requests found:", existingRequest.length)
+
   if (existingRequest.length > 0) {
+    console.log("[v0] requestReplacement - Returning duplicate error")
     return { error: "Vous avez déjà une demande de remplacement pour ce quart" }
   }
   

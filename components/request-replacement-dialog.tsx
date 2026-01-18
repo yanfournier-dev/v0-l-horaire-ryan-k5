@@ -95,21 +95,40 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
   }, [isPartial, selectedShiftId, assignedShifts])
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("[v0] RequestReplacementDialog - handleSubmit triggered")
     e.preventDefault()
     setLoading(true)
 
     const selectedShift = assignedShifts.find((s) => s.id.toString() === selectedShiftId)
+    console.log("[v0] RequestReplacementDialog - Selected shift:", selectedShift)
+    console.log("[v0] RequestReplacementDialog - Selected date:", selectedDate)
+    
     if (!selectedShift || !selectedDate) {
+      console.log("[v0] RequestReplacementDialog - Missing shift or date")
       alert("Veuillez sélectionner une date et un quart")
       setLoading(false)
       return
     }
 
     if (isPartial && (!startTime || !endTime)) {
+      console.log("[v0] RequestReplacementDialog - Missing partial times")
       alert("Veuillez spécifier les heures de début et de fin pour un remplacement partiel")
       setLoading(false)
       return
     }
+
+    console.log("[v0] RequestReplacementDialog - Calling requestReplacement with:", {
+      selectedDate,
+      shiftType: selectedShift.shift_type,
+      teamId: selectedShift.team_id,
+      isPartial,
+      startTime,
+      endTime,
+      leaveBank1,
+      leaveHours1,
+      leaveBank2,
+      leaveHours2,
+    })
 
     const result = await requestReplacement(
       selectedDate,
@@ -124,13 +143,17 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
       leaveHours2 && leaveHours2 !== "none" ? leaveHours2 : null,
     )
 
+    console.log("[v0] RequestReplacementDialog - Result received:", result)
+
     if (result.error) {
+      console.log("[v0] RequestReplacementDialog - Showing error toast")
       toast({
         title: "Erreur",
         description: result.error,
         variant: "destructive",
       })
     } else {
+      console.log("[v0] RequestReplacementDialog - Showing success toast")
       toast({
         title: "Demande envoyée",
         description: "Votre demande de remplacement a été envoyée avec succès.",
