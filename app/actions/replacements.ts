@@ -435,15 +435,19 @@ export async function approveApplication(
     })
 
     const appResult = await db`
-      SELECT 
-        ra.applicant_id, 
-        r.shift_date, 
-        r.shift_type, 
+      SELECT
+        ra.applicant_id,
+        r.shift_date,
+        r.shift_type,
         r.team_id,
         r.is_partial,
         r.start_time,
         r.end_time,
-        r.user_id
+        r.user_id,
+        r.leave_bank_1,
+        r.leave_hours_1,
+        r.leave_bank_2,
+        r.leave_hours_2
       FROM replacement_applications ra
       JOIN replacements r ON ra.replacement_id = r.id
       WHERE ra.id = ${applicationId}
@@ -462,6 +466,10 @@ export async function approveApplication(
       start_time,
       end_time,
       user_id: replacedUserId,
+      leave_bank_1,
+      leave_hours_1,
+      leave_bank_2,
+      leave_hours_2,
     } = appResult[0]
 
     console.log("[v0] About to check consecutive hours for applicant:", applicantId, "forceAssign:", forceAssign)
@@ -570,7 +578,11 @@ export async function approveApplication(
         start_time,
         end_time,
         replacement_order,
-        shift_date
+        shift_date,
+        leave_bank_1,
+        leave_hours_1,
+        leave_bank_2,
+        leave_hours_2
       )
       VALUES (
         ${shiftId}, 
@@ -582,7 +594,11 @@ export async function approveApplication(
         ${start_time || null},
         ${end_time || null},
         1,
-        ${shiftDateStr}
+        ${shiftDateStr},
+        ${leave_bank_1 || null},
+        ${leave_hours_1 || null},
+        ${leave_bank_2 || null},
+        ${leave_hours_2 || null}
       )
     `
 

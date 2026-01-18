@@ -68,6 +68,9 @@ export function LeaveBankSelector({
 }: LeaveBankSelectorProps) {
   console.log("[v0] LeaveBankSelector rendering with:", { bank1, hours1, bank2, hours2 })
 
+  // Helper to check if bank2 is a valid selection (not empty and not "none")
+  const isBank2Selected = bank2 && bank2 !== "none"
+
   return (
     <div className="space-y-4">
       <div className="space-y-3">
@@ -109,7 +112,16 @@ export function LeaveBankSelector({
         <Label className="text-sm font-medium text-muted-foreground">Banque de congé 2 (optionnel)</Label>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Select value={bank2} onValueChange={onBank2Change}>
+            <Select
+              value={bank2}
+              onValueChange={(value) => {
+                onBank2Change(value)
+                // Reset hours2 to "none" when bank2 is set to "none"
+                if (value === "none") {
+                  onHours2Change("none")
+                }
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Choisir une banque" />
               </SelectTrigger>
@@ -124,7 +136,7 @@ export function LeaveBankSelector({
             </Select>
           </div>
           <div>
-            <Select value={hours2} onValueChange={onHours2Change} disabled={!bank2}>
+            <Select value={hours2} onValueChange={onHours2Change} disabled={!isBank2Selected}>
               <SelectTrigger>
                 <SelectValue placeholder="Heures (optionnel)" />
               </SelectTrigger>
