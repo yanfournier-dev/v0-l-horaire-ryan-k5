@@ -14,6 +14,7 @@ import { requestReplacement } from "@/app/actions/replacements"
 import { getUserAssignedShifts } from "@/app/actions/shift-assignments"
 import { useRouter } from "next/navigation"
 import { getDefaultReplacementTimes } from "@/lib/shift-utils"
+import { LeaveBankSelector } from "@/components/leave-bank-selector"
 
 interface RequestReplacementDialogProps {
   open: boolean
@@ -42,6 +43,10 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
   const [isPartial, setIsPartial] = useState(false)
   const [startTime, setStartTime] = useState("")
   const [endTime, setEndTime] = useState("")
+  const [leaveBank1, setLeaveBank1] = useState("")
+  const [leaveHours1, setLeaveHours1] = useState("")
+  const [leaveBank2, setLeaveBank2] = useState("")
+  const [leaveHours2, setLeaveHours2] = useState("")
 
   useEffect(() => {
     if (selectedDate) {
@@ -65,6 +70,10 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
       setIsPartial(false)
       setStartTime("")
       setEndTime("")
+      setLeaveBank1("")
+      setLeaveHours1("")
+      setLeaveBank2("")
+      setLeaveHours2("")
     }
   }, [open])
 
@@ -107,6 +116,10 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
       isPartial,
       isPartial ? startTime : undefined,
       isPartial ? endTime : undefined,
+      leaveBank1 || null,
+      leaveHours1 || null,
+      leaveBank2 || null,
+      leaveHours2 || null,
     )
 
     if (result.error) {
@@ -169,6 +182,17 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
               </SelectContent>
             </Select>
           </div>
+
+          <LeaveBankSelector
+            leaveBank1={leaveBank1}
+            setLeaveBank1={setLeaveBank1}
+            leaveHours1={leaveHours1}
+            setLeaveHours1={setLeaveHours1}
+            leaveBank2={leaveBank2}
+            setLeaveBank2={setLeaveBank2}
+            leaveHours2={leaveHours2}
+            setLeaveHours2={setLeaveHours2}
+          />
 
           <div className="flex items-center space-x-2">
             <Checkbox

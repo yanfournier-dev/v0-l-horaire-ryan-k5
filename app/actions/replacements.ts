@@ -1216,31 +1216,37 @@ export async function requestReplacement(
   isPartial: boolean,
   startTime?: string | null,
   endTime?: string | null,
-) {
+  leaveBank1?: string | null,
+  leaveHours1?: string | null,
+  leaveBank2?: string | null,
+  leaveHours2?: string | null,
+  ) {
   const user = await getSession()
   if (!user) {
-    return { error: "Non authentifié" }
+  return { error: "Non authentifié" }
   }
-
+  
   if (!shiftDate || !shiftType || !teamId) {
-    return { error: "Tous les champs sont requis" }
+  return { error: "Tous les champs sont requis" }
   }
-
+  
   try {
-    const db = neon(process.env.DATABASE_URL!, {
-      fetchConnectionCache: true,
-      disableWarningInBrowsers: true,
-    })
-
-    await db`
-      INSERT INTO replacements (
-        shift_date, shift_type, team_id, user_id, status, is_partial, start_time, end_time
-      )
-      VALUES (
-        ${shiftDate}, ${shiftType}, ${teamId}, ${user.id}, 'pending',
-        ${isPartial}, ${startTime || null}, ${endTime || null}
-      )
-    `
+  const db = neon(process.env.DATABASE_URL!, {
+  fetchConnectionCache: true,
+  disableWarningInBrowsers: true,
+  })
+  
+  await db`
+  INSERT INTO replacements (
+  shift_date, shift_type, team_id, user_id, status, is_partial, start_time, end_time,
+  leave_bank_1, leave_hours_1, leave_bank_2, leave_hours_2
+  )
+  VALUES (
+  ${shiftDate}, ${shiftType}, ${teamId}, ${user.id}, 'pending',
+  ${isPartial}, ${startTime || null}, ${endTime || null},
+  ${leaveBank1 || null}, ${leaveHours1 || null}, ${leaveBank2 || null}, ${leaveHours2 || null}
+  )
+  `
 
     try {
       invalidateCache()
