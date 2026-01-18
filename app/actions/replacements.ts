@@ -1103,6 +1103,64 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
       WHERE id = ${replacementId}
     `
 
+    // Get replacement details for notifications
+    const replacementDetails = await db`
+      SELECT r.shift_date, r.shift_type, r.user_id, u.first_name, u.last_name
+      FROM replacements r
+      JOIN users u ON r.user_id = u.id
+      WHERE r.id = ${replacementId}
+    `
+
+    if (replacementDetails.length > 0) {
+      const { shift_date, shift_type, user_id, first_name, last_name } = replacementDetails[0]
+      const firefighterToReplaceName = `${first_name} ${last_name}`
+      
+      const deadlineLabel = getDeadlineLabel(deadlineSeconds)
+      const shouldSendNotifications = deadlineLabel !== null
+
+      // Get eligible users for notifications
+      const eligibleUsers = await db`
+        SELECT DISTINCT u.id
+        FROM users u
+        LEFT JOIN notification_preferences np ON u.id = np.user_id
+        WHERE u.id != ${user_id}
+          AND (np.notify_replacement_available IS NULL OR np.notify_replacement_available = true)
+          AND u.id NOT IN (
+            SELECT user_id
+            FROM leaves
+            WHERE start_date <= ${shift_date}
+              AND end_date >= ${shift_date}
+              AND status = 'approved'
+          )
+      `
+
+      // Send in-app notifications
+      if (eligibleUsers.length > 0 && shouldSendNotifications) {
+        const userIds = eligibleUsers.map((u) => u.id)
+        const notificationTitle =
+          deadlineLabel === "Sans délai"
+            ? "🚨 SANS DÉLAI - Nouveau remplacement"
+            : `Nouveau remplacement - Délai: ${deadlineLabel}`
+
+        createBatchNotificationsInApp(
+          userIds,
+          notificationTitle,
+          `Remplacement pour ${firefighterToReplaceName} le ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"})`,
+          "replacement_available",
+          replacementId,
+          "replacement",
+          user.id,
+        ).catch((error) => {
+          console.error("Background notification creation failed:", error)
+        })
+      }
+
+      // Send emails in production
+      if (process.env.VERCEL_ENV === "production" && shouldSendNotifications) {
+        await sendBatchReplacementEmails(replacementId, firefighterToReplaceName, deadlineLabel!)
+      }
+    }
+
     try {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
