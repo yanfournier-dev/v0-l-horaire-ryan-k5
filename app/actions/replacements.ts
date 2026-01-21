@@ -1270,14 +1270,14 @@ export async function requestReplacement(
   })
   
   console.log("[v0] requestReplacement - Checking for existing requests")
-  // Vérifier si l'utilisateur a déjà une demande pending, approved ou open pour ce quart
+  // Vérifier si l'utilisateur a déjà une demande pending, approved, open ou assigned pour ce quart
   const existingRequest = await db`
     SELECT id FROM replacements
     WHERE shift_date = ${shiftDate} 
       AND shift_type = ${shiftType} 
       AND team_id = ${teamId} 
       AND user_id = ${user.id}
-      AND status IN ('pending', 'approved', 'open')
+      AND status IN ('pending', 'approved', 'open', 'assigned')
   `
 
   console.log("[v0] requestReplacement - Existing requests found:", existingRequest.length)
