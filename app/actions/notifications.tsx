@@ -3,6 +3,7 @@
 import { sql } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { revalidatePath } from "next/cache"
+import crypto from "crypto"
 import {
   sendEmail,
   sendBatchEmails,
@@ -189,7 +190,30 @@ export async function createNotification(
     if (user.enable_telegram === true && user.telegram_chat_id) {
       console.log("[v0] Attempting to send Telegram notification...")
       try {
-        await sendTelegramNotificationMessage(type, user.telegram_chat_id, fullName, message, relatedId)
+        // Generate apply token for replacement_available notifications
+        let applyToken: string | undefined
+        if (type === "replacement_available" && relatedId) {
+          applyToken = crypto.randomUUID()
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          console.log("[v0] Creating token for Telegram - replacement_id:", relatedId, "user_id:", userId, "token:", applyToken)
+
+          try {
+            await sql`
+              INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
+              VALUES (${applyToken}, ${relatedId}, ${userId}, ${expiresAt})
+              ON CONFLICT (user_id, replacement_id) 
+              DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
+            `
+            console.log("[v0] Token created successfully for Telegram")
+          } catch (error) {
+            console.error("[v0] Error creating application token for Telegram:", error)
+            applyToken = undefined
+          }
+        } else {
+          console.log("[v0] Token generation skipped - type:", type, "relatedId:", relatedId)
+        }
+
+        await sendTelegramNotificationMessage(type, user.telegram_chat_id, fullName, message, relatedId, applyToken)
         channelsSent.push("telegram")
         console.log("[v0] Telegram sent successfully!")
       } catch (telegramError) {
@@ -401,12 +425,34 @@ export async function createBatchNotificationsInApp(
             } else if (user.enable_telegram === true && user.telegram_chat_id) {
               // Send Telegram with retry
               console.log(`[v0] Sending Telegram to ${fullName} (${userId})`)
+              
+              // Generate apply token for replacement_available notifications
+              let applyToken: string | undefined
+              if (type === "replacement_available" && relatedId) {
+                applyToken = crypto.randomUUID()
+                const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                
+                try {
+                  await sql`
+                    INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
+                    VALUES (${applyToken}, ${relatedId}, ${userId}, ${expiresAt})
+                    ON CONFLICT (user_id, replacement_id) 
+                    DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
+                  `
+                  console.log("[v0] Token created for batch Telegram:", applyToken)
+                } catch (error) {
+                  console.error("[v0] Error creating application token for batch Telegram:", error)
+                  applyToken = undefined
+                }
+              }
+              
               const telegramResult = await sendTelegramWithRetry(
                 type,
                 user.telegram_chat_id,
                 fullName,
                 message,
                 relatedId || null,
+                applyToken,
               )
 
               if (telegramResult.success) {
@@ -749,6 +795,7 @@ async function sendTelegramNotificationMessage(
   name: string,
   message: string,
   relatedId?: number,
+  applyToken?: string,
 ) {
   console.log("[v0] sendTelegramNotificationMessage called - type:", type, "chatId:", chatId)
 
@@ -792,7 +839,11 @@ async function sendTelegramNotificationMessage(
 🕐 Quart: ${shiftTypeLabel}${partialInfo}
 👤 Remplace: ${r.firefighter_to_replace || "Pompier supplémentaire"}
 
-<a href="${appUrl}/dashboard/replacements/${relatedId}">Voir les détails et postuler</a>`
+<a href="${appUrl}/apply-replacement?token=${applyToken}">Postuler</a>`
+          console.log("[v0] Telegram message with token URL:", {
+            token: applyToken,
+            url: `${appUrl}/apply-replacement?token=${applyToken}`,
+          })
         }
       }
       break
@@ -1146,12 +1197,13 @@ async function sendTelegramWithRetry(
   fullName: string,
   message: string,
   relatedId: number | null,
+  applyToken?: string,
   maxRetries = 3,
 ): Promise<{ success: boolean; error?: string }> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`[v0] Telegram attempt ${attempt}/${maxRetries} for chat ${chatId}`)
-      await sendTelegramNotificationMessage(type, chatId, fullName, message, relatedId)
+      await sendTelegramNotificationMessage(type, chatId, fullName, message, relatedId, applyToken)
       console.log(`[v0] Telegram sent successfully on attempt ${attempt}`)
       return { success: true }
     } catch (error) {
