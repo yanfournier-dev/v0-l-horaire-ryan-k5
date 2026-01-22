@@ -166,7 +166,9 @@ export function ReplacementsTabs({
             Remplacements assignés {badgeText}
           </TabsTrigger>
         )}
-        <TabsTrigger value="direct-assignments">Assignations directes ({directAssignments.length})</TabsTrigger>
+        {isAdmin && (
+          <TabsTrigger value="direct-assignments">Assignations directes ({directAssignments.length})</TabsTrigger>
+        )}
         <TabsTrigger value="my-applications">Mes candidatures ({pendingApplications.length})</TabsTrigger>
         <TabsTrigger value="my-requests">Mes demandes ({userRequests.length})</TabsTrigger>
         {isAdmin && (

@@ -27,7 +27,6 @@ export default async function ReplacementDetailPage({
   searchParams: Promise<{ returnTo?: string; tab?: string }>
 }) {
   const user = await getSession()
-  if (!user?.is_admin) redirect("/dashboard/replacements")
 
   const { id } = await params
   const { returnTo, tab } = await searchParams
@@ -342,7 +341,7 @@ export default async function ReplacementDetailPage({
               firefighterName={`${application.last_name} ${application.first_name}`}
             />
           )}
-          {!cannotBeAssigned && application.status === "pending" && !isAlreadyAssigned && (
+          {!cannotBeAssigned && application.status === "pending" && !isAlreadyAssigned && user?.is_admin && (
             <>
               <ApproveApplicationButton
                 applicationId={application.id}

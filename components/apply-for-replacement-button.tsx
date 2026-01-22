@@ -51,6 +51,7 @@ export function ApplyForReplacementButton({
           : "Votre candidature a été envoyée avec succès.",
       })
 
+      router.refresh()
       setIsDialogOpen(false)
       setSelectedFirefighter("")
 
