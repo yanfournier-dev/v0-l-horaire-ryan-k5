@@ -341,37 +341,41 @@ export default async function ReplacementDetailPage({
               firefighterName={`${application.last_name} ${application.first_name}`}
             />
           )}
-          {!cannotBeAssigned && application.status === "pending" && !isAlreadyAssigned && user?.is_admin && (
-            <>
-              <ApproveApplicationButton
-                applicationId={application.id}
-                firefighterName={`${application.last_name} ${application.first_name}`}
-                isPartial={replacement.is_partial}
-                startTime={replacement.start_time}
-                endTime={replacement.end_time}
-                replacedFirefighterRole={replacement.replaced_role}
-                shiftFirefighters={teamFirefighters}
-                shiftId={shiftId}
-                replacementFirefighterId={application.user_id}
-                actualWeeklyHours={application.actualWeeklyHours || application.weeklyHours}
-                shiftType={replacement.shift_type}
-                teamPriorityCandidates={teamPriorityCandidates.map((c: any) => ({
-                  user_id: c.user_id,
-                  first_name: c.first_name,
-                  last_name: c.last_name,
-                  team_rank: c.team_rank,
-                }))}
-                shiftDate={
-                  replacement.shift_date instanceof Date
-                    ? replacement.shift_date.toISOString().split("T")[0]
-                    : typeof replacement.shift_date === "string"
-                      ? replacement.shift_date.split("T")[0]
-                      : undefined
-                }
-              />
-              <RejectApplicationButton applicationId={application.id} />
-            </>
-          )}
+          {!cannotBeAssigned &&
+            application.status === "pending" &&
+            !isAlreadyAssigned &&
+            replacement.status !== "assigned" &&
+            user?.is_admin && (
+              <>
+                <ApproveApplicationButton
+                  applicationId={application.id}
+                  firefighterName={`${application.last_name} ${application.first_name}`}
+                  isPartial={replacement.is_partial}
+                  startTime={replacement.start_time}
+                  endTime={replacement.end_time}
+                  replacedFirefighterRole={replacement.replaced_role}
+                  shiftFirefighters={teamFirefighters}
+                  shiftId={shiftId}
+                  replacementFirefighterId={application.user_id}
+                  actualWeeklyHours={application.actualWeeklyHours || application.weeklyHours}
+                  shiftType={replacement.shift_type}
+                  teamPriorityCandidates={teamPriorityCandidates.map((c: any) => ({
+                    user_id: c.user_id,
+                    first_name: c.first_name,
+                    last_name: c.last_name,
+                    team_rank: c.team_rank,
+                  }))}
+                  shiftDate={
+                    replacement.shift_date instanceof Date
+                      ? replacement.shift_date.toISOString().split("T")[0]
+                      : typeof replacement.shift_date === "string"
+                        ? replacement.shift_date.split("T")[0]
+                        : undefined
+                  }
+                />
+                <RejectApplicationButton applicationId={application.id} />
+              </>
+            )}
           {!cannotBeAssigned && application.status === "rejected" && (
             <ReactivateApplicationButton applicationId={application.id} replacementStatus={replacement.status} />
           )}
