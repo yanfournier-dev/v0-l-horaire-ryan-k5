@@ -1793,10 +1793,13 @@ export function ShiftAssignmentDrawer({
                           }
                           // Format the date and type of the shift that will be worked
                           const targetDate = new Date(exchange.target_shift_date)
+                          // Add 1 day to compensate for timezone issue in production
+                          targetDate.setDate(targetDate.getDate() + 1)
                           const formattedDate = targetDate
                             .toLocaleDateString("fr-CA", {
                               day: "numeric",
                               month: "short",
+                              year: "numeric",
                             })
                             .replace(".", "")
                           exchangeShiftInfo = ` (${formattedDate} - ${translateShiftType(exchange.target_shift_type)})`
@@ -1808,10 +1811,13 @@ export function ShiftAssignmentDrawer({
                           }
                           // Format the date and type of the shift that will be worked
                           const requesterDate = new Date(exchange.requester_shift_date)
+                          // Add 1 day to compensate for timezone issue in production
+                          requesterDate.setDate(requesterDate.getDate() + 1)
                           const formattedDate = requesterDate
                             .toLocaleDateString("fr-CA", {
                               day: "numeric",
                               month: "short",
+                              year: "numeric",
                             })
                             .replace(".", "")
                           exchangeShiftInfo = ` (${formattedDate} - ${translateShiftType(exchange.requester_shift_type)})`
