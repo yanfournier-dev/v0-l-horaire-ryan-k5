@@ -1841,9 +1841,12 @@ export function ShiftAssignmentDrawer({
                         ? `${assignedApplication.first_name} ${assignedApplication.last_name}`
                         : null
 
-                      const isDirectAssignment = assignment.is_direct_assignment === true
+  const isDirectAssignment = assignment.is_direct_assignment === true
 
-                      return (
+  // Skip rendering if this is a direct replacement (it's already shown in the replaced firefighter's card)
+  if (isReplacementFirefighter && isDirectAssignment) {
+    return null
+  }
                         <Card
                           key={assignment.id}
                           className={
