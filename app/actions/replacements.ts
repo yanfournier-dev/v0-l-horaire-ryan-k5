@@ -560,11 +560,10 @@ export async function approveApplication(
     `
 
     // Delete any existing assignments first to avoid conflicts
-    await db`
-      DELETE FROM shift_assignments
-      WHERE shift_id = ${shiftId}
-        AND user_id = ${applicantId}
-    `
+          await db`
+            DELETE FROM shift_assignments
+            WHERE shift_id = ${shiftId} AND user_id = ${applicant_id}
+          `
 
     // Then insert the new assignment
     await db`
