@@ -1753,6 +1753,11 @@ export function ShiftAssignmentDrawer({
                       )
                     }
 
+                    // Skip if this firefighter is a replacement with a replaced person (already shown in replaced firefighter's card)
+                    if (displayedAssignments.some((a) => a.user_id === firefighter.id && a.is_replacement === true && a.replaced_user_id)) {
+                      return null
+                    }
+
                     // Case 2: Firefighter is in displayedAssignments (assigned to shift)
                     const assignment = displayedAssignments.find((a) => a.user_id === firefighter.id)
                     if (assignment) {
@@ -1842,11 +1847,6 @@ export function ShiftAssignmentDrawer({
                         : null
 
                       const isDirectAssignment = assignment.is_direct_assignment === true
-
-                      // Skip rendering if this is a replacement with a replaced person (already shown in the replaced firefighter's card)
-                      if (isReplacementFirefighter && assignment.replaced_user_id) {
-                        return null
-                      }
 
                       return (
                         <Card
