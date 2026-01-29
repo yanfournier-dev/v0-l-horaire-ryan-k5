@@ -1382,7 +1382,7 @@ export async function removeReplacementAssignment(replacementId: number) {
 
           await db`
             DELETE FROM shift_assignments
-            WHERE shift_id = ${shiftId}
+            WHERE shift_id = ${shiftId} AND user_id = ${applicant_id}
           `
 
           console.log("[v0] removeReplacementAssignment - APRÈS DELETE pour shiftId:", shiftId)
