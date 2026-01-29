@@ -606,11 +606,18 @@ export async function updateReplacementHours(params: {
 
 export async function removeReplacement(shiftId: number, userId: number, replacementOrder: number) {
   try {
+    console.log("[v0] removeReplacement (direct-assignments) CALLED with:", {
+      shiftId,
+      userId,
+      replacementOrder,
+    })
+
     const shiftInfo = await sql`
       SELECT shift_type, start_time, end_time FROM shifts WHERE id = ${shiftId}
     `
 
     if (shiftInfo.length === 0) {
+      console.log("[v0] removeReplacement: Shift not found for shiftId:", shiftId)
       return { success: false, error: "Quart non trouvé" }
     }
 
@@ -625,10 +632,20 @@ export async function removeReplacement(shiftId: number, userId: number, replace
       ORDER BY replacement_order ASC
     `
 
+    console.log("[v0] removeReplacement: Found direct assignments with replacements:", {
+      count: allReplacements.length,
+      assignments: allReplacements.map((r: any) => ({
+        id: r.id,
+        user_id: r.user_id,
+        replacement_order: r.replacement_order,
+      })),
+    })
+
     const isDoubleReplacement = allReplacements.length === 2
     const replacementToKeep = allReplacements.find((r: any) => r.user_id !== userId)
 
     if (isDoubleReplacement && replacementToKeep) {
+      console.log("[v0] removeReplacement: Double replacement detected, keeping:", replacementToKeep.id)
       const r1 = allReplacements[0]
       const r2 = allReplacements[1]
 
@@ -658,6 +675,7 @@ export async function removeReplacement(shiftId: number, userId: number, replace
         WHERE id = ${replacementToKeep.id}
       `
     } else if (replacementOrder === 1 && allReplacements.length === 2) {
+      console.log("[v0] removeReplacement: Renumbering replacement_order after first removal")
       const secondReplacement = await sql`
         SELECT user_id FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -674,12 +692,14 @@ export async function removeReplacement(shiftId: number, userId: number, replace
       }
     }
 
-    await sql`
+    console.log("[v0] removeReplacement: DELETING assignment for userId:", userId, "from shiftId:", shiftId)
+    const deleteResult = await sql`
       DELETE FROM shift_assignments
       WHERE shift_id = ${shiftId}
         AND user_id = ${userId}
         AND is_direct_assignment = true
     `
+    console.log("[v0] removeReplacement: DELETE completed")
 
     revalidatePath("/dashboard")
     revalidatePath("/calendar")

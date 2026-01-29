@@ -846,9 +846,18 @@ export function ShiftAssignmentDrawer({
       sessionStorage.setItem("skip-scroll-to-today", "true")
     }
 
-    setIsLoading(true)
-
-    const result = await removeReplacement(shiftId, userId, replacementOrder)
+  setIsLoading(true)
+  
+  console.log("[v0] DRAWER BUTTON: handleRemoveReplacement CALLED with:", {
+    shiftId,
+    userId,
+    replacementOrder,
+    firefighterName,
+  })
+  
+  const result = await removeReplacement(shiftId, userId, replacementOrder)
+  
+  console.log("[v0] DRAWER BUTTON: removeReplacement returned:", result)
 
     if (result.error) {
       toast.error(result.error)

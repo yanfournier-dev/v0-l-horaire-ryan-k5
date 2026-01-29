@@ -1370,10 +1370,22 @@ export async function removeReplacementAssignment(replacementId: number) {
         if (shiftResult.length > 0) {
           const shiftId = shiftResult[0].id
 
+          console.log("[v0] removeReplacementAssignment - AVANT DELETE:", {
+            replacementId,
+            shiftId,
+            applicant_id,
+            shift_date,
+            shift_type,
+            team_id,
+            cycleDay,
+          })
+
           await db`
             DELETE FROM shift_assignments
-            WHERE shift_id = ${shiftId}
+            WHERE shift_id = ${shiftId} AND user_id = ${applicant_id}
           `
+
+          console.log("[v0] removeReplacementAssignment - APRÈS DELETE pour shiftId:", shiftId)
         }
       }
 
