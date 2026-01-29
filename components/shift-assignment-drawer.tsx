@@ -1841,16 +1841,16 @@ export function ShiftAssignmentDrawer({
                         ? `${assignedApplication.first_name} ${assignedApplication.last_name}`
                         : null
 
-  const isDirectAssignment = assignment.is_direct_assignment === true
+                      const isDirectAssignment = assignment.is_direct_assignment === true
 
-  // Skip rendering if this is a replacement with a replaced person (already shown in the replaced firefighter's card)
-  if (isReplacementFirefighter && (assignment.replaced_first_name || assignment.replaced_name)) {
-    return null
-  }
+                      // Skip rendering if this is a replacement with a replaced person (already shown in the replaced firefighter's card)
+                      if (isReplacementFirefighter && assignment.replaced_user_id) {
+                        return null
+                      }
 
-  return (
-    <Card
-      key={assignment.id}
+                      return (
+                        <Card
+                          key={assignment.id}
                           className={
                             assignment.is_extra
                               ? "border-amber-300 bg-amber-50/30"
