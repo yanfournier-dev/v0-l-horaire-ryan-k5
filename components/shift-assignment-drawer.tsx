@@ -1847,7 +1847,8 @@ export function ShiftAssignmentDrawer({
   if (isReplacementFirefighter && isDirectAssignment) {
     return null
   }
-                        <Card
+
+  return (
                           key={assignment.id}
                           className={
                             assignment.is_extra
