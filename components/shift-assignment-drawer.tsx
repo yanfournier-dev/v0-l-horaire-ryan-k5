@@ -1849,7 +1849,8 @@ export function ShiftAssignmentDrawer({
   }
 
   return (
-                          key={assignment.id}
+    <Card
+      key={assignment.id}
                           className={
                             assignment.is_extra
                               ? "border-amber-300 bg-amber-50/30"
