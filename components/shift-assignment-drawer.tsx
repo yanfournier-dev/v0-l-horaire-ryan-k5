@@ -1843,8 +1843,8 @@ export function ShiftAssignmentDrawer({
 
   const isDirectAssignment = assignment.is_direct_assignment === true
 
-  // Skip rendering if this is a direct replacement (it's already shown in the replaced firefighter's card)
-  if (isReplacementFirefighter && isDirectAssignment) {
+  // Skip rendering if this is a replacement with a replaced person (already shown in the replaced firefighter's card)
+  if (isReplacementFirefighter && (assignment.replaced_first_name || assignment.replaced_name)) {
     return null
   }
 
