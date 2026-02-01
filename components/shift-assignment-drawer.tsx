@@ -1354,11 +1354,15 @@ export function ShiftAssignmentDrawer({
                       .filter((assignment) => {
                         // Permanent team members are NOT filtered out even if they replace someone
                         const isExternalReplacement = replacementUserIdsToHide.has(assignment.user_id)
+                        
+                        // Hide replacements that already appear in replaced firefighter's card
+                        const isReplacementWithReplacedUser = assignment.is_replacement === true && assignment.replaced_user_id
 
                         return (
                           !assignment.is_replacement &&
                           !(assignment.is_direct_assignment && assignment.replaced_user_id) &&
-                          !isExternalReplacement
+                          !isExternalReplacement &&
+                          !isReplacementWithReplacedUser
                         )
                       })
                       .map((assignment) => [
@@ -1751,11 +1755,6 @@ export function ShiftAssignmentDrawer({
                           </CardContent>
                         </Card>
                       )
-                    }
-
-                    // Skip if this firefighter is a replacement with a replaced person (already shown in replaced firefighter's card)
-                    if (displayedAssignments.some((a) => a.user_id === firefighter.id && a.is_replacement === true && a.replaced_user_id)) {
-                      return null
                     }
 
                     // Case 2: Firefighter is in displayedAssignments (assigned to shift)
