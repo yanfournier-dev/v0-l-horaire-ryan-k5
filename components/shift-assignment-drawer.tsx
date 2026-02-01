@@ -1406,6 +1406,14 @@ export function ShiftAssignmentDrawer({
                     const replacementsForUser = groupedReplacements.get(firefighter.id) || []
                     const hasReplacements = replacementsForUser.length > 0
 
+                    // Skip if this firefighter is a replacement with a replaced user (already shown in replaced user's card)
+                    const isReplacementWithReplacedUser = currentAssignments.some(
+                      (a) => a.user_id === firefighter.id && a.is_replacement === true && a.replaced_user_id,
+                    )
+                    if (isReplacementWithReplacedUser) {
+                      return null
+                    }
+
                     const { replacement0, replacement1, replacement2 } = getReplacementDetails(firefighter.id)
 
                     // console.log("[v0] Drawer - replacement details for firefighter", firefighter.id, {
