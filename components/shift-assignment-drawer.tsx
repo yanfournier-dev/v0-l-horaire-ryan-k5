@@ -1410,7 +1410,13 @@ export function ShiftAssignmentDrawer({
                     const isReplacementWithReplacedUser = currentAssignments.some(
                       (a) => a.user_id === firefighter.id && a.is_replacement === true && a.replaced_user_id,
                     )
+                    
+                    console.log(`[v0] Team map - firefighter: ${firefighter.first_name} ${firefighter.last_name} (id: ${firefighter.id})`)
+                    console.log(`[v0] isReplacementWithReplacedUser: ${isReplacementWithReplacedUser}`)
+                    console.log(`[v0] currentAssignments matching this firefighter:`, currentAssignments.filter(a => a.user_id === firefighter.id))
+                    
                     if (isReplacementWithReplacedUser) {
+                      console.log(`[v0] HIDING card for ${firefighter.first_name} ${firefighter.last_name}`)
                       return null
                     }
 
