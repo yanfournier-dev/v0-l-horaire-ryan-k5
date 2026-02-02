@@ -1545,6 +1545,53 @@ export function ShiftAssignmentDrawer({
                                   </div>
                                 )}
 
+                                {replacement0 && replacement0.user_id && (
+                                  <div className="space-y-2">
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] text-muted-foreground font-medium underline">
+                                        {replacement1 ? "Remplaçant" : "Remplaçant"}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[13px] text-orange-600 font-medium truncate">
+                                          {replacement0.first_name} {replacement0.last_name}
+                                          {(() => {
+                                            if (replacement0.start_time && replacement0.end_time) {
+                                              return (
+                                                <span className="text-[11px]">
+                                                  {" "}
+                                                  ({replacement0.start_time.slice(0, 5)}-
+                                                  {replacement0.end_time.slice(0, 5)})
+                                                </span>
+                                              )
+                                            }
+                                            return <span className="text-[11px]"> (Quart complet)</span>
+                                          })()}
+                                        </span>
+
+                                        {replacement0.is_direct_assignment && (
+                                          <span
+                                            className="text-orange-500 text-lg flex-shrink-0"
+                                            title="Assignation directe"
+                                          >
+                                            ⚡
+                                          </span>
+                                        )}
+
+                                        {isAdmin && replacement0.replacement_id && (
+                                          <DeleteReplacementButton
+                                            replacementId={replacement0.replacement_id}
+                                            onSuccess={loadData}
+                                            hasAssignedCandidate={!!replacement0.user_id}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
                                 {replacement1 && (
                                   <div className="space-y-2">
                                     <div className="space-y-1">
