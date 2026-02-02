@@ -1457,7 +1457,9 @@ export function ShiftAssignmentDrawer({
                                     {firefighter.first_name} {firefighter.last_name}
                                   </p>
                                 </div>
+                              </div>
 
+                              <div className="mt-2 space-y-2">
                                 {(() => {
                                   if (!bankInfo) {
                                     return null
@@ -1481,8 +1483,7 @@ export function ShiftAssignmentDrawer({
                                   }
 
                                   return (
-                                    <div className="mt-2 pt-2 border-t">
-                                      {/* Changed text-xs to text-[11px] and added underline to match "Remplaçant X" style */}
+                                    <div className="pt-2 border-t">
                                       <p className="text-[11px] font-medium text-muted-foreground mb-1 underline">
                                         Banque de congé
                                       </p>
@@ -1503,9 +1504,7 @@ export function ShiftAssignmentDrawer({
                                     </div>
                                   )
                                 })()}
-                              </div>
 
-                              <div className="mt-2 space-y-2">
                                 {replacement0 && !replacement1 && isAdmin && (
                                   <div className="flex items-center gap-2 mt-2">
                                     {replacement0.applications && replacement0.applications.length > 0 && (
@@ -1542,53 +1541,6 @@ export function ShiftAssignmentDrawer({
                                       size="icon"
                                       className="h-8 w-8"
                                     />
-                                  </div>
-                                )}
-
-                                {replacement0 && replacement0.user_id && (
-                                  <div className="space-y-2">
-                                    <div className="space-y-1">
-                                      <div className="text-[11px] text-muted-foreground font-medium underline">
-                                        {replacement1 ? "Remplaçant" : "Remplaçant"}
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[13px] text-orange-600 font-medium truncate">
-                                          {replacement0.first_name} {replacement0.last_name}
-                                          {(() => {
-                                            if (replacement0.start_time && replacement0.end_time) {
-                                              return (
-                                                <span className="text-[11px]">
-                                                  {" "}
-                                                  ({replacement0.start_time.slice(0, 5)}-
-                                                  {replacement0.end_time.slice(0, 5)})
-                                                </span>
-                                              )
-                                            }
-                                            return <span className="text-[11px]"> (Quart complet)</span>
-                                          })()}
-                                        </span>
-
-                                        {replacement0.is_direct_assignment && (
-                                          <span
-                                            className="text-orange-500 text-lg flex-shrink-0"
-                                            title="Assignation directe"
-                                          >
-                                            ⚡
-                                          </span>
-                                        )}
-
-                                        {isAdmin && replacement0.replacement_id && (
-                                          <DeleteReplacementButton
-                                            replacementId={replacement0.replacement_id}
-                                            onSuccess={loadData}
-                                            hasAssignedCandidate={!!replacement0.user_id}
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
-                                          />
-                                        )}
-                                      </div>
-                                    </div>
                                   </div>
                                 )}
 
