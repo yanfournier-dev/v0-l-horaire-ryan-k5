@@ -223,7 +223,7 @@ export async function createReplacementFromShift(
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
-        ${isPartial}, ${isPartial ? startTime : null}, ${isPartial ? endTime : null}, ${userId},
+        ${isPartial}, ${isPartial ? startTime : shiftStartTime}, ${isPartial ? endTime : shiftEndTime}, ${userId},
         ${applicationDeadline}, ${deadlineDuration}, ${leaveBank1}, ${leaveHours1}, ${leaveBank2}, ${leaveHours2}
       )
       RETURNING id
@@ -871,6 +871,15 @@ export async function createExtraFirefighterReplacement(
       deadlineDuration,
     })
 
+    // Get shift times for full replacements
+    let finalStartTime = startTime
+    let finalEndTime = endTime
+    
+    if (!isPartial && shiftStartTime && shiftEndTime) {
+      finalStartTime = shiftStartTime
+      finalEndTime = shiftEndTime
+    }
+
     const result = await db`
       INSERT INTO replacements (
         shift_date, shift_type, team_id, status, is_partial, start_time, end_time,
@@ -878,7 +887,7 @@ export async function createExtraFirefighterReplacement(
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
-        ${isPartial}, ${isPartial ? startTime : null}, ${isPartial ? endTime : null},
+        ${isPartial}, ${finalStartTime}, ${finalEndTime},
         ${applicationDeadline}, ${deadlineDuration}
       )
       RETURNING id
@@ -1279,16 +1288,20 @@ export async function requestReplacement(
     return { error: "Vous avez déjà une demande de remplacement pour ce quart" }
   }
   
+  // For full replacements, use the shift times
+  const finalStartTime = isPartial ? (startTime || null) : shiftStartTime
+  const finalEndTime = isPartial ? (endTime || null) : shiftEndTime
+
   await db`
-  INSERT INTO replacements (
-  shift_date, shift_type, team_id, user_id, status, is_partial, start_time, end_time,
-  leave_bank_1, leave_hours_1, leave_bank_2, leave_hours_2
-  )
-  VALUES (
-  ${shiftDate}, ${shiftType}, ${teamId}, ${user.id}, 'pending',
-  ${isPartial}, ${startTime || null}, ${endTime || null},
-  ${leaveBank1 || null}, ${leaveHours1 || null}, ${leaveBank2 || null}, ${leaveHours2 || null}
-  )
+    INSERT INTO replacements (
+      shift_date, shift_type, team_id, user_id, status, is_partial, start_time, end_time,
+      leave_bank_1, leave_hours_1, leave_bank_2, leave_hours_2
+    )
+    VALUES (
+      ${shiftDate}, ${shiftType}, ${teamId}, ${user.id}, 'pending',
+      ${isPartial}, ${finalStartTime}, ${finalEndTime},
+      ${leaveBank1 || null}, ${leaveHours1 || null}, ${leaveBank2 || null}, ${leaveHours2 || null}
+    )
   `
 
     try {

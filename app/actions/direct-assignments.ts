@@ -331,10 +331,14 @@ export async function addSecondReplacement(params: {
       return time.length === 5 ? `${time}:00` : time
     }
 
-    const r1Start = normalizeTime(originalStartTime || "07:00:00")
-    const r1End = normalizeTime(adjustedEndTime || "17:00:00")
+    // Safety check: if r1 times are NULL or invalid, get them from the shift
+    const r1Start = normalizeTime(originalStartTime || shift.start_time || "07:00:00")
+    const r1End = normalizeTime(adjustedEndTime || shift.end_time || "17:00:00")
     const r2Start = normalizeTime(params.startTime)
     const r2End = normalizeTime(params.endTime)
+
+    // Debug log to catch issues
+    console.log(`[v0] Ajustement Remplacant 2: R1=(${r1Start}-${r1End}) R2=(${r2Start}-${r2End})`)
 
     if (r2Start > r1Start && r2End < r1End) {
       return {
