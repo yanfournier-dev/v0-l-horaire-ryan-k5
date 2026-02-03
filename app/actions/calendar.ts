@@ -683,9 +683,7 @@ export async function getReplacementsForDateRange(startDate: string, endDate: st
         repl_user.first_name as replacement_first_name,
         repl_user.last_name as replacement_last_name,
         sa.is_acting_captain as replacement_is_acting_captain,
-        sa.is_acting_lieutenant as replacement_is_acting_lieutenant,
-        sa.replacement_order,
-        sa.is_direct_assignment
+        sa.is_acting_lieutenant as replacement_is_acting_lieutenant
       FROM replacements r
       JOIN users u ON r.user_id = u.id
       CROSS JOIN cycle_info ci

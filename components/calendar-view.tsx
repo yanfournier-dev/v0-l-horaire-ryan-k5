@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { ChevronUp, ChevronDown } from "lucide-react"
 import { generateMonthView, getMonthName } from "@/lib/calendar"
 import { getCurrentLocalDate, formatLocalDate, formatDateForDB } from "@/lib/date-utils"
-import { getCalendarDataForDateRange } from "@/app/actions/calendar"
+import { getCalendarDataForDateRange, getDirectAssignmentsForDateRange } from "@/app/actions/calendar"
+import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
 
 interface CalendarViewProps {
   initialMonths: Array<{
@@ -498,8 +499,10 @@ export function CalendarView({
         formatDateForDB(lastDay),
       )
 
-      const data = await getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
-      const directAssignmentsData = data.directAssignments
+      const [data, directAssignmentsData] = await Promise.all([
+        getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)),
+        getDirectAssignmentsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)),
+      ])
 
       console.log("[v0] handleShiftUpdated - received data:", data)
       console.log("[v0] handleShiftUpdated - received directAssignments:", directAssignmentsData?.length || 0)

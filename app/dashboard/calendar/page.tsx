@@ -2,7 +2,12 @@ import { getSession } from "@/app/actions/auth"
 import {
   getCycleConfig,
   getAllShiftsWithAssignments,
-  getCalendarDataForDateRange,
+  getReplacementsForDateRange,
+  getLeavesForDateRange,
+  getExchangesForDateRange,
+  getDirectAssignmentsForDateRange,
+  getActingDesignationsForRange,
+  getExtraFirefightersForDateRange,
 } from "@/app/actions/calendar"
 import { getShiftNotesForDateRange } from "@/app/actions/shift-notes"
 import { redirect } from "next/navigation"
@@ -86,14 +91,20 @@ export default async function CalendarPage({
 
     const allShifts = await getAllShiftsWithAssignments(firstDay, lastDay)
 
-    const data = await getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
-    const replacements = data.replacements
-    const leaves = data.leaves
-    const exchanges = data.exchanges
-    const shiftNotes = data.shiftNotes
-    const directAssignments = data.directAssignments
-    const actingDesignations = data.actingDesignations
-    const extraFirefighters = data.extraFirefighters
+    const [replacements, leaves, exchanges, shiftNotes, directAssignments, actingDesignations, extraFirefighters] =
+      await Promise.all([
+        firstDay && lastDay ? getReplacementsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay ? getLeavesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay ? getExchangesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay ? getShiftNotesForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay
+          ? getDirectAssignmentsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
+          : [],
+        firstDay && lastDay ? getActingDesignationsForRange(formatDateForDB(firstDay), formatDateForDB(lastDay)) : [],
+        firstDay && lastDay
+          ? getExtraFirefightersForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay))
+          : [],
+      ])
 
     const replacementMap: Record<string, any[]> = {}
     replacements.forEach((repl: any) => {
