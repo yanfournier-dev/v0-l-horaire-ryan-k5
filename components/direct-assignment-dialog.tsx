@@ -78,12 +78,20 @@ export function DirectAssignmentDialog({
       setIsPartial(replacementOrder === 2)
       setAssignedFirefighter(null)
 
-      if (shift.shift_type === "Jour" || shift.shift_type === "jour") {
+      // Match the database shift_type values: "day", "night", "full_24h"
+      if (shift.shift_type === "day") {
         setStartTime("07:00")
         setEndTime("17:00")
-      } else if (shift.shift_type === "Nuit" || shift.shift_type === "nuit") {
-        setStartTime("19:00")
+      } else if (shift.shift_type === "night") {
+        setStartTime("17:00")
         setEndTime("07:00")
+      } else if (shift.shift_type === "full_24h") {
+        setStartTime("07:00")
+        setEndTime("07:00")
+      } else {
+        // Fallback to day shift times if type is unknown
+        setStartTime("07:00")
+        setEndTime("17:00")
       }
     }
   }, [open, shift, replacementOrder])
@@ -105,8 +113,8 @@ export function DirectAssignmentDialog({
       return
     }
 
-    if ((isPartial || replacementOrder === 2) && startTime >= endTime) {
-      toast.error("L'heure de début doit être avant l'heure de fin")
+    if ((isPartial || replacementOrder === 2) && startTime === endTime) {
+      toast.error("L'heure de début et de fin ne peuvent pas être identiques")
       return
     }
 
