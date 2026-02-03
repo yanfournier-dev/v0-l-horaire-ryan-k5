@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -76,6 +76,17 @@ export function AddSecondReplacementDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [errorDialogOpen, setErrorDialogOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+
+  // Update default times whenever shift changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      console.log("[v0] Dialog opened, recalculating default times for shift_type:", shift.shift_type)
+      const newDefaultTimes = getDefaultTimes()
+      setStartTime(newDefaultTimes.start)
+      setEndTime(newDefaultTimes.end)
+      setSelectedFirefighter(null)
+    }
+  }, [open, shift])
 
   const generateTimeOptions = () => {
     const times = []
