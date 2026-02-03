@@ -1580,13 +1580,18 @@ export function ShiftAssignmentDrawer({
 
                                             // Single period - normal display
                                             if (replacement1.start_time && replacement1.end_time) {
-                                              return (
-                                                <span className="text-[11px]">
-                                                  {" "}
-                                                  ({replacement1.start_time.slice(0, 5)}-
-                                                  {replacement1.end_time.slice(0, 5)})
-                                                </span>
-                                              )
+                                              // Only show times if it's a partial replacement
+                                              if (replacement1.is_partial) {
+                                                return (
+                                                  <span className="text-[11px]">
+                                                    {" "}
+                                                    ({replacement1.start_time.slice(0, 5)}-
+                                                    {replacement1.end_time.slice(0, 5)})
+                                                  </span>
+                                                )
+                                              }
+                                              // For full shifts, show "Quart complet" even if times exist
+                                              return <span className="text-[11px]"> (Quart complet)</span>
                                             }
                                             return <span className="text-[11px]"> (Quart complet)</span>
                                           })()}

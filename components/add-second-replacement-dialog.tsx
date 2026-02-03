@@ -51,8 +51,10 @@ export function AddSecondReplacementDialog({
   onSuccess,
 }: AddSecondReplacementDialogProps) {
   const [selectedFirefighter, setSelectedFirefighter] = useState<number | null>(null)
-  const [startTime, setStartTime] = useState("07:00")
-  const [endTime, setEndTime] = useState("17:00")
+  const defaultStart = shift.start_time || "07:00"
+  const defaultEnd = shift.end_time || "17:00"
+  const [startTime, setStartTime] = useState(defaultStart)
+  const [endTime, setEndTime] = useState(defaultEnd)
   const [isLoading, setIsLoading] = useState(false)
   const [errorDialogOpen, setErrorDialogOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
@@ -86,12 +88,18 @@ export function AddSecondReplacementDialog({
       : undefined
     console.log("[v0] AddSecondReplacementDialog - shift.date:", shift.date, "converted to:", shiftDateStr)
 
+    // Ensure times are in HH:MM:SS format
+    const formatTime = (time: string) => {
+      if (time.length === 5) return `${time}:00` // HH:MM -> HH:MM:SS
+      return time
+    }
+
     const result = await addSecondReplacement({
       shiftId: shift.id,
       replacedUserId: replacedFirefighter.id,
       assignedUserId: selectedFirefighter,
-      startTime,
-      endTime,
+      startTime: formatTime(startTime),
+      endTime: formatTime(endTime),
       shiftDate: shiftDateStr,
     })
 
