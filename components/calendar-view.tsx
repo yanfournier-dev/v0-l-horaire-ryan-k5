@@ -226,21 +226,26 @@ export function CalendarView({
       }
 
       const newDirectAssignmentMap = { ...directAssignmentMap }
-      if (data.direct_assignments && Array.isArray(data.direct_assignments)) {
-        data.direct_assignments.forEach((assignment: any) => {
+      if (data.directAssignments && Array.isArray(data.directAssignments)) {
+        console.log("[v0] loadPreviousMonths - processing directAssignments:", data.directAssignments.length)
+        data.directAssignments.forEach((assignment: any) => {
           const dateOnly = formatLocalDate(assignment.shift_date)
           const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
+          console.log("[v0] loadPreviousMonths - adding directAssignment key:", key)
           if (!newDirectAssignmentMap[key]) {
             newDirectAssignmentMap[key] = []
           }
           newDirectAssignmentMap[key].push(assignment)
         })
+      } else {
+        console.log("[v0] loadPreviousMonths - NO directAssignments in data!")
       }
       setDirectAssignmentMap(newDirectAssignmentMap)
 
       const newActingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
-      if (data.acting_designations && Array.isArray(data.acting_designations)) {
-        data.acting_designations.forEach((ad: any) => {
+      if (data.actingDesignations && Array.isArray(data.actingDesignations)) {
+        console.log("[v0] loadPreviousMonths - processing actingDesignations:", data.actingDesignations.length)
+        data.actingDesignations.forEach((ad: any) => {
           const dateStr = ad.shift_date ? formatLocalDate(ad.shift_date) : null
           if (dateStr) {
             let key: string
@@ -249,10 +254,7 @@ export function CalendarView({
             } else {
               key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}_original`
             }
-            console.log("[v0] actingDesignationMap adding key:", key, "with values:", {
-              isActingLieutenant: ad.is_acting_lieutenant,
-              isActingCaptain: ad.is_acting_captain,
-            })
+            console.log("[v0] loadPreviousMonths - actingDesignationMap adding key:", key)
             newActingDesignationMap[key] = {
               isActingLieutenant: ad.is_acting_lieutenant,
               isActingCaptain: ad.is_acting_captain,
@@ -378,14 +380,18 @@ export function CalendarView({
 
       const newDirectAssignmentMap = { ...directAssignmentMap }
       if (data.directAssignments) {
+        console.log("[v0] loadNextMonths - processing directAssignments:", data.directAssignments.length)
         data.directAssignments.forEach((assignment: any) => {
           const dateOnly = formatLocalDate(assignment.shift_date)
           const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
+          console.log("[v0] loadNextMonths - adding directAssignment key:", key)
           if (!newDirectAssignmentMap[key]) {
             newDirectAssignmentMap[key] = []
           }
           newDirectAssignmentMap[key].push(assignment)
         })
+      } else {
+        console.log("[v0] loadNextMonths - NO directAssignments in data!")
       }
       setDirectAssignmentMap(newDirectAssignmentMap)
 
