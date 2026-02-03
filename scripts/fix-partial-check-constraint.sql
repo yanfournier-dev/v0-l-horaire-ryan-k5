@@ -15,19 +15,19 @@ ADD CONSTRAINT check_partial_times CHECK (
 );
 
 -- Now fix all existing full replacements (is_partial = FALSE) that have NULL times
--- Set them to default shift hours (07:00 - 17:00)
+-- Set them to default shift hours (07:00 - 17:00 for 'day', specific times for other shifts)
 UPDATE replacements
 SET 
   start_time = CASE 
-    WHEN shift_type = 'jour' THEN '07:00:00'::time
-    WHEN shift_type = 'soir' THEN '15:00:00'::time
-    WHEN shift_type = 'nuit' THEN '23:00:00'::time
+    WHEN shift_type = 'day' THEN '07:00:00'::time
+    WHEN shift_type = 'night' THEN '19:00:00'::time
+    WHEN shift_type = 'full_24h' THEN '07:00:00'::time
     ELSE '07:00:00'::time
   END,
   end_time = CASE 
-    WHEN shift_type = 'jour' THEN '17:00:00'::time
-    WHEN shift_type = 'soir' THEN '23:00:00'::time
-    WHEN shift_type = 'nuit' THEN '07:00:00'::time
+    WHEN shift_type = 'day' THEN '17:00:00'::time
+    WHEN shift_type = 'night' THEN '07:00:00'::time
+    WHEN shift_type = 'full_24h' THEN '07:00:00'::time
     ELSE '17:00:00'::time
   END
 WHERE is_partial = FALSE AND (start_time IS NULL OR end_time IS NULL);
