@@ -54,18 +54,13 @@ export function AddSecondReplacementDialog({
 
   // Calculate default times based on shift_type
   const getDefaultTimes = () => {
-    console.log("[v0] getDefaultTimes - shift object:", shift)
-    console.log("[v0] getDefaultTimes - shift.shift_type:", shift.shift_type)
     switch (shift.shift_type) {
       case "night":
-        console.log("[v0] getDefaultTimes returning night times: 17:00-07:00")
         return { start: "17:00", end: "07:00" }
       case "full_24h":
-        console.log("[v0] getDefaultTimes returning full_24h times: 07:00-07:00")
         return { start: "07:00", end: "07:00" }
       case "day":
       default:
-        console.log("[v0] getDefaultTimes returning day times: 07:00-17:00")
         return { start: "07:00", end: "17:00" }
     }
   }
@@ -80,7 +75,6 @@ export function AddSecondReplacementDialog({
   // Update default times whenever shift changes or dialog opens
   useEffect(() => {
     if (open) {
-      console.log("[v0] Dialog opened, recalculating default times for shift_type:", shift.shift_type)
       const newDefaultTimes = getDefaultTimes()
       setStartTime(newDefaultTimes.start)
       setEndTime(newDefaultTimes.end)

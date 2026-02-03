@@ -387,8 +387,6 @@ export async function addSecondReplacement(params: {
       }
     }
 
-    console.log(`[v0] Ajustement R2: R1=(${r1Start}-${r1End}) R2=(${r2Start}-${r2End}) ShiftStart=${shiftStartTime} ShiftEnd=${shiftEndTime}`)
-
     // Check if R2 is completely in the middle of R1 (invalid configuration)
     const r2IsInMiddle = 
       isTimeBeforeInShift(r1Start, r2Start, shiftStartTime, shiftEndTime) &&
@@ -404,7 +402,6 @@ export async function addSecondReplacement(params: {
 
     // Case: R2 starts after R1 ends (or far past R1 end)
     if (isTimeBeforeInShift(r1End, r2Start, shiftStartTime, shiftEndTime)) {
-      console.log("[v0] Case: R2 starts after R1 ends")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -441,7 +438,6 @@ export async function addSecondReplacement(params: {
     } 
     // Case: R2 covers entire R1 (r2Start <= r1Start AND r2End >= r1End)
     else if (timeIsWithinRange(r1Start, r2Start, r2End) && timeIsWithinRange(r1End, r2Start, r2End)) {
-      console.log("[v0] Case: R2 covers entire R1")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -451,7 +447,6 @@ export async function addSecondReplacement(params: {
     } 
     // Case: R2 covers the beginning (r2Start <= r1Start AND r2End < r1End)
     else if (timeIsWithinRange(r1Start, r2Start, r2End) && !timeIsWithinRange(r1End, r2Start, r2End)) {
-      console.log("[v0] Case: R2 covers the beginning, adjust R1 to start at r2End")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -487,7 +482,6 @@ export async function addSecondReplacement(params: {
     } 
     // Case: R2 covers the end (r2Start > r1Start AND r2End >= r1End)
     else if (!timeIsWithinRange(r2Start, r1Start, r1End) && timeIsWithinRange(r1End, r2Start, r2End)) {
-      console.log("[v0] Case: R2 covers the end, adjust R1 to end at r2Start")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -523,7 +517,6 @@ export async function addSecondReplacement(params: {
     } 
     // Case: R2 is completely outside R1 range (shouldn't happen based on earlier logic)
     else {
-      console.log("[v0] Case: R2 is outside R1 range, creating two separate R1 entries")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
