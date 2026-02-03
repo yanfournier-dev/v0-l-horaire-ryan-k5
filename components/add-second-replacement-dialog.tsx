@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -51,11 +51,36 @@ export function AddSecondReplacementDialog({
   onSuccess,
 }: AddSecondReplacementDialogProps) {
   const [selectedFirefighter, setSelectedFirefighter] = useState<number | null>(null)
-  const [startTime, setStartTime] = useState("07:00")
-  const [endTime, setEndTime] = useState("17:00")
+
+  // Calculate default times based on shift_type
+  const getDefaultTimes = () => {
+    switch (shift.shift_type) {
+      case "night":
+        return { start: "17:00", end: "07:00" }
+      case "full_24h":
+        return { start: "07:00", end: "07:00" }
+      case "day":
+      default:
+        return { start: "07:00", end: "17:00" }
+    }
+  }
+
+  const defaultTimes = getDefaultTimes()
+  const [startTime, setStartTime] = useState(defaultTimes.start)
+  const [endTime, setEndTime] = useState(defaultTimes.end)
   const [isLoading, setIsLoading] = useState(false)
   const [errorDialogOpen, setErrorDialogOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+
+  // Update default times whenever shift changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      const newDefaultTimes = getDefaultTimes()
+      setStartTime(newDefaultTimes.start)
+      setEndTime(newDefaultTimes.end)
+      setSelectedFirefighter(null)
+    }
+  }, [open, shift])
 
   const generateTimeOptions = () => {
     const times = []
@@ -74,8 +99,10 @@ export function AddSecondReplacementDialog({
       return
     }
 
-    if (startTime >= endTime) {
-      toast.error("L'heure de début doit être avant l'heure de fin")
+    // For night shifts (17:00-07:00), startTime can be >= endTime (crossing midnight)
+    // Just warn if they are the same
+    if (startTime === endTime) {
+      toast.error("L'heure de début et de fin ne peuvent pas être identiques")
       return
     }
 
@@ -86,12 +113,18 @@ export function AddSecondReplacementDialog({
       : undefined
     console.log("[v0] AddSecondReplacementDialog - shift.date:", shift.date, "converted to:", shiftDateStr)
 
+    // Ensure times are in HH:MM:SS format
+    const formatTime = (time: string) => {
+      if (time.length === 5) return `${time}:00` // HH:MM -> HH:MM:SS
+      return time
+    }
+
     const result = await addSecondReplacement({
       shiftId: shift.id,
       replacedUserId: replacedFirefighter.id,
       assignedUserId: selectedFirefighter,
-      startTime,
-      endTime,
+      startTime: formatTime(startTime),
+      endTime: formatTime(endTime),
       shiftDate: shiftDateStr,
     })
 
