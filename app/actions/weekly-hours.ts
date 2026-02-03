@@ -4,7 +4,8 @@ import { sql } from "@/lib/db"
 import { parseLocalDate } from "@/lib/date-utils"
 
 /**
- * Get the start of the week (Sunday) for a given date
+ * Get the start of the week (Sunday at 7am) for a given date
+ * Week runs from Sunday 7am to next Sunday 7am
  */
 function getWeekStart(date: Date): Date {
   const d = new Date(date)
@@ -12,18 +13,20 @@ function getWeekStart(date: Date): Date {
   const day = d.getUTCDay()
   const diff = day === 0 ? 0 : -day
   d.setUTCDate(d.getUTCDate() + diff)
-  d.setUTCHours(0, 0, 0, 0)
+  d.setUTCHours(7, 0, 0, 0)
   return d
 }
 
 /**
- * Get the end of the week (Saturday) for a given date
+ * Get the end of the week (next Sunday at 7am) for a given date
+ * Week runs from Sunday 7am to next Sunday 7am (exclusive)
  */
 function getWeekEnd(date: Date): Date {
   const weekStart = getWeekStart(date)
   const weekEnd = new Date(weekStart)
-  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
-  weekEnd.setUTCHours(23, 59, 59, 999)
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 7)
+  // Keep 7am to maintain the boundary at Sunday 7am
+  weekEnd.setUTCHours(7, 0, 0, 0)
   return weekEnd
 }
 
@@ -58,7 +61,10 @@ function calculateShiftHours(
   if (startTime && endTime) {
     const [startHour, startMin] = startTime.split(":").map(Number)
     const [endHour, endMin] = endTime.split(":").map(Number)
-    return endHour - startHour + (endMin - startMin) / 60
+    let duration = endHour - startHour + (endMin - startMin) / 60
+    // If duration is negative, the shift crosses midnight, so add 24 hours
+    if (duration < 0) duration += 24
+    return duration
   }
 
   switch (shiftType) {
