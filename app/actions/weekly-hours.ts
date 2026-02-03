@@ -59,6 +59,11 @@ function calculateShiftHours(
   endTime: string | null,
 ): number {
   if (startTime && endTime) {
+    // Check if this is a complete 24h shift (startTime === endTime means full shift from 7am to 7am next day)
+    if (shiftType === "full_24h" && startTime === endTime) {
+      return 24
+    }
+
     const [startHour, startMin] = startTime.split(":").map(Number)
     const [endHour, endMin] = endTime.split(":").map(Number)
     let duration = endHour - startHour + (endMin - startMin) / 60
