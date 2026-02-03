@@ -51,10 +51,23 @@ export function AddSecondReplacementDialog({
   onSuccess,
 }: AddSecondReplacementDialogProps) {
   const [selectedFirefighter, setSelectedFirefighter] = useState<number | null>(null)
-  const defaultStart = shift.start_time || "07:00"
-  const defaultEnd = shift.end_time || "17:00"
-  const [startTime, setStartTime] = useState(defaultStart)
-  const [endTime, setEndTime] = useState(defaultEnd)
+
+  // Calculate default times based on shift_type
+  const getDefaultTimes = () => {
+    switch (shift.shift_type) {
+      case "night":
+        return { start: "17:00", end: "07:00" }
+      case "full_24h":
+        return { start: "07:00", end: "07:00" }
+      case "day":
+      default:
+        return { start: "07:00", end: "17:00" }
+    }
+  }
+
+  const defaultTimes = getDefaultTimes()
+  const [startTime, setStartTime] = useState(defaultTimes.start)
+  const [endTime, setEndTime] = useState(defaultTimes.end)
   const [isLoading, setIsLoading] = useState(false)
   const [errorDialogOpen, setErrorDialogOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
