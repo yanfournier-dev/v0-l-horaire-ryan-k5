@@ -349,7 +349,52 @@ export async function addSecondReplacement(params: {
     const r2Start = normalizeTime(params.startTime)
     const r2End = normalizeTime(params.endTime)
 
-    if (r2Start > r1Start && r2End < r1End) {
+    // Helper function: check if time is within a range that may cross midnight
+    const timeIsWithinRange = (time: string, rangeStart: string, rangeEnd: string): boolean => {
+      if (rangeStart < rangeEnd) {
+        // Normal range (day shift): 07:00 to 17:00
+        return time >= rangeStart && time <= rangeEnd
+      } else {
+        // Range crosses midnight (night shift): 17:00 to 07:00
+        return time >= rangeStart || time <= rangeEnd
+      }
+    }
+
+    // Helper function: compare two times within a shift context that may cross midnight
+    // Returns true if time1 < time2 within the shift context
+    const isTimeBeforeInShift = (time1: string, time2: string, shiftStart: string, shiftEnd: string): boolean => {
+      if (time1 === time2) return false
+
+      if (shiftStart < shiftEnd) {
+        // Day shift: simple comparison
+        return time1 < time2
+      } else {
+        // Night shift (crosses midnight)
+        // Order: shiftStart(17:00) < ... < 23:59 < 00:00 < ... < shiftEnd(07:00)
+        if (time1 >= shiftStart && time2 >= shiftStart) {
+          // Both after shift start (evening)
+          return time1 < time2
+        } else if (time1 < shiftEnd && time2 < shiftEnd) {
+          // Both before shift end (morning after midnight)
+          return time1 < time2
+        } else if (time1 >= shiftStart && time2 < shiftEnd) {
+          // time1 is in evening, time2 is in morning
+          return true
+        } else {
+          // time1 is in morning, time2 is in evening
+          return false
+        }
+      }
+    }
+
+    console.log(`[v0] Ajustement R2: R1=(${r1Start}-${r1End}) R2=(${r2Start}-${r2End}) ShiftStart=${shiftStartTime} ShiftEnd=${shiftEndTime}`)
+
+    // Check if R2 is completely in the middle of R1 (invalid configuration)
+    const r2IsInMiddle = 
+      isTimeBeforeInShift(r1Start, r2Start, shiftStartTime, shiftEndTime) &&
+      isTimeBeforeInShift(r2End, r1End, shiftStartTime, shiftEndTime)
+
+    if (r2IsInMiddle) {
       return {
         success: false,
         error:
@@ -357,7 +402,9 @@ export async function addSecondReplacement(params: {
       }
     }
 
-    if (r2Start >= r1End) {
+    // Case: R2 starts after R1 ends (or far past R1 end)
+    if (isTimeBeforeInShift(r1End, r2Start, shiftStartTime, shiftEndTime)) {
+      console.log("[v0] Case: R2 starts after R1 ends")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -391,14 +438,20 @@ export async function addSecondReplacement(params: {
           ${finalShiftDate || shiftDateFromShifts}
         )
       `
-    } else if (r2Start <= r1Start && r2End >= r1End) {
+    } 
+    // Case: R2 covers entire R1 (r2Start <= r1Start AND r2End >= r1End)
+    else if (timeIsWithinRange(r1Start, r2Start, r2End) && timeIsWithinRange(r1End, r2Start, r2End)) {
+      console.log("[v0] Case: R2 covers entire R1")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
           AND replaced_user_id = ${replacedUserId}
           AND replacement_order = 1
       `
-    } else if (r2Start <= r1Start && r2End < r1End) {
+    } 
+    // Case: R2 covers the beginning (r2Start <= r1Start AND r2End < r1End)
+    else if (timeIsWithinRange(r1Start, r2Start, r2End) && !timeIsWithinRange(r1End, r2Start, r2End)) {
+      console.log("[v0] Case: R2 covers the beginning, adjust R1 to start at r2End")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -431,7 +484,10 @@ export async function addSecondReplacement(params: {
           ${finalShiftDate || shiftDateFromShifts}
         )
       `
-    } else if (r2Start > r1Start && r2End >= r1End) {
+    } 
+    // Case: R2 covers the end (r2Start > r1Start AND r2End >= r1End)
+    else if (!timeIsWithinRange(r2Start, r1Start, r1End) && timeIsWithinRange(r1End, r2Start, r2End)) {
+      console.log("[v0] Case: R2 covers the end, adjust R1 to end at r2Start")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
@@ -464,7 +520,10 @@ export async function addSecondReplacement(params: {
           ${finalShiftDate || shiftDateFromShifts}
         )
       `
-    } else {
+    } 
+    // Case: R2 is completely outside R1 range (shouldn't happen based on earlier logic)
+    else {
+      console.log("[v0] Case: R2 is outside R1 range, creating two separate R1 entries")
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
