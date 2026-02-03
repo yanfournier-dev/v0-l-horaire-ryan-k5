@@ -76,8 +76,10 @@ export function AddSecondReplacementDialog({
       return
     }
 
-    if (startTime >= endTime) {
-      toast.error("L'heure de début doit être avant l'heure de fin")
+    // For night shifts (17:00-07:00), startTime can be >= endTime (crossing midnight)
+    // Just warn if they are the same
+    if (startTime === endTime) {
+      toast.error("L'heure de début et de fin ne peuvent pas être identiques")
       return
     }
 
