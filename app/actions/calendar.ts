@@ -390,10 +390,17 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
         u_replaced.first_name || ' ' || u_replaced.last_name as replaced_name,
         sa.replacement_order::integer,
         sa.shift_date::text as direct_assignment_shift_date,
+        COALESCE(r.leave_bank_1, NULL::varchar) as leave_bank_1,
+        COALESCE(r.leave_hours_1, NULL::numeric) as leave_hours_1,
+        COALESCE(r.leave_bank_2, NULL::varchar) as leave_bank_2,
+        COALESCE(r.leave_hours_2, NULL::numeric) as leave_hours_2,
         2 as source_order
       FROM shift_assignments sa
       JOIN users u ON sa.user_id = u.id
       JOIN users u_replaced ON sa.replaced_user_id = u_replaced.id
+      LEFT JOIN replacements r ON sa.replaced_user_id = r.user_id 
+        AND sa.shift_date::date = r.shift_date::date 
+        AND sa.shift_id IN (SELECT id FROM shifts WHERE team_id = r.team_id AND shift_type = r.shift_type)
       WHERE sa.shift_id = ${shiftId}
         AND sa.replacement_order IS NOT NULL
         AND sa.shift_date::date = ${shiftDateStr}::date
@@ -497,7 +504,11 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
             'replaced_user_id', tm.replaced_user_id,
             'replaced_name', tm.replaced_name,
             'replacement_order', tm.replacement_order,
-            'direct_assignment_shift_date', tm.direct_assignment_shift_date
+            'direct_assignment_shift_date', tm.direct_assignment_shift_date,
+            'leave_bank_1', tm.leave_bank_1,
+            'leave_hours_1', tm.leave_hours_1,
+            'leave_bank_2', tm.leave_bank_2,
+            'leave_hours_2', tm.leave_hours_2
           ) ORDER BY tm.source_order, 
             CASE tm.role 
               WHEN 'captain' THEN 1 
