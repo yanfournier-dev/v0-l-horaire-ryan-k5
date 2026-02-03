@@ -1457,9 +1457,7 @@ export function ShiftAssignmentDrawer({
                                     {firefighter.first_name} {firefighter.last_name}
                                   </p>
                                 </div>
-                              </div>
 
-                              <div className="mt-2 space-y-2">
                                 {(() => {
                                   if (!bankInfo) {
                                     return null
@@ -1483,7 +1481,8 @@ export function ShiftAssignmentDrawer({
                                   }
 
                                   return (
-                                    <div className="pt-2 border-t">
+                                    <div className="mt-2 pt-2 border-t">
+                                      {/* Changed text-xs to text-[11px] and added underline to match "Remplaçant X" style */}
                                       <p className="text-[11px] font-medium text-muted-foreground mb-1 underline">
                                         Banque de congé
                                       </p>
@@ -1504,7 +1503,9 @@ export function ShiftAssignmentDrawer({
                                     </div>
                                   )
                                 })()}
+                              </div>
 
+                              <div className="mt-2 space-y-2">
                                 {replacement0 && !replacement1 && isAdmin && (
                                   <div className="flex items-center gap-2 mt-2">
                                     {replacement0.applications && replacement0.applications.length > 0 && (

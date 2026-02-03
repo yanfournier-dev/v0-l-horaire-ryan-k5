@@ -578,7 +578,11 @@ export async function approveApplication(
         start_time,
         end_time,
         replacement_order,
-        shift_date
+        shift_date,
+        leave_bank_1,
+        leave_hours_1,
+        leave_bank_2,
+        leave_hours_2
       )
       VALUES (
         ${shiftId}, 
@@ -590,7 +594,11 @@ export async function approveApplication(
         ${start_time || null},
         ${end_time || null},
         1,
-        ${shiftDateStr}
+        ${shiftDateStr},
+        ${leave_bank_1 || null},
+        ${leave_hours_1 || null},
+        ${leave_bank_2 || null},
+        ${leave_hours_2 || null}
       )
     `
 
