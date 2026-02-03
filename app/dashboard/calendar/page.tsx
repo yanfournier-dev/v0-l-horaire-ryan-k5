@@ -90,6 +90,7 @@ export default async function CalendarPage({
     const replacements = data.replacements
     const leaves = data.leaves
     const exchanges = data.exchanges
+    const shiftNotes = data.shiftNotes
     const directAssignments = data.directAssignments
     const actingDesignations = data.actingDesignations
     const extraFirefighters = data.extraFirefighters
