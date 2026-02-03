@@ -340,6 +340,10 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
         NULL::text as replaced_name,
         NULL::integer as replacement_order,
         NULL::text as direct_assignment_shift_date,
+        NULL::varchar as leave_bank_1,
+        NULL::numeric as leave_hours_1,
+        NULL::varchar as leave_bank_2,
+        NULL::numeric as leave_hours_2,
         1 as source_order
       FROM team_members tm
       JOIN users u ON tm.user_id = u.id
@@ -435,6 +439,10 @@ export async function getShiftWithAssignments(shiftId: number, shiftDate: string
         NULL::text as replaced_name,
         NULL::integer as replacement_order,
         NULL::text as direct_assignment_shift_date,
+        NULL::varchar as leave_bank_1,
+        NULL::numeric as leave_hours_1,
+        NULL::varchar as leave_bank_2,
+        NULL::numeric as leave_hours_2,
         3 as source_order
       FROM shift_assignments sa
       JOIN users u ON sa.user_id = u.id
