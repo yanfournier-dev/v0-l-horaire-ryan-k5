@@ -851,13 +851,14 @@ export async function getShiftNotesForDate(shiftId: number, date: string) {
 export async function getCalendarDataForDateRange(startDate: string, endDate: string) {
   unstable_noStore()
 
-  const [replacements, exchanges, leaves, shiftNotes, actingDesignations, extraFirefighters] = await Promise.all([
+  const [replacements, exchanges, leaves, shiftNotes, actingDesignations, extraFirefighters, directAssignments] = await Promise.all([
     getReplacementsForDateRange(startDate, endDate),
     getExchangesForDateRange(startDate, endDate),
     getLeavesForDateRange(startDate, endDate),
     getShiftNotesForDateRange(startDate, endDate),
     getActingDesignationsForRange(startDate, endDate),
     getExtraFirefightersForDateRange(startDate, endDate),
+    getDirectAssignmentsForDateRange(new Date(startDate), new Date(endDate)),
   ])
 
   return {
@@ -867,6 +868,7 @@ export async function getCalendarDataForDateRange(startDate: string, endDate: st
     shiftNotes,
     actingDesignations,
     extraFirefighters,
+    directAssignments,
   }
 }
 
