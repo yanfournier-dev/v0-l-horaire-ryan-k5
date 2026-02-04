@@ -16,6 +16,7 @@ import { PartTimeTeamBadge } from "@/components/part-time-team-badge"
 
 interface ExpiredReplacementsTabProps {
   expiredReplacements: any[]
+  allReplacements?: any[]
   isAdmin: boolean
   firefighters: Array<{
     id: number
@@ -25,13 +26,16 @@ interface ExpiredReplacementsTabProps {
   }>
 }
 
-export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefighters }: ExpiredReplacementsTabProps) {
+export function ExpiredReplacementsTab({ expiredReplacements, allReplacements, isAdmin, firefighters }: ExpiredReplacementsTabProps) {
   const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "candidates">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
   // Helper function to get extra firefighter number
   const getExtraFirefighterNumber = (replacement: any) => {
     if (replacement.user_id !== null) return null
+    
+    // Use allReplacements if available, otherwise fallback to expiredReplacements
+    const replacementsToUse = allReplacements && allReplacements.length > 0 ? allReplacements : expiredReplacements
     
     // Normalize shift_date to ISO string for comparison
     const normalizeDate = (date: any) => {
@@ -43,7 +47,7 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
     const replacementDateNorm = normalizeDate(replacement.shift_date)
     
     // Get all extras for the same shift, sorted by ID
-    const extrasForShift = expiredReplacements
+    const extrasForShift = replacementsToUse
       .filter((r: any) => {
         const isNull = r.user_id === null
         const rDateNorm = normalizeDate(r.shift_date)
