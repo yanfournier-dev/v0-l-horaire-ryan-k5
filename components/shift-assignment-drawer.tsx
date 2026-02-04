@@ -1422,6 +1422,8 @@ export function ShiftAssignmentDrawer({
                 )
                   .concat(
                     Array.from(groupedReplacements.entries()).map(([replacedUserId, replacements]) => {
+                      console.log(`[v0] Processing replacement group with replacedUserId: ${replacedUserId} (type: ${typeof replacedUserId})`)
+                      
                       // Find the real firefighter info from allFirefighters (not teamFirefighters)
                       const replacedFF = allFirefighters?.find((ff) => ff.id === replacedUserId)
                       if (replacedFF) {
