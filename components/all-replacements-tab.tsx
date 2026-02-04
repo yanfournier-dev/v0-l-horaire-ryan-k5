@@ -32,7 +32,7 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
     
     // Get all extras for the same shift, sorted by ID
     const extrasForShift = allReplacements
-      .filter((r: any) => r.user_id === null && r.shift_date === replacement.shift_date && r.shift_type === replacement.shift_type)
+      .filter((r: any) => r.user_id === null && r.shift_date === replacement.shift_date && r.shift_type === replacement.shift_type && r.team_id === replacement.team_id)
       .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
     
     const index = extrasForShift.findIndex((r: any) => r.id === replacement.id)

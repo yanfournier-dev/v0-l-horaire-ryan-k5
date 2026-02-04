@@ -1111,8 +1111,12 @@ export function ShiftAssignmentDrawer({
       return
     }
 
-    if (!groupedReplacements.has(r.user_id)) {
-      groupedReplacements.set(r.user_id, [])
+    // For extra firefighters (user_id is null), use a unique negative ID based on replacement_id
+    // For normal firefighters, use their user_id
+    const groupKey = r.user_id === null ? -r.id : r.user_id
+
+    if (!groupedReplacements.has(groupKey)) {
+      groupedReplacements.set(groupKey, [])
     }
 
     const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
@@ -1124,7 +1128,7 @@ export function ShiftAssignmentDrawer({
       .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
     const extraNumber = extraFightersForShift.findIndex((rep: any) => rep.id === r.id) + 1
 
-    groupedReplacements.get(r.user_id)!.push({
+    groupedReplacements.get(groupKey)!.push({
       user_id: null,
       first_name: "Pompier",
       last_name: `supplémentaire ${extraNumber}`,
@@ -1454,7 +1458,6 @@ export function ShiftAssignmentDrawer({
 
                     if (hasReplacements) {
                       const bankInfo = replacement0 || replacement1 || replacement2
-
                       return (
                         <Card key={`replaced-${firefighter.id}`} className="border-green-300 bg-green-50/30">
                           <CardContent className="p-3">
