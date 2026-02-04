@@ -51,10 +51,35 @@ export function AvailableReplacementsTab({
   const getExtraFirefighterNumber = (replacement: any) => {
     if (replacement.user_id !== null) return null
     
+    console.log(`[v0] DEBUG - Processing replacement ID ${replacement.id}:`, {
+      shift_date: replacement.shift_date,
+      shift_type: replacement.shift_type,
+      team_id: replacement.team_id,
+      user_id: replacement.user_id
+    })
+    
     // Get all extras for the same shift, sorted by ID
     const extrasForShift = displayReplacements
-      .filter((r: any) => r.user_id === null && r.shift_date === replacement.shift_date && r.shift_type === replacement.shift_type && r.team_id === replacement.team_id)
+      .filter((r: any) => {
+        const isNull = r.user_id === null
+        const dateSame = r.shift_date === replacement.shift_date
+        const typeSame = r.shift_type === replacement.shift_type
+        const teamSame = r.team_id === replacement.team_id
+        
+        console.log(`[v0] DEBUG - Checking ID ${r.id}: user_id_null=${isNull}, date_same=${dateSame}, type_same=${typeSame}, team_same=${teamSame}`)
+        
+        return isNull && dateSame && typeSame && teamSame
+      })
       .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
+    
+    console.log(`[v0] DEBUG - Total matching extras for ID ${replacement.id}: ${extrasForShift.length}`)
+    console.log(`[v0] DEBUG - All displayReplacements:`, displayReplacements.map((r: any) => ({
+      id: r.id,
+      shift_date: r.shift_date,
+      shift_type: r.shift_type,
+      team_id: r.team_id,
+      user_id: r.user_id
+    })))
     
     const index = extrasForShift.findIndex((r: any) => r.id === replacement.id)
     console.log(`[v0] getExtraFirefighterNumber for ID ${replacement.id}: found ${extrasForShift.length} extras, index: ${index}, number: ${index >= 0 ? index + 1 : 1}`)
