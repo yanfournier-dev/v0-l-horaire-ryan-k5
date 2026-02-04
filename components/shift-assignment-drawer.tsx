@@ -1788,7 +1788,7 @@ export function ShiftAssignmentDrawer({
                       const firefighterId = assignment.user_id || assignment.id
 
                       const isExtraRequest =
-                        assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire"
+                        assignment.first_name === "Pompier" && assignment.last_name?.startsWith("supplémentaire")
 
                       const replacement = !loadingReplacements
                         ? isExtraRequest
