@@ -1128,8 +1128,21 @@ export function ShiftAssignmentDrawer({
 
     // For extra firefighters (user_id is null), count position among other extras for this shift
     // Get all extras for this shift sorted by creation (by ID)
+    
+    // Normalize shift_date to ISO string for comparison
+    const normalizeDate = (date: any) => {
+      if (!date) return ""
+      if (typeof date === "string") return date.split("T")[0] // Get just the date part
+      return new Date(date).toISOString().split("T")[0]
+    }
+    
+    const rDateNorm = normalizeDate(r.shift_date)
+    
     const extraFightersForShift = replacements
-      .filter((rep: any) => rep.user_id === null && rep.shift_date === r.shift_date && rep.shift_type === r.shift_type && rep.team_id === r.team_id)
+      .filter((rep: any) => {
+        const repDateNorm = normalizeDate(rep.shift_date)
+        return rep.user_id === null && repDateNorm === rDateNorm && rep.shift_type === r.shift_type && rep.team_id === r.team_id
+      })
       .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
     const extraNumber = extraFightersForShift.findIndex((rep: any) => rep.id === r.id) + 1
 
@@ -1189,6 +1202,11 @@ export function ShiftAssignmentDrawer({
 
         // Skip if this is a placeholder created for removed firefighter
         if (assignment.replaced_user_id) {
+          return false
+        }
+
+        // Skip old extra firefighter entries without proper numbering (Pompier supplémentaire without a number)
+        if (assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire") {
           return false
         }
 
