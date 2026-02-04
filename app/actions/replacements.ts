@@ -807,6 +807,60 @@ export async function deleteReplacement(replacementId: number) {
   }
 }
 
+// Utility function to generate numbered extra firefighter name
+async function getNextExtraFirefighterNumber(
+  shiftDate: string,
+  shiftType: string,
+  teamId: number
+): Promise<number> {
+  const db = neon(process.env.DATABASE_URL!, {
+    fetchConnectionCache: true,
+    disableWarningInBrowsers: true,
+  })
+
+  // Get all extra firefighters for this shift
+  const existingExtras = await db`
+    SELECT r.id, r.first_name, r.last_name
+    FROM replacements r
+    WHERE r.shift_date = ${shiftDate}
+      AND r.shift_type = ${shiftType}
+      AND r.team_id = ${teamId}
+      AND r.user_id IS NULL
+      AND r.first_name = 'Pompier'
+      AND r.last_name LIKE 'supplémentaire %'
+  `
+
+  console.log("[v0] getNextExtraFirefighterNumber - Found existing extras:", existingExtras)
+
+  // Extract numbers from existing names (e.g., "supplémentaire 1", "supplémentaire 2")
+  const usedNumbers = existingExtras
+    .map((r) => {
+      const match = r.last_name.match(/supplémentaire (\d+)/)
+      return match ? parseInt(match[1], 10) : 0
+    })
+    .filter((num) => num > 0)
+
+  console.log("[v0] getNextExtraFirefighterNumber - Used numbers:", usedNumbers)
+
+  // Find the lowest available number
+  if (usedNumbers.length === 0) return 1
+
+  usedNumbers.sort((a, b) => a - b)
+  
+  // Find first gap
+  for (let i = 1; i <= usedNumbers.length; i++) {
+    if (!usedNumbers.includes(i)) {
+      console.log("[v0] getNextExtraFirefighterNumber - Reusing number:", i)
+      return i
+    }
+  }
+
+  // If no gaps, use next number
+  const nextNumber = usedNumbers[usedNumbers.length - 1] + 1
+  console.log("[v0] getNextExtraFirefighterNumber - Using next number:", nextNumber)
+  return nextNumber
+}
+
 export async function createExtraFirefighterReplacement(
   shiftDate: string,
   shiftType: "day" | "night" | "full_24h",
@@ -897,7 +951,11 @@ export async function createExtraFirefighterReplacement(
 
     console.log("[v0] createExtraFirefighterReplacement - Created replacement with ID:", replacementId)
 
-    const firefighterToReplaceName = "Pompier supplémentaire"
+    // Get the next available number for this extra firefighter
+    const extraNumber = await getNextExtraFirefighterNumber(shiftDate, shiftType, teamId)
+    const firefighterToReplaceName = `Pompier supplémentaire ${extraNumber}`
+
+    console.log("[v0] createExtraFirefighterReplacement - Using firefighter name:", firefighterToReplaceName)
 
     const deadlineLabel = getDeadlineLabel(deadlineSeconds)
     const shouldSendNotifications = deadlineLabel !== null
