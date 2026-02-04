@@ -2249,7 +2249,7 @@ export function ShiftAssignmentDrawer({
             {/* End of changed section */}
 
             {/* Display ALL extra firefighters separately */}
-            {!loadingReplacements && allReplacements.length > 0 && (
+            {!loadingReplacements && getAllReplacementsForExtraFirefighters().length > 0 && (
               <div className="space-y-2 mt-6 pt-4 border-t">
                 <p className="text-sm font-semibold text-muted-foreground px-3">Pompiers supplémentaires</p>
                 {getAllReplacementsForExtraFirefighters().map((replacement) => {
