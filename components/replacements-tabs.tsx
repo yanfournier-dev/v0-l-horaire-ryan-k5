@@ -300,7 +300,7 @@ export function ReplacementsTabs({
         <TabsContent value="to-assign">
           <ExpiredReplacementsTab
             expiredReplacements={expiredReplacements}
-            allReplacements={replacements}
+            allReplacements={allReplacements}
             isAdmin={isAdmin}
             firefighters={firefighters}
           />
