@@ -900,6 +900,12 @@ export async function createExtraFirefighterReplacement(
       deadlineDuration,
     })
 
+    // Get the next available number BEFORE inserting the replacement
+    const extraNumber = await getNextExtraFirefighterNumber(shiftDate, shiftType, teamId)
+    const firefighterToReplaceName = `Pompier supplémentaire ${extraNumber}`
+
+    console.log("[v0] createExtraFirefighterReplacement - Will use firefighter name:", firefighterToReplaceName)
+
     // Get shift times for full replacements
     let finalStartTime = startTime
     let finalEndTime = endTime
@@ -924,13 +930,7 @@ export async function createExtraFirefighterReplacement(
 
     const replacementId = result[0].id
 
-    console.log("[v0] createExtraFirefighterReplacement - Created replacement with ID:", replacementId)
-
-    // Get the next available number for this extra firefighter
-    const extraNumber = await getNextExtraFirefighterNumber(shiftDate, shiftType, teamId)
-    const firefighterToReplaceName = `Pompier supplémentaire ${extraNumber}`
-
-    console.log("[v0] createExtraFirefighterReplacement - Using firefighter name:", firefighterToReplaceName)
+    console.log("[v0] createExtraFirefighterReplacement - Created replacement with ID:", replacementId, "with name:", firefighterToReplaceName)
 
     const deadlineLabel = getDeadlineLabel(deadlineSeconds)
     const shouldSendNotifications = deadlineLabel !== null
