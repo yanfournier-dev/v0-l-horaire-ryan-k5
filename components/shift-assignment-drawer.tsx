@@ -1443,21 +1443,18 @@ export function ShiftAssignmentDrawer({
                   )
                   .filter((firefighter, index, self) => self.findIndex((f) => f.id === firefighter.id) === index)
                   .sort((a, b) => {
-                    // For extra firefighters (negative IDs), sort by their number in ascending order
+                    // For extra firefighters (negative IDs), sort by ID descending to get ascending numbers
+                    // (higher ID = lower number, so we reverse)
                     const aIsExtra = a.id < 0
                     const bIsExtra = b.id < 0
                     
                     if (aIsExtra && bIsExtra) {
-                      // Both are extras - sort by number (1, 2, 3, 4, 5)
-                      const aReplacements = groupedReplacements.get(a.id) || []
-                      const bReplacements = groupedReplacements.get(b.id) || []
-                      
-                      if (aReplacements.length > 0 && bReplacements.length > 0) {
-                        const aNumber = getExtraFirefighterNumber(aReplacements[0])
-                        const bNumber = getExtraFirefighterNumber(bReplacements[0])
-                        return (aNumber || 999) - (bNumber || 999)
-                      }
+                      // Both are extras - sort by ID descending (which gives ascending numbers: 1, 2, 3, 4, 5)
+                      return (b.id || 0) - (a.id || 0)
                     }
+                    
+                    if (aIsExtra) return 1 // Extras go after regular members
+                    if (bIsExtra) return -1 // Regular members go before extras
                     
                     // For non-extras, use the original order map
                     const indexA = originalOrderMap.get(a.id) ?? 999
