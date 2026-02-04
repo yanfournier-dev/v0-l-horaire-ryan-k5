@@ -30,9 +30,26 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
   const getExtraFirefighterNumber = (replacement: any) => {
     if (replacement.user_id !== null) return null
     
+    // Normalize shift_date to ISO string for comparison
+    const normalizeDate = (date: any) => {
+      if (!date) return ""
+      if (typeof date === "string") return date.split("T")[0] // Get just the date part
+      return new Date(date).toISOString().split("T")[0]
+    }
+    
+    const replacementDateNorm = normalizeDate(replacement.shift_date)
+    
     // Get all extras for the same shift, sorted by ID
     const extrasForShift = allReplacements
-      .filter((r: any) => r.user_id === null && r.shift_date === replacement.shift_date && r.shift_type === replacement.shift_type && r.team_id === replacement.team_id)
+      .filter((r: any) => {
+        const isNull = r.user_id === null
+        const rDateNorm = normalizeDate(r.shift_date)
+        const dateSame = rDateNorm === replacementDateNorm
+        const typeSame = r.shift_type === replacement.shift_type
+        const teamSame = r.team_id === replacement.team_id
+        
+        return isNull && dateSame && typeSame && teamSame
+      })
       .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
     
     const index = extrasForShift.findIndex((r: any) => r.id === replacement.id)
