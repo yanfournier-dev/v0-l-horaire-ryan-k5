@@ -1066,6 +1066,11 @@ export function ShiftAssignmentDrawer({
   })
 
   assignedReplacements.forEach((r: any) => {
+    // Skip extra firefighters (user_id = null) as they're handled separately in the replacements loop
+    if (r.user_id === null) {
+      return
+    }
+
     const approvedApp = r.applications.find((app: any) => app.status === "approved")
     const replacementKey = `${approvedApp.applicant_id}_${r.user_id}`
 
@@ -1398,10 +1403,15 @@ export function ShiftAssignmentDrawer({
                       }
                       // Fallback to names stored in replacement data
                       const firstReplacement = replacements[0]
+                      
+                      // For extras (negative IDs), use the first_name/last_name directly
+                      // For regular replacements, use the replaced_* fields
+                      const isExtra = replacedUserId < 0
+                      
                       return {
                         id: replacedUserId,
-                        first_name: firstReplacement.replaced_first_name || "Pompier",
-                        last_name: firstReplacement.replaced_last_name || "Inconnu",
+                        first_name: isExtra ? firstReplacement.first_name : (firstReplacement.replaced_first_name || "Pompier"),
+                        last_name: isExtra ? firstReplacement.last_name : (firstReplacement.replaced_last_name || "Inconnu"),
                         role: "firefighter",
                         email: "",
                         position_code: firstReplacement.replaced_position_code || "", // Use stored position_code
