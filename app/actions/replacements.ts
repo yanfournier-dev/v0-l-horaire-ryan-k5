@@ -818,46 +818,21 @@ async function getNextExtraFirefighterNumber(
     disableWarningInBrowsers: true,
   })
 
-  // Get all extra firefighters for this shift
-  const existingExtras = await db`
-    SELECT r.id, r.first_name, r.last_name
-    FROM replacements r
-    WHERE r.shift_date = ${shiftDate}
-      AND r.shift_type = ${shiftType}
-      AND r.team_id = ${teamId}
-      AND r.user_id IS NULL
-      AND r.first_name = 'Pompier'
-      AND r.last_name LIKE 'supplémentaire %'
+  // Count all extra firefighters for this shift (user_id = NULL)
+  const result = await db`
+    SELECT COUNT(*) as count
+    FROM replacements
+    WHERE shift_date = ${shiftDate}
+      AND shift_type = ${shiftType}
+      AND team_id = ${teamId}
+      AND user_id IS NULL
   `
 
-  console.log("[v0] getNextExtraFirefighterNumber - Found existing extras:", existingExtras)
+  const existingCount = result[0]?.count || 0
+  const nextNumber = (existingCount as number) + 1
 
-  // Extract numbers from existing names (e.g., "supplémentaire 1", "supplémentaire 2")
-  const usedNumbers = existingExtras
-    .map((r) => {
-      const match = r.last_name.match(/supplémentaire (\d+)/)
-      return match ? parseInt(match[1], 10) : 0
-    })
-    .filter((num) => num > 0)
-
-  console.log("[v0] getNextExtraFirefighterNumber - Used numbers:", usedNumbers)
-
-  // Find the lowest available number
-  if (usedNumbers.length === 0) return 1
-
-  usedNumbers.sort((a, b) => a - b)
+  console.log("[v0] getNextExtraFirefighterNumber - Existing extras:", existingCount, "-> Next number:", nextNumber)
   
-  // Find first gap
-  for (let i = 1; i <= usedNumbers.length; i++) {
-    if (!usedNumbers.includes(i)) {
-      console.log("[v0] getNextExtraFirefighterNumber - Reusing number:", i)
-      return i
-    }
-  }
-
-  // If no gaps, use next number
-  const nextNumber = usedNumbers[usedNumbers.length - 1] + 1
-  console.log("[v0] getNextExtraFirefighterNumber - Using next number:", nextNumber)
   return nextNumber
 }
 
