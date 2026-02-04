@@ -26,6 +26,19 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
   const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "status" | "candidates">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
+  // Helper function to get extra firefighter number
+  const getExtraFirefighterNumber = (replacement: any) => {
+    if (replacement.user_id !== null) return null
+    
+    // Get all extras for the same shift, sorted by ID
+    const extrasForShift = allReplacements
+      .filter((r: any) => r.user_id === null && r.shift_date === replacement.shift_date && r.shift_type === replacement.shift_type)
+      .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
+    
+    const index = extrasForShift.findIndex((r: any) => r.id === replacement.id)
+    return index >= 0 ? index + 1 : 1
+  }
+
   const getReplacementStatusLabel = (status: string) => {
     switch (status) {
       case "open":
@@ -69,8 +82,8 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
         comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         break
       case "name":
-        const nameA = a.user_id === null ? "Pompier supplémentaire" : `${a.first_name} ${a.last_name}`
-        const nameB = b.user_id === null ? "Pompier supplémentaire" : `${b.first_name} ${b.last_name}`
+        const nameA = a.user_id === null ? `Pompier supplémentaire ${getExtraFirefighterNumber(a)}` : `${a.first_name} ${a.last_name}`
+        const nameB = b.user_id === null ? `Pompier supplémentaire ${getExtraFirefighterNumber(b)}` : `${b.first_name} ${b.last_name}`
         comparison = nameA.localeCompare(nameB)
         break
       case "status":

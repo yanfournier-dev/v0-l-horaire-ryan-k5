@@ -828,8 +828,8 @@ async function getNextExtraFirefighterNumber(
       AND user_id IS NULL
   `
 
-  const existingCount = result[0]?.count || 0
-  const nextNumber = (existingCount as number) + 1
+  const existingCount = parseInt(result[0]?.count as string, 10) || 0
+  const nextNumber = existingCount + 1
 
   console.log("[v0] getNextExtraFirefighterNumber - Existing extras:", existingCount, "-> Next number:", nextNumber)
   

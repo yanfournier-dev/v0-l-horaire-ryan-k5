@@ -29,6 +29,19 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
   const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "candidates">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
+  // Helper function to get extra firefighter number
+  const getExtraFirefighterNumber = (replacement: any) => {
+    if (replacement.user_id !== null) return null
+    
+    // Get all extras for the same shift, sorted by ID
+    const extrasForShift = expiredReplacements
+      .filter((r: any) => r.user_id === null && r.shift_date === replacement.shift_date && r.shift_type === replacement.shift_type)
+      .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
+    
+    const index = extrasForShift.findIndex((r: any) => r.id === replacement.id)
+    return index >= 0 ? index + 1 : 1
+  }
+
   const sortedReplacements = [...expiredReplacements].sort((a, b) => {
     let comparison = 0
 
@@ -40,8 +53,8 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
         comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         break
       case "name":
-        const nameA = a.user_id === null ? "Pompier supplémentaire" : `${a.first_name} ${a.last_name}`
-        const nameB = b.user_id === null ? "Pompier supplémentaire" : `${b.first_name} ${b.last_name}`
+        const nameA = a.user_id === null ? `Pompier supplémentaire ${getExtraFirefighterNumber(a)}` : `${a.first_name} ${a.last_name}`
+        const nameB = b.user_id === null ? `Pompier supplémentaire ${getExtraFirefighterNumber(b)}` : `${b.first_name} ${b.last_name}`
         comparison = nameA.localeCompare(nameB)
         break
       case "candidates":
@@ -116,7 +129,7 @@ export function ExpiredReplacementsTab({ expiredReplacements, isAdmin, firefight
                   {/* Name and team */}
                   <div className="flex-1 min-w-0 leading-none">
                     {replacement.user_id === null ? (
-                      <span className="text-amber-600 dark:text-amber-400 font-medium">Pompier supplémentaire</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">Pompier supplémentaire {getExtraFirefighterNumber(replacement)}</span>
                     ) : (
                       <span className="truncate">
                         {replacement.first_name} {replacement.last_name}

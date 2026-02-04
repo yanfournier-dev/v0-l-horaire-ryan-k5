@@ -534,11 +534,6 @@ export function ShiftAssignmentDrawer({
     return found || null
   }
 
-  const getAllReplacementsForExtraFirefighters = () => {
-    // Get ALL replacements where user_id is null (all extra firefighters)
-    return replacements.filter((r) => r.user_id === null)
-  }
-
   const getReplacementForExtraFirefighter = () => {
     // For backward compatibility - returns first extra firefighter
     const found = replacements.find((r) => r.user_id === null)
@@ -1122,8 +1117,11 @@ export function ShiftAssignmentDrawer({
 
     const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
 
-    // For extra firefighters (user_id is null), generate the name with number
-    const extraFightersForShift = replacements.filter((rep: any) => rep.user_id === null && rep.shift_date === r.shift_date && rep.shift_type === r.shift_type && rep.team_id === r.team_id)
+    // For extra firefighters (user_id is null), count position among other extras for this shift
+    // Get all extras for this shift sorted by creation (by ID)
+    const extraFightersForShift = replacements
+      .filter((rep: any) => rep.user_id === null && rep.shift_date === r.shift_date && rep.shift_type === r.shift_type && rep.team_id === r.team_id)
+      .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
     const extraNumber = extraFightersForShift.findIndex((rep: any) => rep.id === r.id) + 1
 
     groupedReplacements.get(r.user_id)!.push({
@@ -2248,47 +2246,6 @@ export function ShiftAssignmentDrawer({
             </div>
             {/* End of changed section */}
 
-            {/* Display ALL extra firefighters separately */}
-            {!loadingReplacements && getAllReplacementsForExtraFirefighters().length > 0 && (
-              <div className="space-y-2 mt-6 pt-4 border-t">
-                <p className="text-sm font-semibold text-muted-foreground px-3">Pompiers supplémentaires</p>
-                {getAllReplacementsForExtraFirefighters().map((replacement) => {
-                  const firefighterName = `${replacement.first_name} ${replacement.last_name}`
-                  
-                  return (
-                    <Card key={`extra-${replacement.id}`} className="border-blue-200 bg-blue-50/20">
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex-1">
-                            <p className="font-medium text-blue-700">{firefighterName}</p>
-                            {replacement.is_partial && replacement.start_time && replacement.end_time && (
-                              <p className="text-xs text-muted-foreground">
-                                {replacement.start_time.slice(0, 5)} - {replacement.end_time.slice(0, 5)}
-                              </p>
-                            )}
-                            {replacement.status && (
-                              <p className="text-xs text-muted-foreground">
-                                Statut: {getStatusLabel(replacement.status)}
-                              </p>
-                            )}
-                          </div>
-                          {isAdmin && replacement.id && (
-                            <DeleteReplacementButton
-                              replacementId={replacement.id}
-                              onSuccess={loadData}
-                              hasAssignedCandidate={!!replacement.user_id}
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
-                            />
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
             {/* Use displayedAssignments to check if it's empty */}
             {displayedAssignments.length === 0 && (
               <Card>
