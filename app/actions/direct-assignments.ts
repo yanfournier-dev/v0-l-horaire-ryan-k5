@@ -711,32 +711,23 @@ export async function removeReplacement(shiftId: number, userId: number, replace
 
     if (isDoubleReplacement && replacementToKeep) {
       console.log("[v0] removeReplacement: Double replacement detected, keeping:", replacementToKeep.id)
-      const r1 = allReplacements[0]
-      const r2 = allReplacements[1]
-
-      const minStartTime =
-        r1.start_time && r2.start_time
-          ? r1.start_time < r2.start_time
-            ? r1.start_time
-            : r2.start_time
-          : r1.start_time || r2.start_time
-
-      const maxEndTime =
-        r1.end_time && r2.end_time
-          ? r1.end_time > r2.end_time
-            ? r1.end_time
-            : r2.end_time
-          : r1.end_time || r2.end_time
-
-      const coversFullShift = minStartTime === shift.start_time && maxEndTime === shift.end_time
+      
+      // Restore the kept replacement to its original shift hours
+      const coversFullShift = shift.start_time === replacementToKeep.start_time && shift.end_time === replacementToKeep.end_time
+      
+      console.log("[v0] removeReplacement: Restoring to original hours:", {
+        original_start: shift.start_time,
+        original_end: shift.end_time,
+        coversFullShift,
+      })
 
       await sql`
         UPDATE shift_assignments
         SET 
           replacement_order = 1,
-          start_time = ${minStartTime},
-          end_time = ${maxEndTime},
-          is_partial = ${!coversFullShift}
+          start_time = ${shift.start_time},
+          end_time = ${shift.end_time},
+          is_partial = ${false}
         WHERE id = ${replacementToKeep.id}
       `
     } else if (replacementOrder === 1 && allReplacements.length === 2) {
@@ -808,32 +799,16 @@ export async function removeDirectAssignment(shiftId: number, userId: number, re
     const replacementToKeep = allReplacements.find((r: any) => r.user_id !== userId)
 
     if (isDoubleReplacement && replacementToKeep) {
-      const r1 = allReplacements[0]
-      const r2 = allReplacements[1]
-
-      const minStartTime =
-        r1.start_time && r2.start_time
-          ? r1.start_time < r2.start_time
-            ? r1.start_time
-            : r2.start_time
-          : r1.start_time || r2.start_time
-
-      const maxEndTime =
-        r1.end_time && r2.end_time
-          ? r1.end_time > r2.end_time
-            ? r1.end_time
-            : r2.end_time
-          : r1.end_time || r2.end_time
-
-      const coversFullShift = minStartTime === shift.start_time && maxEndTime === shift.end_time
+      // Restore the kept replacement to its original shift hours
+      const coversFullShift = shift.start_time === replacementToKeep.start_time && shift.end_time === replacementToKeep.end_time
 
       await sql`
         UPDATE shift_assignments
         SET 
           replacement_order = 1,
-          start_time = ${minStartTime},
-          end_time = ${maxEndTime},
-          is_partial = ${!coversFullShift}
+          start_time = ${shift.start_time},
+          end_time = ${shift.end_time},
+          is_partial = ${false}
         WHERE id = ${replacementToKeep.id}
       `
     } else if (replacementOrder === 1 && allReplacements.length === 2) {
