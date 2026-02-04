@@ -1195,23 +1195,18 @@ export function ShiftAssignmentDrawer({
 
     const assignments = (currentAssignments || [])
       .filter((assignment) => {
-        console.log(`[v0] Filtering assignment: first_name="${assignment.first_name}", last_name="${assignment.last_name}", user_id=${assignment.user_id}`)
-        
         // Skip manually removed extra firefighters
         if (removedExtraFirefighters.includes(assignment.user_id)) {
-          console.log(`[v0] - Skipped: in removedExtraFirefighters`)
           return false
         }
 
         // Skip if this is a placeholder created for removed firefighter
         if (assignment.replaced_user_id) {
-          console.log(`[v0] - Skipped: has replaced_user_id`)
           return false
         }
 
         // Skip old extra firefighter entries without proper numbering (Pompier supplémentaire without a number)
         if (assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire") {
-          console.log(`[v0] - Skipped: old extra without number`)
           return false
         }
 
@@ -1236,17 +1231,14 @@ export function ShiftAssignmentDrawer({
         }
 
         if (isReplacementOnly) {
-          console.log(`[v0] - Skipped: isReplacementOnly`)
           return false
         }
 
         // Exclude extra firefighters who were removed (this might be redundant with removedExtraFirefighters)
         if (replacementUserIdsToHide.has(assignment.user_id)) {
-          console.log(`[v0] - Skipped: in replacementUserIdsToHide`)
           return false
         }
 
-        console.log(`[v0] - Kept: passing all filters`)
         return true
       })
       .map((assignment) => {
@@ -1395,6 +1387,11 @@ export function ShiftAssignmentDrawer({
                   new Map(
                     currentAssignments
                       .filter((assignment) => {
+                        // Skip old extra firefighter entries without proper numbering (Pompier supplémentaire without a number)
+                        if (assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire") {
+                          return false
+                        }
+
                         // Permanent team members are NOT filtered out even if they replace someone
                         const isExternalReplacement = replacementUserIdsToHide.has(assignment.user_id)
                         
@@ -1422,8 +1419,6 @@ export function ShiftAssignmentDrawer({
                 )
                   .concat(
                     Array.from(groupedReplacements.entries()).map(([replacedUserId, replacements]) => {
-                      console.log(`[v0] Processing replacement group with replacedUserId: ${replacedUserId} (type: ${typeof replacedUserId})`)
-                      
                       // Find the real firefighter info from allFirefighters (not teamFirefighters)
                       const replacedFF = allFirefighters?.find((ff) => ff.id === replacedUserId)
                       if (replacedFF) {
