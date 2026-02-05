@@ -26,18 +26,17 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
   const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "status" | "candidates">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  // Helper function to get extra firefighter number
+  // Helper function to get extra firefighter number from user name
   const getExtraFirefighterNumber = (replacement: any) => {
-    if (replacement.user_id !== null) return null
-    
-    // Extract number from last_name which is stored as "supplémentaire X"
-    // Example: "supplémentaire 5" -> 5
-    const lastNameMatch = replacement.last_name?.match(/\d+/)
-    if (lastNameMatch) {
-      return parseInt(lastNameMatch[0], 10)
+    // Check if this replacement is for an extra firefighter (Pompier supplémentaire)
+    if (replacement.first_name === 'Pompier' && replacement.last_name) {
+      const lastNameMatch = replacement.last_name?.match(/\d+/)
+      if (lastNameMatch) {
+        return parseInt(lastNameMatch[0], 10)
+      }
     }
     
-    return 1 // Fallback to 1 if no number found
+    return null
   }
 
   const getReplacementStatusLabel = (status: string) => {
