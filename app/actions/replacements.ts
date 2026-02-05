@@ -925,7 +925,7 @@ export async function createExtraFirefighterReplacement(
       // Create a new user for this extra firefighter
       const newUser = await db`
         INSERT INTO users (first_name, last_name, email, role)
-        VALUES ('Pompier', ${`supplémentaire ${extraNumber}`}, ${`extra${extraNumber}@internal`}, 'pompier')
+        VALUES ('Pompier', ${`supplémentaire ${extraNumber}`}, ${`extra${extraNumber}@internal`}, 'firefighter')
         RETURNING id
       `
       extraFirefighterId = newUser[0].id
