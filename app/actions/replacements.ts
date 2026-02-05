@@ -818,11 +818,17 @@ async function getNextExtraFirefighterNumber(
     disableWarningInBrowsers: true,
   })
 
+  // Normalize shift_date to just the date part (YYYY-MM-DD) to handle both Date objects and ISO strings
+  const normalizedDate = typeof shiftDate === "string" 
+    ? shiftDate.split("T")[0] 
+    : new Date(shiftDate).toISOString().split("T")[0]
+
   // Count all extra firefighters for this shift (user_id = NULL)
+  // Cast shift_date to TEXT and extract date part for comparison
   const result = await db`
     SELECT COUNT(*) as count
     FROM replacements
-    WHERE shift_date = ${shiftDate}
+    WHERE DATE(shift_date) = ${normalizedDate}::date
       AND shift_type = ${shiftType}
       AND team_id = ${teamId}
       AND user_id IS NULL
