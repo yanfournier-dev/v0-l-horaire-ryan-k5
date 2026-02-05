@@ -1594,8 +1594,8 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
     const replacements = await db`
       SELECT 
         r.*,
-        u.first_name,
-        u.last_name,
+        COALESCE(u.first_name, r.first_name) as first_name,
+        COALESCE(u.last_name, r.last_name) as last_name,
         u.role,
         u.email,
         (
@@ -1628,11 +1628,10 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
     extraFirefighters.forEach((ef: any, index: number) => {
       console.log(`[v0] Extra firefighter ${index + 1}:`, {
         id: ef.id,
+        first_name: ef.first_name,
+        last_name: ef.last_name,
         status: ef.status,
         is_partial: ef.is_partial,
-        start_time: ef.start_time,
-        end_time: ef.end_time,
-        application_deadline: ef.application_deadline,
       })
     })
 
