@@ -26,17 +26,34 @@ export function AllReplacementsTab({ allReplacements }: AllReplacementsTabProps)
   const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "status" | "candidates">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  // Helper function to get extra firefighter number from user name
+  // Helper function to get extra firefighter number
   const getExtraFirefighterNumber = (replacement: any) => {
-    // Check if this replacement is for an extra firefighter (Pompier supplémentaire)
-    if (replacement.first_name === 'Pompier' && replacement.last_name) {
-      const lastNameMatch = replacement.last_name?.match(/\d+/)
-      if (lastNameMatch) {
-        return parseInt(lastNameMatch[0], 10)
-      }
+    if (replacement.user_id !== null) return null
+    
+    // Normalize shift_date to ISO string for comparison
+    const normalizeDate = (date: any) => {
+      if (!date) return ""
+      if (typeof date === "string") return date.split("T")[0] // Get just the date part
+      return new Date(date).toISOString().split("T")[0]
     }
     
-    return null
+    const replacementDateNorm = normalizeDate(replacement.shift_date)
+    
+    // Get all extras for the same shift, sorted by ID
+    const extrasForShift = allReplacements
+      .filter((r: any) => {
+        const isNull = r.user_id === null
+        const rDateNorm = normalizeDate(r.shift_date)
+        const dateSame = rDateNorm === replacementDateNorm
+        const typeSame = r.shift_type === replacement.shift_type
+        const teamSame = r.team_id === replacement.team_id
+        
+        return isNull && dateSame && typeSame && teamSame
+      })
+      .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
+    
+    const index = extrasForShift.findIndex((r: any) => r.id === replacement.id)
+    return index >= 0 ? index + 1 : 1
   }
 
   const getReplacementStatusLabel = (status: string) => {

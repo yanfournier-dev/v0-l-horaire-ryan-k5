@@ -818,17 +818,11 @@ async function getNextExtraFirefighterNumber(
     disableWarningInBrowsers: true,
   })
 
-  // Normalize shift_date to just the date part (YYYY-MM-DD)
-  const normalizedDate = typeof shiftDate === "string" 
-    ? shiftDate.split("T")[0] 
-    : new Date(shiftDate).toISOString().split("T")[0]
-
-  // Count ALL extra firefighters for this shift (user_id = NULL)
-  // Include ALL statuses: 'open', 'expired', 'assigned', etc.
+  // Count all extra firefighters for this shift (user_id = NULL)
   const result = await db`
     SELECT COUNT(*) as count
     FROM replacements
-    WHERE DATE(shift_date) = ${normalizedDate}::date
+    WHERE shift_date = ${shiftDate}
       AND shift_type = ${shiftType}
       AND team_id = ${teamId}
       AND user_id IS NULL
@@ -837,7 +831,7 @@ async function getNextExtraFirefighterNumber(
   const existingCount = parseInt(result[0]?.count as string, 10) || 0
   const nextNumber = existingCount + 1
 
-  console.log("[v0] getNextExtraFirefighterNumber - Date:", normalizedDate, "Existing extras:", existingCount, "-> Next number:", nextNumber)
+  console.log("[v0] getNextExtraFirefighterNumber - Existing extras:", existingCount, "-> Next number:", nextNumber)
   
   return nextNumber
 }
@@ -912,27 +906,6 @@ export async function createExtraFirefighterReplacement(
 
     console.log("[v0] createExtraFirefighterReplacement - Will use firefighter name:", firefighterToReplaceName)
 
-    // Create or get the extra firefighter user
-    // First, check if this extra firefighter already exists
-    let extraFirefighterId: number
-    const existingUser = await db`
-      SELECT id FROM users WHERE first_name = 'Pompier' AND last_name = ${`supplémentaire ${extraNumber}`}
-    `
-    
-    if (existingUser.length > 0) {
-      extraFirefighterId = existingUser[0].id
-    } else {
-      // Create a new user for this extra firefighter
-      const newUser = await db`
-        INSERT INTO users (first_name, last_name, email, role)
-        VALUES ('Pompier', ${`supplémentaire ${extraNumber}`}, ${`extra${extraNumber}@internal`}, 'firefighter')
-        RETURNING id
-      `
-      extraFirefighterId = newUser[0].id
-    }
-
-    console.log("[v0] createExtraFirefighterReplacement - Extra firefighter user ID:", extraFirefighterId)
-
     // Get shift times for full replacements
     let finalStartTime = startTime
     let finalEndTime = endTime
@@ -945,12 +918,12 @@ export async function createExtraFirefighterReplacement(
     const result = await db`
       INSERT INTO replacements (
         shift_date, shift_type, team_id, status, is_partial, start_time, end_time,
-        application_deadline, deadline_duration, user_id
+        application_deadline, deadline_duration
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
         ${isPartial}, ${finalStartTime}, ${finalEndTime},
-        ${applicationDeadline}, ${deadlineDuration}, ${extraFirefighterId}
+        ${applicationDeadline}, ${deadlineDuration}
       )
       RETURNING id
     `
