@@ -818,13 +818,13 @@ async function getNextExtraFirefighterNumber(
     disableWarningInBrowsers: true,
   })
 
-  // Normalize shift_date to just the date part (YYYY-MM-DD) to handle both Date objects and ISO strings
+  // Normalize shift_date to just the date part (YYYY-MM-DD)
   const normalizedDate = typeof shiftDate === "string" 
     ? shiftDate.split("T")[0] 
     : new Date(shiftDate).toISOString().split("T")[0]
 
-  // Count all extra firefighters for this shift (user_id = NULL)
-  // Cast shift_date to TEXT and extract date part for comparison
+  // Count ALL extra firefighters for this shift (user_id = NULL)
+  // Include ALL statuses: 'open', 'expired', 'assigned', etc.
   const result = await db`
     SELECT COUNT(*) as count
     FROM replacements
@@ -837,7 +837,7 @@ async function getNextExtraFirefighterNumber(
   const existingCount = parseInt(result[0]?.count as string, 10) || 0
   const nextNumber = existingCount + 1
 
-  console.log("[v0] getNextExtraFirefighterNumber - Existing extras:", existingCount, "-> Next number:", nextNumber)
+  console.log("[v0] getNextExtraFirefighterNumber - Date:", normalizedDate, "Existing extras:", existingCount, "-> Next number:", nextNumber)
   
   return nextNumber
 }
@@ -924,12 +924,12 @@ export async function createExtraFirefighterReplacement(
     const result = await db`
       INSERT INTO replacements (
         shift_date, shift_type, team_id, status, is_partial, start_time, end_time,
-        application_deadline, deadline_duration
+        application_deadline, deadline_duration, first_name, last_name
       )
       VALUES (
         ${shiftDate}, ${shiftType}, ${teamId}, 'open',
         ${isPartial}, ${finalStartTime}, ${finalEndTime},
-        ${applicationDeadline}, ${deadlineDuration}
+        ${applicationDeadline}, ${deadlineDuration}, 'Pompier', ${`supplémentaire ${extraNumber}`}
       )
       RETURNING id
     `
@@ -1594,8 +1594,8 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
     const replacements = await db`
       SELECT 
         r.*,
-        COALESCE(u.first_name, r.first_name) as first_name,
-        COALESCE(u.last_name, r.last_name) as last_name,
+        u.first_name,
+        u.last_name,
         u.role,
         u.email,
         (
@@ -1628,10 +1628,11 @@ export async function getReplacementsForShift(shiftDate: string, shiftType: stri
     extraFirefighters.forEach((ef: any, index: number) => {
       console.log(`[v0] Extra firefighter ${index + 1}:`, {
         id: ef.id,
-        first_name: ef.first_name,
-        last_name: ef.last_name,
         status: ef.status,
         is_partial: ef.is_partial,
+        start_time: ef.start_time,
+        end_time: ef.end_time,
+        application_deadline: ef.application_deadline,
       })
     })
 

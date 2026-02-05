@@ -30,7 +30,7 @@ export function ExpiredReplacementsTab({ expiredReplacements, allReplacements, i
   const [sortBy, setSortBy] = useState<"date" | "created_at" | "name" | "candidates">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  // Helper function to get extra firefighter number from the stored name
+  // Helper function to get extra firefighter number from stored name
   const getExtraFirefighterNumber = (replacement: any) => {
     if (replacement.user_id !== null) return null
     

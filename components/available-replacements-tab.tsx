@@ -47,7 +47,7 @@ export function AvailableReplacementsTab({
   console.log("[v0] AvailableReplacementsTab - Total open replacements:", openReplacements.length)
   console.log("[v0] AvailableReplacementsTab - Display count:", displayReplacements.length)
 
-  // Helper function to get extra firefighter number from the stored name
+  // Helper function to get extra firefighter number from stored name
   const getExtraFirefighterNumber = (replacement: any) => {
     if (replacement.user_id !== null) return null
     
