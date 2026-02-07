@@ -291,7 +291,7 @@ export async function getNotificationErrorsCount() {
 
   try {
     const result = await sql`
-      SELECT COUNT(DISTINCT type, related_id) as error_count
+      SELECT COUNT(*) as error_count
       FROM notifications
       WHERE channels_failed IS NOT NULL AND array_length(channels_failed, 1) > 0
     `
