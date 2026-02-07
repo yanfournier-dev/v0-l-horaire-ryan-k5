@@ -299,41 +299,61 @@ export async function getNotificationErrorsCount() {
         AND (error_acknowledged IS NULL OR error_acknowledged = false)
     `
 
-    return Number.parseInt(result[0]?.error_count || "0")
+    const count = Number.parseInt(result[0]?.error_count || "0")
+    console.log("[v0] getNotificationErrorsCount: Returning count:", count)
+    return count
   } catch (error) {
-    console.error("getNotificationErrorsCount: Error", error)
+    console.error("[v0] getNotificationErrorsCount: Error", error)
     return 0
   }
 }
 
 export async function acknowledgeNotificationError(notificationId: number) {
+  console.log("[v0] acknowledgeNotificationError: Called with notificationId:", notificationId)
+  
   const session = await getSession()
   if (!session) {
+    console.log("[v0] acknowledgeNotificationError: No session")
     return { success: false, error: "Non authentifié" }
   }
 
   const userIsAdmin = await isUserAdmin()
   if (!userIsAdmin) {
+    console.log("[v0] acknowledgeNotificationError: User is not admin")
     return { success: false, error: "Accès refusé - Réservé aux admins" }
   }
 
   try {
-    await sql`
+    console.log("[v0] acknowledgeNotificationError: Updating notification", notificationId)
+    
+    const updateResult = await sql`
       UPDATE notifications
       SET error_acknowledged = true
       WHERE id = ${notificationId}
         AND channels_failed IS NOT NULL 
         AND array_length(channels_failed, 1) > 0
     `
+    
+    console.log("[v0] acknowledgeNotificationError: Update result:", updateResult)
+
+    // Check if update worked
+    const checkResult = await sql`
+      SELECT id, error_acknowledged, channels_failed
+      FROM notifications
+      WHERE id = ${notificationId}
+    `
+    
+    console.log("[v0] acknowledgeNotificationError: After update, notification data:", checkResult[0])
 
     // Revalidate paths to refresh the UI
+    console.log("[v0] acknowledgeNotificationError: Revalidating paths")
     revalidatePath("/dashboard/settings/notification-history")
     revalidatePath("/dashboard/settings")
     revalidatePath("/dashboard")
 
     return { success: true, message: "Erreur marquée comme prise en compte" }
   } catch (error) {
-    console.error("acknowledgeNotificationError: Error", error)
+    console.error("[v0] acknowledgeNotificationError: Error", error)
     return {
       success: false,
       error: "Erreur lors de la mise à jour",

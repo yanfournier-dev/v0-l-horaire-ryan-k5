@@ -74,13 +74,18 @@ export function NotificationHistoryList() {
   }
 
   const handleAcknowledgeError = async (notificationId: number) => {
+    console.log("[v0] handleAcknowledgeError: Clicked for notificationId:", notificationId)
     setAcknowledgingIds((prev) => new Set([...prev, notificationId]))
     
     const result = await acknowledgeNotificationError(notificationId)
+    console.log("[v0] handleAcknowledgeError: Result from server action:", result)
     
     if (result.success) {
+      console.log("[v0] handleAcknowledgeError: Success! Fetching history")
       // Rafraîchir la liste pour voir les changements
       fetchHistory(pagination.page)
+    } else {
+      console.log("[v0] handleAcknowledgeError: Failed with error:", result.error)
     }
     
     setAcknowledgingIds((prev) => {
