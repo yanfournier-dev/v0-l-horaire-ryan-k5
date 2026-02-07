@@ -4,6 +4,7 @@ import { sql } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { isUserAdmin } from "@/app/actions/admin"
 import { revalidatePath } from "next/cache"
+import { createAuditLog } from "@/app/actions/audit"
 
 export interface NotificationRecipient {
   user_id: number
@@ -299,7 +300,6 @@ export async function getNotificationErrorsCount() {
     `
 
     const count = Number.parseInt(result[0]?.error_count || "0")
-    console.log("[v0] getNotificationErrorsCount: Returning count:", count)
     return count
   } catch (error) {
     console.error("[v0] getNotificationErrorsCount: Error", error)
@@ -308,45 +308,36 @@ export async function getNotificationErrorsCount() {
 }
 
 export async function acknowledgeNotificationError(notificationId: number) {
-  console.log("[v0] acknowledgeNotificationError: Called with notificationId:", notificationId)
-  
   const session = await getSession()
   if (!session) {
-    console.log("[v0] acknowledgeNotificationError: No session")
     return { success: false, error: "Non authentifié" }
   }
 
   const userIsAdmin = await isUserAdmin()
   if (!userIsAdmin) {
-    console.log("[v0] acknowledgeNotificationError: User is not admin")
     return { success: false, error: "Accès refusé - Réservé aux admins" }
   }
 
   try {
-    console.log("[v0] acknowledgeNotificationError: Updating notification", notificationId)
-    
     const updateResult = await sql`
       UPDATE notifications
       SET error_acknowledged = true
       WHERE id = ${notificationId}
     `
-    
-    console.log("[v0] acknowledgeNotificationError: Update result:", updateResult)
-
-    // Check if update worked
-    const checkResult = await sql`
-      SELECT id, error_acknowledged, channels_failed
-      FROM notifications
-      WHERE id = ${notificationId}
-    `
-    
-    console.log("[v0] acknowledgeNotificationError: After update, notification data:", checkResult[0])
 
     // Revalidate paths to refresh the UI
-    console.log("[v0] acknowledgeNotificationError: Revalidating paths")
     revalidatePath("/dashboard/settings/notification-history")
     revalidatePath("/dashboard/settings")
     revalidatePath("/dashboard")
+
+    // Log the action in audit logs
+    await createAuditLog({
+      userId: session.id,
+      actionType: "NOTIFICATION_ERROR_ACKNOWLEDGED",
+      tableName: "notifications",
+      recordId: notificationId,
+      description: `Admin a marqué l'erreur d'envoi de la notification ${notificationId} comme prise en compte`,
+    })
 
     return { success: true, message: "Erreur marquée comme prise en compte" }
   } catch (error) {

@@ -76,20 +76,15 @@ export function NotificationHistoryList() {
   }
 
   const handleAcknowledgeError = async (notificationId: number) => {
-    console.log("[v0] handleAcknowledgeError: Clicked for notificationId:", notificationId)
     setAcknowledgingIds((prev) => new Set([...prev, notificationId]))
     
     const result = await acknowledgeNotificationError(notificationId)
-    console.log("[v0] handleAcknowledgeError: Result from server action:", result)
     
     if (result.success) {
-      console.log("[v0] handleAcknowledgeError: Success! Refreshing page")
       // Force a hard refresh to update all UI elements
       router.refresh()
       // Also refetch the history
       fetchHistory(pagination.page)
-    } else {
-      console.log("[v0] handleAcknowledgeError: Failed with error:", result.error)
     }
     
     setAcknowledgingIds((prev) => {
@@ -210,7 +205,7 @@ export function NotificationHistoryList() {
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-3">
                         <span className="text-lg">{typeLabels[notification.type] || `📬 ${notification.type}`}</span>
-                        {hasErrors && (
+                      {hasErrors && !notification.error_acknowledged && (
                           <span className="text-amber-600 text-lg">⚠️</span>
                         )}
                         {notification.delivery_status && (
