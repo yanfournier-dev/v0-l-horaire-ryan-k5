@@ -293,12 +293,44 @@ export async function getNotificationErrorsCount() {
     const result = await sql`
       SELECT COUNT(*) as error_count
       FROM notifications
-      WHERE channels_failed IS NOT NULL AND array_length(channels_failed, 1) > 0
+      WHERE channels_failed IS NOT NULL 
+        AND array_length(channels_failed, 1) > 0
+        AND (error_acknowledged IS NULL OR error_acknowledged = false)
     `
 
     return Number.parseInt(result[0]?.error_count || "0")
   } catch (error) {
     console.error("getNotificationErrorsCount: Error", error)
     return 0
+  }
+}
+
+export async function acknowledgeNotificationError(notificationId: number) {
+  const session = await getSession()
+  if (!session) {
+    return { success: false, error: "Non authentifié" }
+  }
+
+  const userIsAdmin = await isUserAdmin()
+  if (!userIsAdmin) {
+    return { success: false, error: "Accès refusé - Réservé aux admins" }
+  }
+
+  try {
+    await sql`
+      UPDATE notifications
+      SET error_acknowledged = true
+      WHERE id = ${notificationId}
+        AND channels_failed IS NOT NULL 
+        AND array_length(channels_failed, 1) > 0
+    `
+
+    return { success: true, message: "Erreur marquée comme prise en compte" }
+  } catch (error) {
+    console.error("acknowledgeNotificationError: Error", error)
+    return {
+      success: false,
+      error: "Erreur lors de la mise à jour",
+    }
   }
 }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getNotificationHistory, type NotificationHistoryItem } from "@/app/actions/get-notification-history"
+import { getNotificationHistory, type NotificationHistoryItem, acknowledgeNotificationError } from "@/app/actions/get-notification-history"
 import { ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react"
 
 const typeLabels: Record<string, string> = {
@@ -28,6 +28,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 export function NotificationHistoryList() {
   const [notifications, setNotifications] = useState<NotificationHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [acknowledgingIds, setAcknowledgingIds] = useState<Set<number>>(new Set())
   const [filters, setFilters] = useState({
     type: "all",
     deliveryStatus: "all",
@@ -70,6 +71,23 @@ export function NotificationHistoryList() {
 
   const handlePageChange = (newPage: number) => {
     fetchHistory(newPage)
+  }
+
+  const handleAcknowledgeError = async (notificationId: number) => {
+    setAcknowledgingIds((prev) => new Set([...prev, notificationId]))
+    
+    const result = await acknowledgeNotificationError(notificationId)
+    
+    if (result.success) {
+      // Rafraîchir la liste pour voir les changements
+      fetchHistory(pagination.page)
+    }
+    
+    setAcknowledgingIds((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(notificationId)
+      return newSet
+    })
   }
 
   const formatDate = (dateString: string) => {
@@ -235,9 +253,20 @@ export function NotificationHistoryList() {
 
                       {hasErrors && (
                         <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3">
-                          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-red-800">
-                            <AlertTriangle className="h-4 w-4" />
-                            Erreurs d'envoi ({totalFailedChannels})
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm font-medium text-red-800">
+                              <AlertTriangle className="h-4 w-4" />
+                              Erreurs d'envoi ({totalFailedChannels})
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleAcknowledgeError(notification.id)}
+                              disabled={acknowledgingIds.has(notification.id)}
+                              className="h-7 border-red-300 hover:bg-red-100"
+                            >
+                              {acknowledgingIds.has(notification.id) ? "..." : "✓ Pris en compte"}
+                            </Button>
                           </div>
                           <div className="space-y-1">
                             {notification.recipients?.map((recipient) => {
