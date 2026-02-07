@@ -330,8 +330,6 @@ export async function acknowledgeNotificationError(notificationId: number) {
       UPDATE notifications
       SET error_acknowledged = true
       WHERE id = ${notificationId}
-        AND channels_failed IS NOT NULL 
-        AND array_length(channels_failed, 1) > 0
     `
     
     console.log("[v0] acknowledgeNotificationError: Update result:", updateResult)
