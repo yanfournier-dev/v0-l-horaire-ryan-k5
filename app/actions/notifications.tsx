@@ -424,7 +424,11 @@ export async function createBatchNotificationsInApp(
               errorMessage = "User opted out of this notification type"
             } else if (user.enable_telegram === true && user.telegram_chat_id) {
               // Send Telegram with retry
-              console.log(`[v0] Sending Telegram to ${fullName} (${userId})`)
+              console.log(`[v0] ---- TELEGRAM NOTIFICATION ----`)
+              console.log(`[v0] User: ${fullName} (${userId})`)
+              console.log(`[v0] ChatId: ${user.telegram_chat_id}`)
+              console.log(`[v0] Type: ${type}`)
+              console.log(`[v0] enable_telegram: ${user.enable_telegram}`)
               
               // Generate apply token for replacement_available notifications
               let applyToken: string | undefined
@@ -467,7 +471,9 @@ export async function createBatchNotificationsInApp(
               }
             } else {
               deliveryStatus = "success"
-              console.log(`[v0] Telegram not enabled for ${fullName}, in-app only`)
+              console.log(`[v0] Telegram skipped for ${fullName}`)
+              if (!user.enable_telegram) console.log(`[v0]   Reason: enable_telegram = false`)
+              if (!user.telegram_chat_id) console.log(`[v0]   Reason: telegram_chat_id not set`)
             }
           }
 
@@ -797,10 +803,11 @@ async function sendTelegramNotificationMessage(
   relatedId?: number,
   applyToken?: string,
 ) {
-  console.log("[v0] sendTelegramNotificationMessage called - type:", type, "chatId:", chatId)
+  console.log("[v0] sendTelegramNotificationMessage START - type:", type, "chatId:", chatId, "name:", name)
 
   let telegramMessage = ""
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://v0-l-horaire-ryan.vercel.app"
+  console.log("[v0] App URL:", appUrl)
 
   switch (type) {
     case "replacement_available":
@@ -957,9 +964,23 @@ ${message}`
   }
 
   // Send message without button for other notification types
-  await sendTelegramMessage(chatId, telegramMessage || message, {
-    parse_mode: "HTML",
-  })
+  console.log("[v0] About to call sendTelegramMessage with:")
+  console.log("[v0]  - chatId:", chatId)
+  console.log("[v0]  - message length:", (telegramMessage || message).length)
+  console.log("[v0]  - message preview:", (telegramMessage || message).substring(0, 100))
+  
+  try {
+    await sendTelegramMessage(chatId, telegramMessage || message, {
+      parse_mode: "HTML",
+    })
+    console.log("[v0] ✓ sendTelegramMessage succeeded for chatId:", chatId)
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    console.error("[v0] ✗ sendTelegramMessage FAILED for chatId:", chatId)
+    console.error("[v0] Error details:", errorMsg)
+    console.error("[v0] Full error:", error)
+    throw error
+  }
 }
 
 async function notifyAdminsOfEmailFailure(recipientEmail: string, notificationType: string, error: any) {
@@ -1200,15 +1221,24 @@ async function sendTelegramWithRetry(
   applyToken?: string,
   maxRetries = 3,
 ): Promise<{ success: boolean; error?: string }> {
+  console.log("[v0] ========== TELEGRAM RETRY START ==========")
+  console.log("[v0] Type:", type)
+  console.log("[v0] ChatId:", chatId)
+  console.log("[v0] FullName:", fullName)
+  console.log("[v0] RelatedId:", relatedId)
+  console.log("[v0] ApplyToken provided:", !!applyToken)
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`[v0] Telegram attempt ${attempt}/${maxRetries} for chat ${chatId}`)
-      await sendTelegramNotificationMessage(type, chatId, fullName, message, relatedId, applyToken)
-      console.log(`[v0] Telegram sent successfully on attempt ${attempt}`)
+      console.log(`[v0] Telegram attempt ${attempt}/${maxRetries} for ${fullName} (chatId: ${chatId})`)
+      await sendTelegramNotificationMessage(type, chatId, fullName, message, relatedId || undefined, applyToken)
+      console.log(`[v0] ✓ Telegram sent successfully on attempt ${attempt}`)
+      console.log("[v0] ========== TELEGRAM RETRY SUCCESS ==========")
       return { success: true }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error(`[v0] Telegram attempt ${attempt} failed:`, errorMessage)
+      console.error(`[v0] ✗ Telegram attempt ${attempt} FAILED:`, errorMessage)
+      console.error(`[v0] Error stack:`, error instanceof Error ? error.stack : "No stack trace")
 
       if (attempt < maxRetries) {
         // Exponential backoff: 1s, 2s, 4s
@@ -1216,9 +1246,11 @@ async function sendTelegramWithRetry(
         console.log(`[v0] Waiting ${delay}ms before retry...`)
         await new Promise((resolve) => setTimeout(resolve, delay))
       } else {
+        console.error("[v0] ========== TELEGRAM RETRY FAILED (MAX RETRIES) ==========")
         return { success: false, error: errorMessage }
       }
     }
   }
+  console.error("[v0] ========== TELEGRAM RETRY EXHAUSTED ==========")
   return { success: false, error: "Max retries exceeded" }
 }
