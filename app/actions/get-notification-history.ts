@@ -294,8 +294,7 @@ export async function getNotificationErrorsCount() {
     const result = await sql`
       SELECT COUNT(*) as error_count
       FROM notifications
-      WHERE channels_failed IS NOT NULL 
-        AND array_length(channels_failed, 1) > 0
+      WHERE (channels_failed IS NOT NULL AND array_length(channels_failed, 1) > 0)
         AND (error_acknowledged IS NULL OR error_acknowledged = false)
     `
 
