@@ -21,6 +21,7 @@ export type AuditActionType =
   | "LEAVE_REJECTED"
   | "LEAVE_UPDATED"
   | "LEAVE_DELETED"
+  | "NOTIFICATION_ERROR_ACKNOWLEDGED"
 
 interface AuditLogParams {
   userId: number

@@ -13,6 +13,7 @@ interface MobileNavProps {
   replacementsBadgeCount?: number
   exchangesBadgeCount?: number
   absencesBadgeCount?: number
+  notificationErrorsCount?: number
 }
 
 export function MobileNav({
@@ -21,6 +22,7 @@ export function MobileNav({
   replacementsBadgeCount = 0,
   exchangesBadgeCount = 0,
   absencesBadgeCount = 0,
+  notificationErrorsCount = 0,
 }: MobileNavProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
@@ -92,6 +94,9 @@ export function MobileNav({
                     <Badge className="ml-2 bg-red-600 text-white">
                       {absencesBadgeCount > 99 ? "99+" : absencesBadgeCount}
                     </Badge>
+                  )}
+                  {item.label === "Paramètres" && notificationErrorsCount > 0 && (
+                    <span className="ml-2 text-amber-600 text-lg">⚠️</span>
                   )}
                 </span>
               </Button>

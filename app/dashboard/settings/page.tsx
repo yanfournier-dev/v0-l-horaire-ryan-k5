@@ -1,7 +1,9 @@
 import { getSession } from "@/app/actions/auth"
 import { redirect } from "next/navigation"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { getNotificationErrorsCount } from "@/app/actions/get-notification-history"
 
 export const dynamic = "force-dynamic"
 
@@ -11,6 +13,8 @@ export default async function SettingsPage() {
   if (!user) {
     redirect("/login")
   }
+
+  const notificationErrorsCount = user.is_admin ? await getNotificationErrorsCount() : 0
 
   const settingsOptions = [
     {
@@ -221,7 +225,14 @@ export default async function SettingsPage() {
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-primary/10 rounded-lg text-primary">{option.icon}</div>
                   <div className="flex-1">
-                    <CardTitle className="text-lg mb-1">{option.title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-lg mb-1">{option.title}</CardTitle>
+                      {option.title === "Historique des notifications" && notificationErrorsCount > 0 && (
+                        <Badge className="bg-amber-600 text-white hover:bg-amber-700">
+                          {notificationErrorsCount > 99 ? "99+" : notificationErrorsCount}
+                        </Badge>
+                      )}
+                    </div>
                     <CardDescription>{option.description}</CardDescription>
                   </div>
                 </div>
