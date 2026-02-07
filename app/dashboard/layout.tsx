@@ -7,6 +7,7 @@ import Link from "next/link"
 import { ReplacementsBadge } from "@/components/replacements-badge"
 import { ExchangesBadge } from "@/components/exchanges-badge"
 import { AbsencesBadge } from "@/components/absences-badge"
+import { NotificationErrorsBadge } from "@/components/notification-errors-badge"
 import { MobileNav } from "@/components/mobile-nav"
 import { Suspense } from "react"
 import { TelegramConnectionBanner } from "@/components/telegram-connection-banner"
@@ -119,8 +120,11 @@ export default async function DashboardLayout({
               </Button>
             </Link>
             <Link href="/dashboard/settings" scroll={false}>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="relative">
                 Paramètres
+                <Suspense fallback={null}>
+                  <NotificationErrorsBadge />
+                </Suspense>
               </Button>
             </Link>
             {user.isAdmin && (
