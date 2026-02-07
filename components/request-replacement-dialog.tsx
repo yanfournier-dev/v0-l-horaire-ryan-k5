@@ -137,6 +137,8 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
       isPartial,
       isPartial ? startTime : undefined,
       isPartial ? endTime : undefined,
+      selectedShift.start_time,
+      selectedShift.end_time,
       leaveBank1 && leaveBank1 !== "none" ? leaveBank1 : null,
       leaveHours1 && leaveHours1 !== "none" ? leaveHours1 : null,
       leaveBank2 && leaveBank2 !== "none" ? leaveBank2 : null,
