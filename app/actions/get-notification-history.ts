@@ -277,3 +277,28 @@ export async function getNotificationDetail(notificationId: number) {
     }
   }
 }
+
+export async function getNotificationErrorsCount() {
+  const session = await getSession()
+  if (!session) {
+    return 0
+  }
+
+  const userIsAdmin = await isUserAdmin()
+  if (!userIsAdmin) {
+    return 0
+  }
+
+  try {
+    const result = await sql`
+      SELECT COUNT(DISTINCT type, related_id) as error_count
+      FROM notifications
+      WHERE channels_failed IS NOT NULL AND array_length(channels_failed, 1) > 0
+    `
+
+    return Number.parseInt(result[0]?.error_count || "0")
+  } catch (error) {
+    console.error("getNotificationErrorsCount: Error", error)
+    return 0
+  }
+}

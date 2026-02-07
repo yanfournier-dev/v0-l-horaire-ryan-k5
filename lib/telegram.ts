@@ -18,74 +18,43 @@ export async function sendTelegramMessage(
     reply_markup?: any
   },
 ) {
-  console.log("[v0] ========== SEND TELEGRAM MESSAGE START ==========")
-  console.log("[v0] chatId:", chatId)
-  console.log("[v0] text length:", text.length)
-  console.log("[v0] parse_mode:", options?.parse_mode || "HTML")
-  console.log("[v0] has reply_markup:", !!options?.reply_markup)
+  console.log("[v0] sendTelegramMessage called for chat:", chatId)
 
   if (!TELEGRAM_BOT_TOKEN) {
-    console.error("[v0] Bot token not configured!")
     throw new Error("Bot token not configured")
   }
-
-  console.log("[v0] TELEGRAM_BOT_TOKEN exists: YES")
-  console.log("[v0] TELEGRAM_API_URL:", TELEGRAM_API_URL)
 
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
 
-    const requestBody = {
-      chat_id: chatId,
-      text,
-      parse_mode: options?.parse_mode || "HTML",
-      reply_markup: options?.reply_markup,
-    }
-    
-    console.log("[v0] Request body prepared (text truncated):", {
-      chat_id: chatId,
-      text: text.substring(0, 100) + (text.length > 100 ? "..." : ""),
-      parse_mode: requestBody.parse_mode,
-      has_reply_markup: !!requestBody.reply_markup,
-    })
-
-    console.log("[v0] Making fetch request to:", `${TELEGRAM_API_URL}/sendMessage`)
-    
     const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: options?.parse_mode || "HTML",
+        reply_markup: options?.reply_markup,
+      }),
       signal: controller.signal,
     })
 
     clearTimeout(timeoutId)
-    console.log("[v0] Response received. Status:", response.status)
 
     const data = await response.json()
-    console.log("[v0] Response data:", data)
 
     if (!response.ok) {
-      const errorMsg = data.description || `Telegram API error: ${response.status}`
-      console.error("[v0] ✗ API returned error:", errorMsg)
-      throw new Error(errorMsg)
+      throw new Error(data.description || `Telegram API error: ${response.status}`)
     }
 
-    console.log("[v0] ✓ Telegram message sent successfully")
-    console.log("[v0] ========== SEND TELEGRAM MESSAGE SUCCESS ==========")
+    console.log("[v0] Telegram message sent successfully")
     return { success: true, data }
   } catch (error: any) {
-    console.error("[v0] ✗ Exception caught in sendTelegramMessage:")
-    console.error("[v0] Error name:", error.name)
-    console.error("[v0] Error message:", error.message)
-    console.error("[v0] Error stack:", error.stack)
-    
+    console.error("[v0] Error sending Telegram message:", error)
     if (error.name === "AbortError") {
-      console.error("[v0] ✗ Telegram request timeout (10s)")
       throw new Error("Telegram request timeout (10s)")
     }
-    
-    console.error("[v0] ========== SEND TELEGRAM MESSAGE FAILED ==========")
     throw new Error(error.message || "Unknown Telegram error")
   }
 }

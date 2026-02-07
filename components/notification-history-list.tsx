@@ -183,6 +183,9 @@ export function NotificationHistoryList() {
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-3">
                         <span className="text-lg">{typeLabels[notification.type] || `📬 ${notification.type}`}</span>
+                        {hasErrors && (
+                          <span className="text-amber-600 text-lg">⚠️</span>
+                        )}
                         {notification.delivery_status && (
                           <span
                             className={`text-sm font-medium ${statusLabels[notification.delivery_status]?.color || ""}`}

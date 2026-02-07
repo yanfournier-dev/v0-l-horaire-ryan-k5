@@ -21,7 +21,6 @@ import { Label } from "@/components/ui/label"
 import { TimePickerInput } from "@/components/time-picker-input"
 import { getDefaultReplacementTimes } from "@/lib/shift-utils"
 import { LeaveBankSelector } from "@/components/leave-bank-selector"
-import { TelegramErrorsDialog } from "@/components/telegram-errors-dialog"
 
 interface Shift {
   id: number
@@ -44,8 +43,6 @@ export function CreateReplacementButton({ shift, userId, userName }: CreateRepla
   const [isLoading, setIsLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [isPartial, setIsPartial] = useState(false)
-  const [telegramErrors, setTelegramErrors] = useState<any[]>([])
-  const [showTelegramErrors, setShowTelegramErrors] = useState(false)
   const defaultTimes = getDefaultReplacementTimes(shift.type)
   const [startTime, setStartTime] = useState(defaultTimes.startTime)
   const [endTime, setEndTime] = useState(defaultTimes.endTime)
@@ -125,22 +122,15 @@ export function CreateReplacementButton({ shift, userId, userName }: CreateRepla
           title: "Succès",
           description: "Demande de remplacement créée avec succès",
         })
-
-        // Show telegram errors if any
-        if (result.telegramErrors && result.telegramErrors.length > 0) {
-          setTelegramErrors(result.telegramErrors)
-          setShowTelegramErrors(true)
-        } else {
-          setOpen(false)
-          setIsPartial(false)
-          setStartTime(defaultTimes.startTime)
-          setEndTime(defaultTimes.endTime)
-          setLeaveBank1("")
-          setLeaveHours1("")
-          setLeaveBank2("")
-          setLeaveHours2("")
-          router.refresh()
-        }
+        setOpen(false)
+        setIsPartial(false)
+        setStartTime(defaultTimes.startTime)
+        setEndTime(defaultTimes.endTime)
+        setLeaveBank1("")
+        setLeaveHours1("")
+        setLeaveBank2("")
+        setLeaveHours2("")
+        router.refresh()
       }
     } catch (error) {
       toast({
@@ -154,98 +144,76 @@ export function CreateReplacementButton({ shift, userId, userName }: CreateRepla
   }
 
   return (
-    <>
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-          <Button size="sm" variant="outline" className="bg-red-600 hover:bg-red-700 text-white border-red-600">
-            Créer remplacement
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Créer une demande de remplacement</AlertDialogTitle>
-            <AlertDialogDescription>
-              Voulez-vous créer une demande de remplacement pour <strong>{userName}</strong> pour le quart du{" "}
-              <strong>{parseLocalDate(shift.date).toLocaleDateString("fr-CA")}</strong> (
-              {shift.type === "day" ? "Jour" : shift.type === "full_24h" ? "24h" : "Nuit"} (
-              {shift.type === "day" ? "7h-17h" : shift.type === "full_24h" ? "7h-7h" : "17h-7h"})) ?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button size="sm" variant="outline" className="bg-red-600 hover:bg-red-700 text-white border-red-600">
+          Créer remplacement
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Créer une demande de remplacement</AlertDialogTitle>
+          <AlertDialogDescription>
+            Voulez-vous créer une demande de remplacement pour <strong>{userName}</strong> pour le quart du{" "}
+            <strong>{parseLocalDate(shift.date).toLocaleDateString("fr-CA")}</strong> (
+            {shift.type === "day" ? "Jour" : shift.type === "full_24h" ? "24h" : "Nuit"} (
+            {shift.type === "day" ? "7h-17h" : shift.type === "full_24h" ? "7h-7h" : "17h-7h"})) ?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
-          <div className="space-y-4 py-4">
-            <LeaveBankSelector
-              bank1={leaveBank1}
-              hours1={leaveHours1}
-              bank2={leaveBank2}
-              hours2={leaveHours2}
-              onBank1Change={setLeaveBank1}
-              onHours1Change={setLeaveHours1}
-              onBank2Change={setLeaveBank2}
-              onHours2Change={setLeaveHours2}
+        <div className="space-y-4 py-4">
+          <LeaveBankSelector
+            bank1={leaveBank1}
+            hours1={leaveHours1}
+            bank2={leaveBank2}
+            hours2={leaveHours2}
+            onBank1Change={setLeaveBank1}
+            onHours1Change={setLeaveHours1}
+            onBank2Change={setLeaveBank2}
+            onHours2Change={setLeaveHours2}
+          />
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="partial"
+              checked={isPartial}
+              onCheckedChange={(checked) => {
+                setIsPartial(checked as boolean)
+              }}
             />
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="partial"
-                checked={isPartial}
-                onCheckedChange={(checked) => {
-                  setIsPartial(checked as boolean)
-                }}
-              />
-              <Label
-                htmlFor="partial"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Remplacement partiel
-              </Label>
-            </div>
-
-            {isPartial && (
-              <div className="space-y-3 pl-6">
-                <div className="space-y-2">
-                  <Label htmlFor="start-time" className="text-sm">
-                    Heure de début
-                  </Label>
-                  <TimePickerInput id="start-time" value={startTime} onChange={setStartTime} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end-time" className="text-sm">
-                    Heure de fin
-                  </Label>
-                  <TimePickerInput id="end-time" value={endTime} onChange={setEndTime} />
-                </div>
-              </div>
-            )}
+            <Label
+              htmlFor="partial"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Remplacement partiel
+            </Label>
           </div>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Annuler</AlertDialogCancel>
-            <Button onClick={handleCreate} disabled={isLoading} className="bg-red-600 hover:bg-red-700">
-              {isLoading ? "Création..." : "Créer la demande"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          {isPartial && (
+            <div className="space-y-3 pl-6">
+              <div className="space-y-2">
+                <Label htmlFor="start-time" className="text-sm">
+                  Heure de début
+                </Label>
+                <TimePickerInput id="start-time" value={startTime} onChange={setStartTime} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end-time" className="text-sm">
+                  Heure de fin
+                </Label>
+                <TimePickerInput id="end-time" value={endTime} onChange={setEndTime} />
+              </div>
+            </div>
+          )}
+        </div>
 
-      <TelegramErrorsDialog
-        errors={telegramErrors}
-        isOpen={showTelegramErrors}
-        onOpenChange={(open) => {
-          setShowTelegramErrors(open)
-          if (!open) {
-            setTelegramErrors([])
-            setOpen(false)
-            setIsPartial(false)
-            setStartTime(defaultTimes.startTime)
-            setEndTime(defaultTimes.endTime)
-            setLeaveBank1("")
-            setLeaveHours1("")
-            setLeaveBank2("")
-            setLeaveHours2("")
-            router.refresh()
-          }
-        }}
-      />
-    </>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isLoading}>Annuler</AlertDialogCancel>
+          <Button onClick={handleCreate} disabled={isLoading} className="bg-red-600 hover:bg-red-700">
+            {isLoading ? "Création..." : "Créer la demande"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

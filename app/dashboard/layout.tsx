@@ -27,10 +27,12 @@ export default async function DashboardLayout({
   const { getReplacementsAdminActionCount } = await import("@/app/actions/replacements")
   const { getPendingExchangesCount } = await import("@/app/actions/exchanges")
   const { getPendingLeavesCount } = await import("@/app/actions/leaves")
+  const { getNotificationErrorsCount } = await import("@/app/actions/get-notification-history")
 
   const replacementsBadgeCount = user.is_admin ? await getReplacementsAdminActionCount() : 0
   const exchangesBadgeCount = user.is_admin ? await getPendingExchangesCount() : 0
   const absencesBadgeCount = user.is_admin ? await getPendingLeavesCount() : 0
+  const notificationErrorsCount = user.is_admin ? await getNotificationErrorsCount() : 0
 
   const telegramStatus = user.is_admin ? { isConnected: true } : await checkUserTelegramStatus(user.id)
 
@@ -48,6 +50,7 @@ export default async function DashboardLayout({
                 replacementsBadgeCount={replacementsBadgeCount}
                 exchangesBadgeCount={exchangesBadgeCount}
                 absencesBadgeCount={absencesBadgeCount}
+                notificationErrorsCount={notificationErrorsCount}
               />
 
               <div className="w-8 h-8 md:w-10 md:h-10 bg-red-600 rounded-full flex items-center justify-center">
