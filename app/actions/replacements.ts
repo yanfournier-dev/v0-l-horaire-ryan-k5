@@ -1266,6 +1266,8 @@ export async function requestReplacement(
   isPartial: boolean,
   startTime?: string | null,
   endTime?: string | null,
+  shiftStartTime?: string,
+  shiftEndTime?: string,
   leaveBank1?: string | null,
   leaveHours1?: string | null,
   leaveBank2?: string | null,
@@ -1278,6 +1280,8 @@ export async function requestReplacement(
     isPartial,
     startTime,
     endTime,
+    shiftStartTime,
+    shiftEndTime,
     leaveBank1,
     leaveHours1,
     leaveBank2,
@@ -1321,9 +1325,9 @@ export async function requestReplacement(
     return { error: "Vous avez déjà une demande de remplacement pour ce quart" }
   }
   
-  // For full replacements, use the shift times
-  const finalStartTime = isPartial ? (startTime || null) : shiftStartTime
-  const finalEndTime = isPartial ? (endTime || null) : shiftEndTime
+  // For full replacements, use the shift times from the shift assignment
+  const finalStartTime = isPartial ? (startTime || null) : (shiftStartTime || null)
+  const finalEndTime = isPartial ? (endTime || null) : (shiftEndTime || null)
 
   await db`
     INSERT INTO replacements (
