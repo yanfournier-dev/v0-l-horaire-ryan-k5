@@ -78,7 +78,7 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
             MAX(n.sent_by) as sent_by,
             MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
             MAX(n.created_at) as created_at,
-            MAX(n.error_acknowledged) as error_acknowledged,
+            COALESCE(BOOL_OR(n.error_acknowledged), false) as error_acknowledged,
             JSON_AGG(
               JSON_BUILD_OBJECT(
                 'user_id', n.user_id,
@@ -147,7 +147,7 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
             MAX(n.sent_by) as sent_by,
             MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
             MAX(n.created_at) as created_at,
-            MAX(n.error_acknowledged) as error_acknowledged,
+            COALESCE(BOOL_OR(n.error_acknowledged), false) as error_acknowledged,
             JSON_AGG(
               JSON_BUILD_OBJECT(
                 'user_id', n.user_id,
@@ -228,7 +228,7 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
             MAX(n.sent_by) as sent_by,
             MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
             MAX(n.created_at) as created_at,
-            MAX(n.error_acknowledged) as error_acknowledged,
+            COALESCE(BOOL_OR(n.error_acknowledged), false) as error_acknowledged,
             JSON_AGG(
               JSON_BUILD_OBJECT(
                 'user_id', n.user_id,
