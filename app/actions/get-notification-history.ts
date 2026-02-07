@@ -56,7 +56,7 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
     let dataQuery
 
     // Build queries based on filters
-    if (!type || type === "all") {
+      if (!type || type === "all") {
       if (!deliveryStatus || deliveryStatus === "all") {
         // No filters
         countQuery = sql`
@@ -78,6 +78,7 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
             MAX(n.sent_by) as sent_by,
             MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
             MAX(n.created_at) as created_at,
+            MAX(n.error_acknowledged) as error_acknowledged,
             JSON_AGG(
               JSON_BUILD_OBJECT(
                 'user_id', n.user_id,
@@ -94,16 +95,46 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
           ORDER BY created_at DESC
           LIMIT ${limit} OFFSET ${offset}
         `
-      } else {
-        // Only delivery status filter
-        countQuery = sql`
-          SELECT COUNT(*) as total FROM (
-            SELECT type, related_id
-            FROM notifications
-            WHERE delivery_status = ${deliveryStatus}
-            GROUP BY type, related_id
-          ) grouped
-        `
+    } else {
+      // Only type filter
+      countQuery = sql`
+        SELECT COUNT(*) as total FROM (
+          SELECT type, related_id
+          FROM notifications
+          WHERE type = ${type}
+          GROUP BY type, related_id
+        ) grouped
+      `
+      dataQuery = sql`
+        SELECT 
+          MIN(n.id) as id,
+          n.type,
+          MAX(n.title) as title,
+          MAX(n.message) as message,
+          n.related_id,
+          MAX(n.related_type) as related_type,
+          MAX(n.delivery_status) as delivery_status,
+          MAX(n.sent_by) as sent_by,
+          MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
+          MAX(n.created_at) as created_at,
+          MAX(n.error_acknowledged) as error_acknowledged,
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'user_id', n.user_id,
+              'user_name', u.first_name || ' ' || u.last_name,
+              'channels_sent', n.channels_sent,
+              'channels_failed', n.channels_failed,
+              'created_at', n.created_at
+            ) ORDER BY n.created_at
+          ) as recipients
+        FROM notifications n
+        LEFT JOIN users u ON n.user_id = u.id
+        LEFT JOIN users sender ON n.sent_by = sender.id
+        WHERE n.type = ${type}
+        GROUP BY n.type, n.related_id
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
         dataQuery = sql`
           SELECT 
             MIN(n.id) as id,
@@ -116,6 +147,7 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
             MAX(n.sent_by) as sent_by,
             MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
             MAX(n.created_at) as created_at,
+            MAX(n.error_acknowledged) as error_acknowledged,
             JSON_AGG(
               JSON_BUILD_OBJECT(
                 'user_id', n.user_id,
@@ -196,6 +228,7 @@ export async function getNotificationHistory(filters: NotificationHistoryFilters
             MAX(n.sent_by) as sent_by,
             MAX(sender.first_name || ' ' || sender.last_name) as sent_by_name,
             MAX(n.created_at) as created_at,
+            MAX(n.error_acknowledged) as error_acknowledged,
             JSON_AGG(
               JSON_BUILD_OBJECT(
                 'user_id', n.user_id,
