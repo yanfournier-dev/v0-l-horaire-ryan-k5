@@ -1,6 +1,7 @@
 import { getSession } from "@/app/actions/auth"
 import { redirect } from "next/navigation"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { getNotificationErrorsCount } from "@/app/actions/get-notification-history"
 
@@ -227,7 +228,9 @@ export default async function SettingsPage() {
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-lg mb-1">{option.title}</CardTitle>
                       {option.title === "Historique des notifications" && notificationErrorsCount > 0 && (
-                        <span className="text-amber-600 text-lg">⚠️</span>
+                        <Badge className="bg-amber-600 text-white hover:bg-amber-700">
+                          {notificationErrorsCount > 99 ? "99+" : notificationErrorsCount}
+                        </Badge>
                       )}
                     </div>
                     <CardDescription>{option.description}</CardDescription>

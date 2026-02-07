@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -26,6 +27,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 }
 
 export function NotificationHistoryList() {
+  const router = useRouter()
   const [notifications, setNotifications] = useState<NotificationHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [acknowledgingIds, setAcknowledgingIds] = useState<Set<number>>(new Set())
@@ -81,8 +83,10 @@ export function NotificationHistoryList() {
     console.log("[v0] handleAcknowledgeError: Result from server action:", result)
     
     if (result.success) {
-      console.log("[v0] handleAcknowledgeError: Success! Fetching history")
-      // Rafraîchir la liste pour voir les changements
+      console.log("[v0] handleAcknowledgeError: Success! Refreshing page")
+      // Force a hard refresh to update all UI elements
+      router.refresh()
+      // Also refetch the history
       fetchHistory(pagination.page)
     } else {
       console.log("[v0] handleAcknowledgeError: Failed with error:", result.error)

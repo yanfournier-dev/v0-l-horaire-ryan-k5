@@ -1,5 +1,6 @@
 import { getSession } from "@/app/actions/auth"
 import { getNotificationErrorsCount } from "@/app/actions/get-notification-history"
+import { Badge } from "@/components/ui/badge"
 
 export async function NotificationErrorsBadge() {
   const user = await getSession()
@@ -9,5 +10,9 @@ export async function NotificationErrorsBadge() {
 
   if (count === 0) return null
 
-  return <span className="ml-2 text-amber-600 text-lg">⚠️</span>
+  return (
+    <Badge className="ml-2 bg-amber-600 text-white hover:bg-amber-700">
+      {count > 99 ? "99+" : count}
+    </Badge>
+  )
 }
