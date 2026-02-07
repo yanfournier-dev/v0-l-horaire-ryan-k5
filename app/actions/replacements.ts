@@ -807,6 +807,35 @@ export async function deleteReplacement(replacementId: number) {
   }
 }
 
+// Utility function to generate numbered extra firefighter name
+async function getNextExtraFirefighterNumber(
+  shiftDate: string,
+  shiftType: string,
+  teamId: number
+): Promise<number> {
+  const db = neon(process.env.DATABASE_URL!, {
+    fetchConnectionCache: true,
+    disableWarningInBrowsers: true,
+  })
+
+  // Count all extra firefighters for this shift (user_id = NULL)
+  const result = await db`
+    SELECT COUNT(*) as count
+    FROM replacements
+    WHERE shift_date = ${shiftDate}
+      AND shift_type = ${shiftType}
+      AND team_id = ${teamId}
+      AND user_id IS NULL
+  `
+
+  const existingCount = parseInt(result[0]?.count as string, 10) || 0
+  const nextNumber = existingCount + 1
+
+  console.log("[v0] getNextExtraFirefighterNumber - Existing extras:", existingCount, "-> Next number:", nextNumber)
+  
+  return nextNumber
+}
+
 export async function createExtraFirefighterReplacement(
   shiftDate: string,
   shiftType: "day" | "night" | "full_24h",
@@ -871,6 +900,12 @@ export async function createExtraFirefighterReplacement(
       deadlineDuration,
     })
 
+    // Get the next available number BEFORE inserting the replacement
+    const extraNumber = await getNextExtraFirefighterNumber(shiftDate, shiftType, teamId)
+    const firefighterToReplaceName = `Pompier supplémentaire ${extraNumber}`
+
+    console.log("[v0] createExtraFirefighterReplacement - Will use firefighter name:", firefighterToReplaceName)
+
     // Get shift times for full replacements
     let finalStartTime = startTime
     let finalEndTime = endTime
@@ -895,9 +930,7 @@ export async function createExtraFirefighterReplacement(
 
     const replacementId = result[0].id
 
-    console.log("[v0] createExtraFirefighterReplacement - Created replacement with ID:", replacementId)
-
-    const firefighterToReplaceName = "Pompier supplémentaire"
+    console.log("[v0] createExtraFirefighterReplacement - Created replacement with ID:", replacementId, "with name:", firefighterToReplaceName)
 
     const deadlineLabel = getDeadlineLabel(deadlineSeconds)
     const shouldSendNotifications = deadlineLabel !== null

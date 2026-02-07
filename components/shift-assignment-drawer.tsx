@@ -535,7 +535,8 @@ export function ShiftAssignmentDrawer({
   }
 
   const getReplacementForExtraFirefighter = () => {
-    const found = replacements.find((r) => r.user_id === null) // Assuming user_id is null for extra firefighter requests
+    // For backward compatibility - returns first extra firefighter
+    const found = replacements.find((r) => r.user_id === null)
     return found || null
   }
 
@@ -1065,6 +1066,11 @@ export function ShiftAssignmentDrawer({
   })
 
   assignedReplacements.forEach((r: any) => {
+    // Skip extra firefighters (user_id = null) as they're handled separately in the replacements loop
+    if (r.user_id === null) {
+      return
+    }
+
     const approvedApp = r.applications.find((app: any) => app.status === "approved")
     const replacementKey = `${approvedApp.applicant_id}_${r.user_id}`
 
@@ -1110,16 +1116,40 @@ export function ShiftAssignmentDrawer({
       return
     }
 
-    if (!groupedReplacements.has(r.user_id)) {
-      groupedReplacements.set(r.user_id, [])
+    // For extra firefighters (user_id is null), use a unique negative ID based on replacement_id
+    // For normal firefighters, use their user_id
+    const groupKey = r.user_id === null ? -r.id : r.user_id
+
+    if (!groupedReplacements.has(groupKey)) {
+      groupedReplacements.set(groupKey, [])
     }
 
     const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
 
-    groupedReplacements.get(r.user_id)!.push({
+    // For extra firefighters (user_id is null), count position among other extras for this shift
+    // Get all extras for this shift sorted by creation (by ID)
+    
+    // Normalize shift_date to ISO string for comparison
+    const normalizeDate = (date: any) => {
+      if (!date) return ""
+      if (typeof date === "string") return date.split("T")[0] // Get just the date part
+      return new Date(date).toISOString().split("T")[0]
+    }
+    
+    const rDateNorm = normalizeDate(r.shift_date)
+    
+    const extraFightersForShift = replacements
+      .filter((rep: any) => {
+        const repDateNorm = normalizeDate(rep.shift_date)
+        return rep.user_id === null && repDateNorm === rDateNorm && rep.shift_type === r.shift_type && rep.team_id === r.team_id
+      })
+      .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
+    const extraNumber = extraFightersForShift.findIndex((rep: any) => rep.id === r.id) + 1
+
+    groupedReplacements.get(groupKey)!.push({
       user_id: null,
-      first_name: null,
-      last_name: null,
+      first_name: "Pompier",
+      last_name: `supplémentaire ${extraNumber}`,
       role: null,
       email: null,
       start_time: r.start_time,
@@ -1172,6 +1202,11 @@ export function ShiftAssignmentDrawer({
 
         // Skip if this is a placeholder created for removed firefighter
         if (assignment.replaced_user_id) {
+          return false
+        }
+
+        // Skip old extra firefighter entries without proper numbering (Pompier supplémentaire without a number)
+        if (assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire") {
           return false
         }
 
@@ -1352,6 +1387,11 @@ export function ShiftAssignmentDrawer({
                   new Map(
                     currentAssignments
                       .filter((assignment) => {
+                        // Skip old extra firefighter entries without proper numbering (Pompier supplémentaire without a number)
+                        if (assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire") {
+                          return false
+                        }
+
                         // Permanent team members are NOT filtered out even if they replace someone
                         const isExternalReplacement = replacementUserIdsToHide.has(assignment.user_id)
                         
@@ -1386,10 +1426,15 @@ export function ShiftAssignmentDrawer({
                       }
                       // Fallback to names stored in replacement data
                       const firstReplacement = replacements[0]
+                      
+                      // For extras (negative IDs), use the first_name/last_name directly
+                      // For regular replacements, use the replaced_* fields
+                      const isExtra = replacedUserId < 0
+                      
                       return {
                         id: replacedUserId,
-                        first_name: firstReplacement.replaced_first_name || "Pompier",
-                        last_name: firstReplacement.replaced_last_name || "Inconnu",
+                        first_name: isExtra ? firstReplacement.first_name : (firstReplacement.replaced_first_name || "Pompier"),
+                        last_name: isExtra ? firstReplacement.last_name : (firstReplacement.replaced_last_name || "Inconnu"),
                         role: "firefighter",
                         email: "",
                         position_code: firstReplacement.replaced_position_code || "", // Use stored position_code
@@ -1398,6 +1443,20 @@ export function ShiftAssignmentDrawer({
                   )
                   .filter((firefighter, index, self) => self.findIndex((f) => f.id === firefighter.id) === index)
                   .sort((a, b) => {
+                    // For extra firefighters (negative IDs), sort by ID descending to get ascending numbers
+                    // (higher ID = lower number, so we reverse)
+                    const aIsExtra = a.id < 0
+                    const bIsExtra = b.id < 0
+                    
+                    if (aIsExtra && bIsExtra) {
+                      // Both are extras - sort by ID descending (which gives ascending numbers: 1, 2, 3, 4, 5)
+                      return (b.id || 0) - (a.id || 0)
+                    }
+                    
+                    if (aIsExtra) return 1 // Extras go after regular members
+                    if (bIsExtra) return -1 // Regular members go before extras
+                    
+                    // For non-extras, use the original order map
                     const indexA = originalOrderMap.get(a.id) ?? 999
                     const indexB = originalOrderMap.get(b.id) ?? 999
                     return indexA - indexB
@@ -1446,7 +1505,6 @@ export function ShiftAssignmentDrawer({
 
                     if (hasReplacements) {
                       const bankInfo = replacement0 || replacement1 || replacement2
-
                       return (
                         <Card key={`replaced-${firefighter.id}`} className="border-green-300 bg-green-50/30">
                           <CardContent className="p-3">
@@ -1777,7 +1835,7 @@ export function ShiftAssignmentDrawer({
                       const firefighterId = assignment.user_id || assignment.id
 
                       const isExtraRequest =
-                        assignment.first_name === "Pompier" && assignment.last_name === "supplémentaire"
+                        assignment.first_name === "Pompier" && assignment.last_name?.startsWith("supplémentaire")
 
                       const replacement = !loadingReplacements
                         ? isExtraRequest
@@ -1804,7 +1862,7 @@ export function ShiftAssignmentDrawer({
                       const hasExchange = !!exchange
 
                       const displayName = isExtraRequest
-                        ? "Pompier supplémentaire"
+                        ? `${assignment.first_name} ${assignment.last_name}` // Use stored name which includes number (e.g., "Pompier supplémentaire 1")
                         : assignment.name || `${assignment.first_name} ${assignment.last_name}`
 
                       let exchangePartner = null
