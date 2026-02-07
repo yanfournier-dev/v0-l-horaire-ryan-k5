@@ -3,6 +3,7 @@
 import { sql } from "@/lib/db"
 import { getSession } from "@/app/actions/auth"
 import { isUserAdmin } from "@/app/actions/admin"
+import { revalidatePath } from "next/cache"
 
 export interface NotificationRecipient {
   user_id: number
@@ -324,6 +325,11 @@ export async function acknowledgeNotificationError(notificationId: number) {
         AND channels_failed IS NOT NULL 
         AND array_length(channels_failed, 1) > 0
     `
+
+    // Revalidate paths to refresh the UI
+    revalidatePath("/dashboard/settings/notification-history")
+    revalidatePath("/dashboard/settings")
+    revalidatePath("/dashboard")
 
     return { success: true, message: "Erreur marquée comme prise en compte" }
   } catch (error) {
