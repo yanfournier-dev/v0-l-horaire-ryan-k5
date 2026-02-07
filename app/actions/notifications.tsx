@@ -351,10 +351,11 @@ export async function createBatchNotificationsInApp(
   relatedType?: string,
   sentBy?: number,
 ) {
-  if (userIds.length === 0) return
+  if (userIds.length === 0) return { telegramErrors: [] }
 
   console.log(`[v0] Starting parallel notification creation for ${userIds.length} users`)
   const startTime = Date.now()
+  const telegramErrors: Array<{ userId: number; userName: string; error: string; notificationId: number | null }> = []
 
   try {
     // Create all notifications in parallel with Promise.allSettled
@@ -366,6 +367,7 @@ export async function createBatchNotificationsInApp(
         const channelsFailed: string[] = []
         let errorMessage: string | null = null
         let notificationId: number | null = null
+        let userName = ""
 
         try {
           // Insert notification in database
@@ -408,6 +410,7 @@ export async function createBatchNotificationsInApp(
           } else {
             const user = userPrefs[0]
             const fullName = `${user.first_name} ${user.last_name}`
+            userName = fullName
 
             // Check if user should receive this notification type
             let shouldReceive = true
@@ -468,6 +471,14 @@ export async function createBatchNotificationsInApp(
                 errorMessage = telegramResult.error || "Telegram send failed"
                 deliveryStatus = "partial"
                 console.error(`[v0] ✗ Telegram failed for ${fullName}: ${errorMessage}`)
+                
+                // Track telegram error for modal display
+                telegramErrors.push({
+                  userId,
+                  userName: fullName,
+                  error: errorMessage,
+                  notificationId,
+                })
               }
             } else {
               deliveryStatus = "success"
@@ -489,7 +500,7 @@ export async function createBatchNotificationsInApp(
             `
           }
 
-          return { userId, success: true, deliveryStatus, channelsSent, channelsFailed }
+          return { userId, success: true, deliveryStatus, channelsSent, channelsFailed, userName }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error)
           console.error(`[v0] Critical error for user ${userId}:`, errorMsg)
@@ -509,7 +520,7 @@ export async function createBatchNotificationsInApp(
             }
           }
 
-          return { userId, success: false, error: errorMsg }
+          return { userId, success: false, error: errorMsg, userName }
         }
       }),
     )
@@ -545,8 +556,140 @@ export async function createBatchNotificationsInApp(
         console.error(`[v0] User ${userIds[index]} failed:`, result.value.error)
       }
     })
+
+    return { telegramErrors }
   } catch (error) {
     console.error("[v0] Fatal error in batch notification creation:", error)
+    throw error
+  }
+}
+
+export async function retryTelegramNotifications(
+  notificationIds: number[],
+): Promise<{ success: boolean; results: Array<{ notificationId: number; success: boolean; error?: string }> }> {
+  console.log("[v0] ========== RETRY TELEGRAM NOTIFICATIONS START ==========")
+  console.log("[v0] Retrying Telegram for notifications:", notificationIds)
+
+  const results: Array<{ notificationId: number; success: boolean; error?: string }> = []
+
+  try {
+    for (const notificationId of notificationIds) {
+      try {
+        // Get notification details
+        const notificationResult = await sql`
+          SELECT 
+            id, 
+            user_id, 
+            type, 
+            message,
+            related_id
+          FROM notifications 
+          WHERE id = ${notificationId}
+        `
+
+        if (notificationResult.length === 0) {
+          console.error(`[v0] Notification ${notificationId} not found`)
+          results.push({ notificationId, success: false, error: "Notification not found" })
+          continue
+        }
+
+        const notification = notificationResult[0]
+        const userId = notification.user_id
+
+        // Get user Telegram info
+        const userResult = await sql`
+          SELECT 
+            u.first_name,
+            u.last_name,
+            np.enable_telegram,
+            np.telegram_chat_id
+          FROM users u
+          LEFT JOIN notification_preferences np ON u.id = np.user_id
+          WHERE u.id = ${userId}
+        `
+
+        if (userResult.length === 0) {
+          console.error(`[v0] User ${userId} not found`)
+          results.push({ notificationId, success: false, error: "User not found" })
+          continue
+        }
+
+        const user = userResult[0]
+        const fullName = `${user.first_name} ${user.last_name}`
+
+        if (!user.enable_telegram || !user.telegram_chat_id) {
+          console.log(`[v0] Telegram not enabled for user ${userId}`)
+          results.push({ 
+            notificationId, 
+            success: false, 
+            error: "Telegram not enabled for this user" 
+          })
+          continue
+        }
+
+        console.log(`[v0] Retrying Telegram for ${fullName} (notification ${notificationId})`)
+
+        // Generate token if needed
+        let applyToken: string | undefined
+        if (notification.type === "replacement_available" && notification.related_id) {
+          applyToken = crypto.randomUUID()
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          
+          try {
+            await sql`
+              INSERT INTO application_tokens (token, replacement_id, user_id, expires_at)
+              VALUES (${applyToken}, ${notification.related_id}, ${userId}, ${expiresAt})
+              ON CONFLICT (user_id, replacement_id) 
+              DO UPDATE SET token = ${applyToken}, expires_at = ${expiresAt}, used = false
+            `
+          } catch (error) {
+            console.error("[v0] Error creating token for retry:", error)
+            applyToken = undefined
+          }
+        }
+
+        // Retry Telegram send
+        const telegramResult = await sendTelegramWithRetry(
+          notification.type,
+          user.telegram_chat_id,
+          fullName,
+          notification.message,
+          notification.related_id || null,
+          applyToken,
+        )
+
+        if (telegramResult.success) {
+          // Update notification status
+          await sql`
+            UPDATE notifications 
+            SET delivery_status = 'success',
+                channels_sent = array_append(channels_sent, 'telegram'),
+                channels_failed = array_remove(channels_failed, 'telegram'),
+                error_message = NULL
+            WHERE id = ${notificationId}
+          `
+          
+          console.log(`[v0] ✓ Telegram retry successful for notification ${notificationId}`)
+          results.push({ notificationId, success: true })
+        } else {
+          console.error(`[v0] ✗ Telegram retry failed for notification ${notificationId}:`, telegramResult.error)
+          results.push({ 
+            notificationId, 
+            success: false, 
+            error: telegramResult.error || "Telegram send failed" 
+          })
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.error(`[v0] Error retrying notification ${notificationId}:`, errorMsg)
+        results.push({ notificationId, success: false, error: errorMsg })
+      }
+    }
+
+    console.log("[v0] ========== RETRY TELEGRAM NOTIFICATIONS COMPLETE ==========")
+    return { success: true, results }
+  } catch (error) {
+    console.error("[v0] Fatal error in retryTelegramNotifications:", error)
     throw error
   }
 }

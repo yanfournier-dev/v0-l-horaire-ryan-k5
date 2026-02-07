@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { DeadlineSelect } from "@/components/deadline-select"
+import { TelegramErrorsDialog } from "@/components/telegram-errors-dialog"
 
 interface PendingRequestsTabProps {
   pendingRequests: any[]
@@ -36,6 +37,8 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
   const [deadlineMinutes, setDeadlineMinutes] = useState<number | null>(null)
   const [showDeadlineWarning, setShowDeadlineWarning] = useState(false)
   const [selectedShiftDate, setSelectedShiftDate] = useState<string | null>(null)
+  const [telegramErrors, setTelegramErrors] = useState<any[]>([])
+  const [showTelegramErrors, setShowTelegramErrors] = useState(false)
 
   const handleApprove = async (replacementId: number, shiftDate: string) => {
     setSelectedRequestId(replacementId)
@@ -67,6 +70,10 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
     const result = await approveReplacementRequest(selectedRequestId, deadlineMinutes ?? undefined)
     if (result.error) {
       alert(result.error)
+    } else if (result.telegramErrors && result.telegramErrors.length > 0) {
+      // Show telegram errors dialog
+      setTelegramErrors(result.telegramErrors)
+      setShowTelegramErrors(true)
     }
     setProcessingId(null)
     setApprovalDialogOpen(false)
@@ -74,7 +81,9 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
     setSelectedRequestId(null)
     setSelectedShiftDate(null)
     setDeadlineMinutes(null)
-    router.refresh()
+    if (!result.telegramErrors || result.telegramErrors.length === 0) {
+      router.refresh()
+    }
   }
 
   const handleCancelApproval = () => {
@@ -222,6 +231,18 @@ export function PendingRequestsTab({ pendingRequests }: PendingRequestsTabProps)
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <TelegramErrorsDialog
+        errors={telegramErrors}
+        isOpen={showTelegramErrors}
+        onOpenChange={(open) => {
+          setShowTelegramErrors(open)
+          if (!open) {
+            setTelegramErrors([])
+            router.refresh()
+          }
+        }}
+      />
     </>
   )
 }

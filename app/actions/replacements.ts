@@ -262,7 +262,7 @@ export async function createReplacementFromShift(
           ? "🚨 SANS DÉLAI - Nouveau remplacement"
           : `Nouveau remplacement - Délai: ${deadlineLabel}`
 
-      createBatchNotificationsInApp(
+      const notificationResult = await createBatchNotificationsInApp(
         userIds,
         notificationTitle,
         `Remplacement pour ${firefighterToReplaceName} le ${formatLocalDate(shiftDate)} (${shiftType === "day" ? "Jour" : "Nuit"})`,
@@ -270,9 +270,10 @@ export async function createReplacementFromShift(
         replacementId,
         "replacement",
         user.id, // Track who created this replacement
-      ).catch((error) => {
-        console.error("Background notification creation failed:", error)
-      })
+      )
+      var telegramErrors = notificationResult?.telegramErrors || []
+    } else {
+      var telegramErrors: any[] = []
     }
 
     let emailResults
@@ -309,75 +310,7 @@ export async function createReplacementFromShift(
       console.error("Error invalidating cache:", cacheError)
     }
 
-    return { success: true, id: replacementId, emailResults }
-  } catch (error) {
-    console.error("createReplacementFromShift: Error", error)
-    return { error: "Erreur lors de la création du remplacement" }
-  }
-}
-
-export async function applyForReplacement(replacementId: number, firefighterId?: number) {
-  const user = await getSession()
-  if (!user) {
-    return { error: "Non authentifié" }
-  }
-
-  if (firefighterId && firefighterId !== user.id && !user.is_admin) {
-    return { error: "Non autorisé" }
-  }
-
-  const applicantId = firefighterId || user.id
-
-  try {
-    const db = neon(process.env.DATABASE_URL!, {
-      fetchConnectionCache: true,
-      disableWarningInBrowsers: true,
-    })
-
-    const replacement = await db`
-      SELECT user_id, application_deadline FROM replacements WHERE id = ${replacementId}
-    `
-
-    if (replacement.length === 0) {
-      return { error: "Remplacement non trouvé" }
-    }
-
-    if (replacement[0].application_deadline && !user.is_admin) {
-      const deadline = new Date(replacement[0].application_deadline)
-      const now = new Date()
-      if (now > deadline) {
-        return { error: "Le délai pour postuler est expiré" }
-      }
-    }
-
-    if (replacement[0].user_id === applicantId) {
-      return { error: "Vous ne pouvez pas postuler pour votre propre remplacement" }
-    }
-
-    const existingApplication = await db`
-      SELECT id FROM replacement_applications
-      WHERE replacement_id = ${replacementId} AND applicant_id = ${applicantId}
-    `
-
-    if (existingApplication.length > 0) {
-      return { error: "Ce pompier a déjà postulé pour ce remplacement" }
-    }
-
-    const insertResult = await db`
-      INSERT INTO replacement_applications (replacement_id, applicant_id, status)
-      VALUES (${replacementId}, ${applicantId}, 'pending')
-      RETURNING applied_at
-    `
-
-    try {
-      invalidateCache()
-      revalidatePath("/dashboard/calendar")
-      revalidatePath("/dashboard")
-    } catch (cacheError) {
-      console.error("Error invalidating cache:", cacheError)
-    }
-
-    return { success: true }
+    return { success: true, telegramErrors }
   } catch (error) {
     console.error("applyForReplacement: Error", error)
     return { error: "Erreur lors de la candidature" }
@@ -1105,6 +1038,8 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
     return { error: "Non autorisé" }
   }
 
+  let telegramErrors: any[] = []
+
   try {
     const db = neon(process.env.DATABASE_URL!, {
       fetchConnectionCache: true,
@@ -1192,7 +1127,7 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
             ? "🚨 SANS DÉLAI - Nouveau remplacement"
             : `Nouveau remplacement - Délai: ${deadlineLabel}`
 
-        createBatchNotificationsInApp(
+        const notificationResult = await createBatchNotificationsInApp(
           userIds,
           notificationTitle,
           `Remplacement pour ${firefighterToReplaceName} le ${formatLocalDate(shift_date)} (${shift_type === "day" ? "Jour" : "Nuit"})`,
@@ -1200,9 +1135,8 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
           replacementId,
           "replacement",
           user.id,
-        ).catch((error) => {
-          console.error("Background notification creation failed:", error)
-        })
+        )
+        telegramErrors = notificationResult?.telegramErrors || []
       }
 
       // Send emails in production
@@ -1219,10 +1153,79 @@ export async function approveReplacementRequest(replacementId: number, deadlineS
       console.error("Error invalidating cache:", cacheError)
     }
 
-    return { success: true }
+    return { success: true, telegramErrors }
   } catch (error) {
     console.error("approveReplacementRequest: Error", error)
     return { error: "Erreur lors de l'approbation" }
+  }
+}
+
+export async function applyForReplacement(replacementId: number, firefighterId?: number) {
+  const user = await getSession()
+  if (!user) {
+    return { error: "Non authentifié" }
+  }
+
+  if (firefighterId && firefighterId !== user.id && !user.is_admin) {
+    return { error: "Non autorisé" }
+  }
+
+  const applicantId = firefighterId || user.id
+
+  try {
+    const db = neon(process.env.DATABASE_URL!, {
+      fetchConnectionCache: true,
+      disableWarningInBrowsers: true,
+    })
+
+    const replacement = await db`
+      SELECT user_id, application_deadline FROM replacements WHERE id = ${replacementId}
+    `
+
+    if (replacement.length === 0) {
+      return { error: "Remplacement non trouvé" }
+    }
+
+    const { user_id: replacedUserId, application_deadline } = replacement[0]
+
+    if (applicantId === replacedUserId) {
+      return { error: "L'utilisateur ne peut pas candidater à son propre remplacement" }
+    }
+
+    // Check if deadline has passed
+    if (new Date() > new Date(application_deadline)) {
+      return { error: "La date limite pour candidater est dépassée" }
+    }
+
+    // Check for existing application
+    const existing = await db`
+      SELECT id FROM replacement_applications
+      WHERE replacement_id = ${replacementId} AND applicant_id = ${applicantId}
+    `
+
+    if (existing.length > 0) {
+      return { error: "Vous avez déjà candidaté à ce remplacement" }
+    }
+
+    // Insert application
+    const result = await db`
+      INSERT INTO replacement_applications (replacement_id, applicant_id)
+      VALUES (${replacementId}, ${applicantId})
+      RETURNING id
+    `
+
+    try {
+      invalidateCache()
+      revalidatePath("/dashboard/calendar")
+      revalidatePath("/dashboard")
+    } catch (cacheError) {
+      console.error("Error invalidating cache:", cacheError)
+    }
+
+    return { success: true, applicationId: result[0].id }
+  } catch (error) {
+    console.error("applyForReplacement: Error", error)
+    return { error: "Erreur lors de la candidature" }
   }
 }
 
