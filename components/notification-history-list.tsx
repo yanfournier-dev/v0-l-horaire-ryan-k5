@@ -256,7 +256,7 @@ export function NotificationHistoryList() {
                       </div>
 
                       {hasErrors && (
-                        <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3">
+                        <div className={`mt-3 rounded-md border border-red-200 p-3 ${notification.error_acknowledged ? "bg-red-50/50" : "bg-red-50"}`}>
                           <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-sm font-medium text-red-800">
                               <AlertTriangle className="h-4 w-4" />
@@ -266,10 +266,10 @@ export function NotificationHistoryList() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleAcknowledgeError(notification.id)}
-                              disabled={acknowledgingIds.has(notification.id)}
+                              disabled={acknowledgingIds.has(notification.id) || notification.error_acknowledged === true}
                               className="h-7 border-red-300 hover:bg-red-100"
                             >
-                              {acknowledgingIds.has(notification.id) ? "..." : "✓ Pris en compte"}
+                              {acknowledgingIds.has(notification.id) ? "..." : notification.error_acknowledged ? "✓ Traité" : "✓ Pris en compte"}
                             </Button>
                           </div>
                           <div className="space-y-1">
