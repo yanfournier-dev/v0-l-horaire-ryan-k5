@@ -33,7 +33,6 @@ import {
   removeDirectAssignment,
   removeReplacement, // Added import from direct-assignments
 } from "@/app/actions/direct-assignments"
-import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
 import { UserPlus, Trash2, Users, Zap } from "lucide-react" // Added Zap icon
 import { toast } from "sonner"
@@ -130,8 +129,6 @@ export function ShiftAssignmentDrawer({
   onReplacementCreated,
   onShiftUpdated,
 }: ShiftAssignmentDrawerProps) {
-  const router = useRouter() // Added missing import
-
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
     id: number
@@ -771,11 +768,7 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Attendre que la DB soit mise à jour, puis rafraîchir le calendrier
-    await new Promise(resolve => setTimeout(resolve, 300))
-    router.refresh()
-    
-    // Fermer le drawer
+    // Fermer le drawer - revalidatePath dans la Server Action gère la synchronisation
     onOpenChange(false)
   }
 
@@ -796,11 +789,7 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Attendre que la DB soit mise à jour, puis rafraîchir le calendrier
-    await new Promise(resolve => setTimeout(resolve, 300))
-    router.refresh()
-    
-    // Fermer le drawer
+    // Fermer le drawer - revalidatePath dans la Server Action gère la synchronisation
     onOpenChange(false)
   }
 
@@ -823,11 +812,7 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Attendre que la DB soit mise à jour, puis rafraîchir le calendrier
-    await new Promise(resolve => setTimeout(resolve, 300))
-    router.refresh()
-    
-    // Fermer le drawer
+    // Fermer le drawer - revalidatePath dans la Server Action gère la synchronisation
     onOpenChange(false)
   }
 
@@ -848,11 +833,7 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Attendre que la DB soit mise à jour, puis rafraîchir le calendrier
-    await new Promise(resolve => setTimeout(resolve, 300))
-    router.refresh()
-    
-    // Fermer le drawer
+    // Fermer le drawer - revalidatePath dans la Server Action gère la synchronisation
     onOpenChange(false)
   }
 
