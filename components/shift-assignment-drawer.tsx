@@ -776,7 +776,7 @@ export function ShiftAssignmentDrawer({
     // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
     setTimeout(() => {
       router.refresh()
-    }, 100)
+    }, 500)
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
@@ -802,7 +802,7 @@ export function ShiftAssignmentDrawer({
     // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
     setTimeout(() => {
       router.refresh()
-    }, 100)
+    }, 500)
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
@@ -830,7 +830,7 @@ export function ShiftAssignmentDrawer({
     // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
     setTimeout(() => {
       router.refresh()
-    }, 100)
+    }, 500)
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
@@ -856,7 +856,7 @@ export function ShiftAssignmentDrawer({
     // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
     setTimeout(() => {
       router.refresh()
-    }, 100)
+    }, 500)
   }
 
   const handleRemoveReplacement = async (
