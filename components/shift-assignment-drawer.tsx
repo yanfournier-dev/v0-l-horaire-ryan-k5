@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -129,6 +130,7 @@ export function ShiftAssignmentDrawer({
   onReplacementCreated,
   onShiftUpdated,
 }: ShiftAssignmentDrawerProps) {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
     id: number
@@ -765,14 +767,14 @@ export function ShiftAssignmentDrawer({
     }
 
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
-    console.log("[v0] handleSetLieutenant - Server action succeeded, closing drawer")
 
     setIsLoading(false)
     
-    // Fermer le drawer - revalidatePath dans la Server Action gère la synchronisation
-    console.log("[v0] handleSetLieutenant - Calling onOpenChange(false)")
+    // Fermer le drawer
     onOpenChange(false)
-    console.log("[v0] handleSetLieutenant - Drawer closed")
+    
+    // Forcer le rafraîchissement du calendrier du client
+    router.refresh()
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
@@ -792,8 +794,11 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer - revalidatePath dans la Server Action gère la synchronisation
+    // Fermer le drawer
     onOpenChange(false)
+    
+    // Forcer le rafraîchissement du calendrier du client
+    router.refresh()
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
@@ -815,8 +820,11 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer - revalidatePath dans la Server Action gère la synchronisation
+    // Fermer le drawer
     onOpenChange(false)
+    
+    // Forcer le rafraîchissement du calendrier du client
+    router.refresh()
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
@@ -836,8 +844,11 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer - revalidatePath dans la Server Action gère la synchronisation
+    // Fermer le drawer
     onOpenChange(false)
+    
+    // Forcer le rafraîchissement du calendrier du client
+    router.refresh()
   }
 
   const handleRemoveReplacement = async (
