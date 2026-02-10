@@ -29,6 +29,12 @@ interface CalendarCellProps {
   onReplacementCreated: () => void
   onShiftUpdated: () => void
   onNoteChange: () => void
+  onActingDesignationUpdated: (
+    shiftKey: string,
+    userId: number,
+    isActingLieutenant: boolean,
+    isActingCaptain: boolean,
+  ) => void
 }
 
 function getDayOfWeekLabel(dayOfWeek: number): string {
@@ -61,6 +67,7 @@ export function CalendarCell({
   onReplacementCreated,
   onShiftUpdated,
   onNoteChange,
+  onActingDesignationUpdated,
 }: CalendarCellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedShift, setSelectedShift] = useState<any>(null)
@@ -896,6 +903,7 @@ export function CalendarCell({
           isAdmin={isAdmin}
           onReplacementCreated={onReplacementCreated}
           onShiftUpdated={handleShiftUpdatedWithRefresh}
+          onActingDesignationUpdated={onActingDesignationUpdated}
         />
       )}
 

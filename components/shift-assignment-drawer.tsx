@@ -108,6 +108,12 @@ interface ShiftAssignmentDrawerProps {
   currentUserId?: number
   onReplacementCreated?: () => void
   onShiftUpdated?: (shift: any) => void
+  onActingDesignationUpdated?: (
+    shiftKey: string,
+    userId: number,
+    isActingLieutenant: boolean,
+    isActingCaptain: boolean,
+  ) => void
 }
 
 function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
@@ -129,6 +135,7 @@ export function ShiftAssignmentDrawer({
   currentUserId,
   onReplacementCreated,
   onShiftUpdated,
+  onActingDesignationUpdated,
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter() // Added missing import
 
@@ -712,7 +719,6 @@ export function ShiftAssignmentDrawer({
 
     console.log("[v0] Drawer - About to call loadData() to refresh drawer after assignment removal")
     await loadData()
-    router.refresh()
     console.log("[v0] Drawer - loadData() completed, drawer should now show updated data")
 
     setIsLoading(false)
@@ -742,7 +748,6 @@ export function ShiftAssignmentDrawer({
     toast.success(`Assignation directe retirée`) // Generic success message
 
     setIsLoading(false)
-    router.refresh()
     // console.log("[v0] Drawer - Calling refreshShiftAndClose after removeDirectAssignment")
     refreshShiftAndClose()
   }
@@ -772,7 +777,13 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
 
     setIsLoading(false)
-    router.refresh()
+
+    // Appeler le callback pour mettre à jour le state du calendrier immédiatement
+    if (onActingDesignationUpdated) {
+      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+      onActingDesignationUpdated(shiftKey, userId, true, false)
+    }
+
     // console.log("[v0] Calling refreshShiftAndClose after setActingLieutenant")
     refreshShiftAndClose()
   }
@@ -793,7 +804,13 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} n'est plus désigné comme lieutenant`)
 
     setIsLoading(false)
-    router.refresh()
+
+    // Appeler le callback pour mettre à jour le state du calendrier immédiatement
+    if (onActingDesignationUpdated) {
+      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+      onActingDesignationUpdated(shiftKey, userId, false, false)
+    }
+
     refreshShiftAndClose()
   }
 
@@ -815,7 +832,13 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme capitaine`)
 
     setIsLoading(false)
-    router.refresh()
+
+    // Appeler le callback pour mettre à jour le state du calendrier immédiatement
+    if (onActingDesignationUpdated) {
+      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+      onActingDesignationUpdated(shiftKey, userId, false, true)
+    }
+
     // console.log("[v0] Calling refreshShiftAndClose after setActingCaptain")
     refreshShiftAndClose()
   }
@@ -836,7 +859,13 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} n'est plus désigné comme capitaine`)
 
     setIsLoading(false)
-    router.refresh()
+
+    // Appeler le callback pour mettre à jour le state du calendrier immédiatement
+    if (onActingDesignationUpdated) {
+      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+      onActingDesignationUpdated(shiftKey, userId, false, false)
+    }
+
     refreshShiftAndClose()
   }
 
@@ -1334,7 +1363,6 @@ export function ShiftAssignmentDrawer({
       setReplacements(data)
 
       await loadData()
-      router.refresh()
     } catch (error) {
       console.error("Error removing replacement assignment:", error)
       toast.error("Une erreur est survenue")

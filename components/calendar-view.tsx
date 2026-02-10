@@ -625,6 +625,51 @@ export function CalendarView({
     }
   }
 
+  const handleActingDesignationUpdated = useCallback(
+    (shiftKey: string, userId: number, isActingLieutenant: boolean, isActingCaptain: boolean) => {
+      console.log(
+        "[v0] handleActingDesignationUpdated - shiftKey:",
+        shiftKey,
+        "userId:",
+        userId,
+        "isActingLt:",
+        isActingLieutenant,
+        "isActingCpt:",
+        isActingCaptain,
+      )
+
+      setActingDesignationMap((prev) => {
+        const newMap = { ...prev }
+
+        if (!newMap[shiftKey]) {
+          newMap[shiftKey] = []
+        }
+
+        // Find if user already has a designation for this shift
+        const existingIndex = newMap[shiftKey].findIndex((ad: any) => ad.user_id === userId)
+
+        if (existingIndex >= 0) {
+          // Update existing
+          newMap[shiftKey][existingIndex] = {
+            user_id: userId,
+            is_acting_lieutenant: isActingLieutenant,
+            is_acting_captain: isActingCaptain,
+          }
+        } else if (isActingLieutenant || isActingCaptain) {
+          // Add new designation only if at least one is true
+          newMap[shiftKey].push({
+            user_id: userId,
+            is_acting_lieutenant: isActingLieutenant,
+            is_acting_captain: isActingCaptain,
+          })
+        }
+
+        return newMap
+      })
+    },
+    [],
+  )
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-center">
@@ -715,6 +760,7 @@ export function CalendarView({
                     onReplacementCreated={handleReplacementCreated}
                     onShiftUpdated={handleShiftUpdated}
                     onNoteChange={handleNoteChange}
+                    onActingDesignationUpdated={handleActingDesignationUpdated}
                   />
                 </div>,
               )

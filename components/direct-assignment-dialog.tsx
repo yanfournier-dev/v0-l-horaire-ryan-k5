@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -59,12 +58,12 @@ export function DirectAssignmentDialog({
   open,
   onOpenChange,
   shift,
-  preSelectedFirefighter,
+  teamFirefighters,
   allFirefighters,
   onSuccess,
-  replacementOrder,
+  preSelectedFirefighter,
+  replacementOrder = 1,
 }: DirectAssignmentDialogProps) {
-  const router = useRouter()
   const [assignedFirefighter, setAssignedFirefighter] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isPartial, setIsPartial] = useState(false)
@@ -189,7 +188,6 @@ export function DirectAssignmentDialog({
       console.log("[v0] DirectAssignmentDialog - Closing dialog and calling onSuccess")
       onOpenChange(false)
       setIsLoading(false)
-      router.refresh()
       setTimeout(() => {
         console.log("[v0] DirectAssignmentDialog - Calling onSuccess callback")
         onSuccess()
@@ -234,7 +232,6 @@ export function DirectAssignmentDialog({
       toast.success("Pompier assigné directement avec succès")
       onOpenChange(false)
       setIsLoading(false)
-      router.refresh()
       setTimeout(() => {
         onSuccess()
       }, 100)
