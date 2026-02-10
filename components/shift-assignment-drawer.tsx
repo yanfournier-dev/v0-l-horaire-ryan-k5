@@ -108,7 +108,6 @@ interface ShiftAssignmentDrawerProps {
   currentUserId?: number
   onReplacementCreated?: () => void
   onShiftUpdated?: (shift: any) => void
-  onActingDesignationUpdate?: (shiftKey: string, userId: number, isActingLieutenant: boolean, isActingCaptain: boolean) => void
 }
 
 function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
@@ -130,7 +129,6 @@ export function ShiftAssignmentDrawer({
   currentUserId,
   onReplacementCreated,
   onShiftUpdated,
-  onActingDesignationUpdate,
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter() // Added missing import
 
@@ -773,13 +771,11 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // OPTIMISTIC UPDATE - Mettre à jour le calendrier immédiatement
-    if (onActingDesignationUpdate) {
-      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-      onActingDesignationUpdate(shiftKey, userId, true, false)
-    }
+    // Attendre que la DB soit mise à jour, puis rafraîchir le calendrier
+    await new Promise(resolve => setTimeout(resolve, 300))
+    router.refresh()
     
-    // Fermer le drawer SANS router.refresh()
+    // Fermer le drawer
     onOpenChange(false)
   }
 
@@ -800,13 +796,11 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // OPTIMISTIC UPDATE - Mettre à jour le calendrier immédiatement
-    if (onActingDesignationUpdate) {
-      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-      onActingDesignationUpdate(shiftKey, userId, false, false)
-    }
+    // Attendre que la DB soit mise à jour, puis rafraîchir le calendrier
+    await new Promise(resolve => setTimeout(resolve, 300))
+    router.refresh()
     
-    // Fermer le drawer SANS router.refresh()
+    // Fermer le drawer
     onOpenChange(false)
   }
 
@@ -829,13 +823,11 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // OPTIMISTIC UPDATE - Mettre à jour le calendrier immédiatement
-    if (onActingDesignationUpdate) {
-      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-      onActingDesignationUpdate(shiftKey, userId, false, true)
-    }
+    // Attendre que la DB soit mise à jour, puis rafraîchir le calendrier
+    await new Promise(resolve => setTimeout(resolve, 300))
+    router.refresh()
     
-    // Fermer le drawer SANS router.refresh()
+    // Fermer le drawer
     onOpenChange(false)
   }
 
@@ -856,13 +848,11 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // OPTIMISTIC UPDATE - Mettre à jour le calendrier immédiatement
-    if (onActingDesignationUpdate) {
-      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-      onActingDesignationUpdate(shiftKey, userId, false, false)
-    }
+    // Attendre que la DB soit mise à jour, puis rafraîchir le calendrier
+    await new Promise(resolve => setTimeout(resolve, 300))
+    router.refresh()
     
-    // Fermer le drawer SANS router.refresh()
+    // Fermer le drawer
     onOpenChange(false)
   }
 
