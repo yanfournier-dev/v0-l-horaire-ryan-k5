@@ -770,16 +770,16 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer
-    onOpenChange(false)
+    // Forcer le rafraîchissement du client IMMÉDIATEMENT
+    router.refresh()
     
-    // Déclencher la mise à jour du calendrier immédiatement
+    // Déclencher la mise à jour du calendrier
     if (onShiftUpdated) {
       onShiftUpdated()
     }
     
-    // Forcer le rafraîchissement du calendrier du client
-    router.refresh()
+    // Fermer le drawer
+    onOpenChange(false)
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
@@ -799,16 +799,16 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer
-    onOpenChange(false)
+    // Forcer le rafraîchissement du client IMMÉDIATEMENT
+    router.refresh()
     
-    // Déclencher la mise à jour du calendrier immédiatement
+    // Déclencher la mise à jour du calendrier
     if (onShiftUpdated) {
       onShiftUpdated()
     }
     
-    // Forcer le rafraîchissement du calendrier du client
-    router.refresh()
+    // Fermer le drawer
+    onOpenChange(false)
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
@@ -830,16 +830,16 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer
-    onOpenChange(false)
+    // Forcer le rafraîchissement du client IMMÉDIATEMENT
+    router.refresh()
     
-    // Déclencher la mise à jour du calendrier immédiatement
+    // Déclencher la mise à jour du calendrier
     if (onShiftUpdated) {
       onShiftUpdated()
     }
     
-    // Forcer le rafraîchissement du calendrier du client
-    router.refresh()
+    // Fermer le drawer
+    onOpenChange(false)
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
@@ -859,16 +859,16 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer
-    onOpenChange(false)
+    // Forcer le rafraîchissement du client IMMÉDIATEMENT
+    router.refresh()
     
-    // Déclencher la mise à jour du calendrier immédiatement
+    // Déclencher la mise à jour du calendrier
     if (onShiftUpdated) {
       onShiftUpdated()
     }
     
-    // Forcer le rafraîchissement du calendrier du client
-    router.refresh()
+    // Fermer le drawer
+    onOpenChange(false)
   }
 
   const handleRemoveReplacement = async (
