@@ -770,10 +770,15 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer immédiatement
+    // Appeler directement le callback pour mettre à jour le calendrier
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    // Fermer le drawer
     onOpenChange(false)
     
-    // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
+    // Rafraîchir après le délai pour synchroniser final
     setTimeout(() => {
       router.refresh()
     }, 500)
@@ -796,10 +801,15 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer immédiatement
+    // Appeler directement le callback pour mettre à jour le calendrier
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    // Fermer le drawer
     onOpenChange(false)
     
-    // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
+    // Rafraîchir après le délai pour synchroniser final
     setTimeout(() => {
       router.refresh()
     }, 500)
@@ -824,10 +834,15 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer immédiatement
+    // Appeler directement le callback pour mettre à jour le calendrier
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    // Fermer le drawer
     onOpenChange(false)
     
-    // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
+    // Rafraîchir après le délai pour synchroniser final
     setTimeout(() => {
       router.refresh()
     }, 500)
@@ -850,10 +865,15 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Fermer le drawer immédiatement
+    // Appeler directement le callback pour mettre à jour le calendrier
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    // Fermer le drawer
     onOpenChange(false)
     
-    // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
+    // Rafraîchir après le délai pour synchroniser final
     setTimeout(() => {
       router.refresh()
     }, 500)
