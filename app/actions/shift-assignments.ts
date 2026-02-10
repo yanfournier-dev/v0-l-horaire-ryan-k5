@@ -513,12 +513,19 @@ export async function setActingLieutenant(shiftId: number, userId: number, shift
     console.log("[v0] setActingLieutenant - Success")
 
     try {
+      console.log("[v0] setActingLieutenant - About to call invalidateCache()")
       invalidateCache()
+      console.log("[v0] setActingLieutenant - invalidateCache() completed")
+      
+      console.log("[v0] setActingLieutenant - About to call revalidatePath()")
       revalidatePath("/dashboard/calendar")
+      console.log("[v0] setActingLieutenant - revalidatePath() completed")
     } catch (cacheError) {
+      console.log("[v0] setActingLieutenant - Cache error:", cacheError)
       // Silently handle cache errors
     }
 
+    console.log("[v0] setActingLieutenant - Returning success")
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de la désignation du lieutenant" }
@@ -646,12 +653,19 @@ export async function setActingCaptain(shiftId: number, userId: number, shiftDat
     console.log("[v0] setActingCaptain - Success")
 
     try {
+      console.log("[v0] setActingCaptain - About to call invalidateCache()")
       invalidateCache()
+      console.log("[v0] setActingCaptain - invalidateCache() completed")
+      
+      console.log("[v0] setActingCaptain - About to call revalidatePath()")
       revalidatePath("/dashboard/calendar")
+      console.log("[v0] setActingCaptain - revalidatePath() completed")
     } catch (cacheError) {
+      console.log("[v0] setActingCaptain - Cache error:", cacheError)
       // Silently handle cache errors
     }
 
+    console.log("[v0] setActingCaptain - Returning success")
     return { success: true }
   } catch (error) {
     return { error: "Erreur lors de la désignation du capitaine" }
@@ -741,12 +755,19 @@ export async function removeActingLieutenant(shiftId: number, userId: number) {
     console.log("[v0] removeActingLieutenant: Success")
 
     try {
+      console.log("[v0] removeActingLieutenant - About to call invalidateCache()")
       invalidateCache()
+      console.log("[v0] removeActingLieutenant - invalidateCache() completed")
+      
+      console.log("[v0] removeActingLieutenant - About to call revalidatePath()")
       revalidatePath("/dashboard/calendar")
+      console.log("[v0] removeActingLieutenant - revalidatePath() completed")
     } catch (cacheError) {
+      console.log("[v0] removeActingLieutenant - Cache error:", cacheError)
       // Silently handle cache errors
     }
 
+    console.log("[v0] removeActingLieutenant - Returning success")
     return { success: true }
   } catch (error) {
     console.error("[v0] Error removing acting lieutenant:", error)
@@ -837,12 +858,19 @@ export async function removeActingCaptain(shiftId: number, userId: number) {
     console.log("[v0] removeActingCaptain: Success")
 
     try {
+      console.log("[v0] removeActingCaptain - About to call invalidateCache()")
       invalidateCache()
+      console.log("[v0] removeActingCaptain - invalidateCache() completed")
+      
+      console.log("[v0] removeActingCaptain - About to call revalidatePath()")
       revalidatePath("/dashboard/calendar")
+      console.log("[v0] removeActingCaptain - revalidatePath() completed")
     } catch (cacheError) {
+      console.log("[v0] removeActingCaptain - Cache error:", cacheError)
       // Silently handle cache errors
     }
 
+    console.log("[v0] removeActingCaptain - Returning success")
     return { success: true }
   } catch (error) {
     console.error("[v0] Error removing acting captain:", error)

@@ -765,11 +765,14 @@ export function ShiftAssignmentDrawer({
     }
 
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
+    console.log("[v0] handleSetLieutenant - Server action succeeded, closing drawer")
 
     setIsLoading(false)
     
     // Fermer le drawer - revalidatePath dans la Server Action gère la synchronisation
+    console.log("[v0] handleSetLieutenant - Calling onOpenChange(false)")
     onOpenChange(false)
+    console.log("[v0] handleSetLieutenant - Drawer closed")
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
