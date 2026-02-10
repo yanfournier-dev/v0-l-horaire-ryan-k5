@@ -773,6 +773,11 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer
     onOpenChange(false)
     
+    // Déclencher la mise à jour du calendrier immédiatement
+    if (onShiftUpdated) {
+      onShiftUpdated()
+    }
+    
     // Forcer le rafraîchissement du calendrier du client
     router.refresh()
   }
@@ -796,6 +801,11 @@ export function ShiftAssignmentDrawer({
     
     // Fermer le drawer
     onOpenChange(false)
+    
+    // Déclencher la mise à jour du calendrier immédiatement
+    if (onShiftUpdated) {
+      onShiftUpdated()
+    }
     
     // Forcer le rafraîchissement du calendrier du client
     router.refresh()
@@ -823,6 +833,11 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer
     onOpenChange(false)
     
+    // Déclencher la mise à jour du calendrier immédiatement
+    if (onShiftUpdated) {
+      onShiftUpdated()
+    }
+    
     // Forcer le rafraîchissement du calendrier du client
     router.refresh()
   }
@@ -846,6 +861,11 @@ export function ShiftAssignmentDrawer({
     
     // Fermer le drawer
     onOpenChange(false)
+    
+    // Déclencher la mise à jour du calendrier immédiatement
+    if (onShiftUpdated) {
+      onShiftUpdated()
+    }
     
     // Forcer le rafraîchissement du calendrier du client
     router.refresh()
