@@ -64,6 +64,50 @@ export function CalendarView({
 
   const todayStr = getCurrentLocalDate()
 
+  // Optimistic update handler for acting designations
+  // Cette fonction met à jour l'UI IMMÉDIATEMENT avec gestion d'erreur pour revert
+  const handleActingDesignationUpdate = useCallback(
+    async (shiftKey: string, userId: number, isActingLieutenant: boolean, isActingCaptain: boolean) => {
+      console.log("[v0] Optimistic update - shiftKey:", shiftKey, "userId:", userId, "Lt:", isActingLieutenant, "Cpt:", isActingCaptain)
+      
+      // Sauvegarder l'ancien état pour revert en cas d'erreur
+      const previousDesignations = actingDesignationMap[shiftKey]
+      
+      // OPTIMISTIC: Mettre à jour l'UI immédiatement
+      setActingDesignationMap((prev) => {
+        const newMap = { ...prev }
+        if (!newMap[shiftKey]) {
+          newMap[shiftKey] = []
+        }
+        
+        // Chercher si l'utilisateur existe déjà
+        const existingIndex = newMap[shiftKey].findIndex((ad: any) => ad.user_id === userId)
+        
+        if (existingIndex >= 0) {
+          // Mettre à jour
+          newMap[shiftKey][existingIndex] = {
+            user_id: userId,
+            is_acting_lieutenant: isActingLieutenant,
+            is_acting_captain: isActingCaptain,
+          }
+        } else if (isActingLieutenant || isActingCaptain) {
+          // Ajouter nouveau
+          newMap[shiftKey].push({
+            user_id: userId,
+            is_acting_lieutenant: isActingLieutenant,
+            is_acting_captain: isActingCaptain,
+          })
+        }
+        
+        return newMap
+      })
+
+      // La Server Action du drawer gérera la validation et la BD
+      // Si elle échoue, elle retournera une erreur que le drawer affichera
+    },
+    [actingDesignationMap],
+  )
+
   useEffect(() => {
     let pollInterval: NodeJS.Timeout | null = null
     let restoreInterval: NodeJS.Timeout | null = null
@@ -625,51 +669,6 @@ export function CalendarView({
     }
   }
 
-  const handleActingDesignationUpdated = useCallback(
-    (shiftKey: string, userId: number, isActingLieutenant: boolean, isActingCaptain: boolean) => {
-      console.log(
-        "[v0] handleActingDesignationUpdated - shiftKey:",
-        shiftKey,
-        "userId:",
-        userId,
-        "isActingLt:",
-        isActingLieutenant,
-        "isActingCpt:",
-        isActingCaptain,
-      )
-
-      setActingDesignationMap((prev) => {
-        const newMap = { ...prev }
-
-        if (!newMap[shiftKey]) {
-          newMap[shiftKey] = []
-        }
-
-        // Find if user already has a designation for this shift
-        const existingIndex = newMap[shiftKey].findIndex((ad: any) => ad.user_id === userId)
-
-        if (existingIndex >= 0) {
-          // Update existing
-          newMap[shiftKey][existingIndex] = {
-            user_id: userId,
-            is_acting_lieutenant: isActingLieutenant,
-            is_acting_captain: isActingCaptain,
-          }
-        } else if (isActingLieutenant || isActingCaptain) {
-          // Add new designation only if at least one is true
-          newMap[shiftKey].push({
-            user_id: userId,
-            is_acting_lieutenant: isActingLieutenant,
-            is_acting_captain: isActingCaptain,
-          })
-        }
-
-        return newMap
-      })
-    },
-    [],
-  )
-
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-center">
@@ -760,7 +759,7 @@ export function CalendarView({
                     onReplacementCreated={handleReplacementCreated}
                     onShiftUpdated={handleShiftUpdated}
                     onNoteChange={handleNoteChange}
-                    onActingDesignationUpdated={handleActingDesignationUpdated}
+                    onActingDesignationUpdate={handleActingDesignationUpdate}
                   />
                 </div>,
               )

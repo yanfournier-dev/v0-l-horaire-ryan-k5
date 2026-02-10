@@ -108,12 +108,7 @@ interface ShiftAssignmentDrawerProps {
   currentUserId?: number
   onReplacementCreated?: () => void
   onShiftUpdated?: (shift: any) => void
-  onActingDesignationUpdated?: (
-    shiftKey: string,
-    userId: number,
-    isActingLieutenant: boolean,
-    isActingCaptain: boolean,
-  ) => void
+  onActingDesignationUpdate?: (shiftKey: string, userId: number, isActingLieutenant: boolean, isActingCaptain: boolean) => void
 }
 
 function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
@@ -135,7 +130,7 @@ export function ShiftAssignmentDrawer({
   currentUserId,
   onReplacementCreated,
   onShiftUpdated,
-  onActingDesignationUpdated,
+  onActingDesignationUpdate,
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter() // Added missing import
 
@@ -777,43 +772,43 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
 
     setIsLoading(false)
-
-    // Appeler le callback pour mettre à jour le state du calendrier immédiatement
-    if (onActingDesignationUpdated) {
+    
+    // OPTIMISTIC UPDATE - Mettre à jour le calendrier immédiatement
+    if (onActingDesignationUpdate) {
       const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-      onActingDesignationUpdated(shiftKey, userId, true, false)
+      onActingDesignationUpdate(shiftKey, userId, true, false)
     }
-
-    // Fermer le drawer SANS appeler router.refresh() pour laisser le callback faire son travail
+    
+    // Fermer le drawer SANS router.refresh()
     onOpenChange(false)
   }
 
-const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
-  if (!shift) return
+  const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
+    if (!shift) return
 
-  setIsLoading(true)
+    setIsLoading(true)
 
-  const result = await removeActingLieutenant(shift.id, userId)
+    const result = await removeActingLieutenant(shift.id, userId)
 
-  if (result.error) {
-    toast.error(result.error)
+    if (result.error) {
+      toast.error(result.error)
+      setIsLoading(false)
+      return
+    }
+
+    toast.success(`${firefighterName} n'est plus désigné comme lieutenant`)
+
     setIsLoading(false)
-    return
+    
+    // OPTIMISTIC UPDATE - Mettre à jour le calendrier immédiatement
+    if (onActingDesignationUpdate) {
+      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+      onActingDesignationUpdate(shiftKey, userId, false, false)
+    }
+    
+    // Fermer le drawer SANS router.refresh()
+    onOpenChange(false)
   }
-
-  toast.success(`${firefighterName} n'est plus désigné comme lieutenant`)
-
-  setIsLoading(false)
-
-  // Appeler le callback pour mettre à jour le state du calendrier immédiatement
-  if (onActingDesignationUpdated) {
-    const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-    onActingDesignationUpdated(shiftKey, userId, false, false)
-  }
-
-  // Fermer le drawer SANS appeler router.refresh() pour laisser le callback faire son travail
-  onOpenChange(false)
-}
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
     if (!shift) return
@@ -833,43 +828,43 @@ const handleRemoveLieutenant = async (userId: number, firefighterName: string) =
     toast.success(`${firefighterName} a été désigné comme capitaine`)
 
     setIsLoading(false)
-
-  // Appeler le callback pour mettre à jour le state du calendrier immédiatement
-  if (onActingDesignationUpdated) {
-    const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-    onActingDesignationUpdated(shiftKey, userId, false, true)
+    
+    // OPTIMISTIC UPDATE - Mettre à jour le calendrier immédiatement
+    if (onActingDesignationUpdate) {
+      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+      onActingDesignationUpdate(shiftKey, userId, false, true)
+    }
+    
+    // Fermer le drawer SANS router.refresh()
+    onOpenChange(false)
   }
 
-  // Fermer le drawer SANS appeler router.refresh() pour laisser le callback faire son travail
-  onOpenChange(false)
-}
+  const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
+    if (!shift) return
 
-const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
-  if (!shift) return
+    setIsLoading(true)
 
-  setIsLoading(true)
+    const result = await removeActingCaptain(shift.id, userId)
 
-  const result = await removeActingCaptain(shift.id, userId)
+    if (result.error) {
+      toast.error(result.error)
+      setIsLoading(false)
+      return
+    }
 
-  if (result.error) {
-    toast.error(result.error)
+    toast.success(`${firefighterName} n'est plus désigné comme capitaine`)
+
     setIsLoading(false)
-    return
+    
+    // OPTIMISTIC UPDATE - Mettre à jour le calendrier immédiatement
+    if (onActingDesignationUpdate) {
+      const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
+      onActingDesignationUpdate(shiftKey, userId, false, false)
+    }
+    
+    // Fermer le drawer SANS router.refresh()
+    onOpenChange(false)
   }
-
-  toast.success(`${firefighterName} n'est plus désigné comme capitaine`)
-
-  setIsLoading(false)
-
-  // Appeler le callback pour mettre à jour le state du calendrier immédiatement
-  if (onActingDesignationUpdated) {
-    const shiftKey = `${dateStr}_${shift.shift_type}_${shift.team_id}`
-    onActingDesignationUpdated(shiftKey, userId, false, false)
-  }
-
-  // Fermer le drawer SANS appeler router.refresh() pour laisser le callback faire son travail
-  onOpenChange(false)
-}
 
   const handleRemoveReplacement = async (
     shiftId: number,

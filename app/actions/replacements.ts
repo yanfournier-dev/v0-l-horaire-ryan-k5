@@ -741,7 +741,7 @@ export async function deleteReplacement(replacementId: number) {
     `
 
     if (replacementDetails.length > 0) {
-      const { shift_date, shift_type, team_id, user_id } = replacementDetails[0]
+      const { shift_date, shift_type, team_id } = replacementDetails[0]
 
       const cycleConfig = await db`
         SELECT start_date, cycle_length_days
@@ -770,7 +770,7 @@ export async function deleteReplacement(replacementId: number) {
 
           await db`
             DELETE FROM shift_assignments
-            WHERE shift_id = ${shiftId} AND user_id = ${user_id}
+            WHERE shift_id = ${shiftId}
           `
         }
       }
