@@ -770,16 +770,13 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Forcer le rafraîchissement du client IMMÉDIATEMENT
-    router.refresh()
-    
-    // Déclencher la mise à jour du calendrier
-    if (onShiftUpdated) {
-      onShiftUpdated()
-    }
-    
-    // Fermer le drawer
+    // Fermer le drawer immédiatement
     onOpenChange(false)
+    
+    // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
+    setTimeout(() => {
+      router.refresh()
+    }, 100)
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
@@ -799,16 +796,13 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Forcer le rafraîchissement du client IMMÉDIATEMENT
-    router.refresh()
-    
-    // Déclencher la mise à jour du calendrier
-    if (onShiftUpdated) {
-      onShiftUpdated()
-    }
-    
-    // Fermer le drawer
+    // Fermer le drawer immédiatement
     onOpenChange(false)
+    
+    // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
+    setTimeout(() => {
+      router.refresh()
+    }, 100)
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
@@ -830,16 +824,13 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Forcer le rafraîchissement du client IMMÉDIATEMENT
-    router.refresh()
-    
-    // Déclencher la mise à jour du calendrier
-    if (onShiftUpdated) {
-      onShiftUpdated()
-    }
-    
-    // Fermer le drawer
+    // Fermer le drawer immédiatement
     onOpenChange(false)
+    
+    // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
+    setTimeout(() => {
+      router.refresh()
+    }, 100)
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
@@ -859,16 +850,13 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Forcer le rafraîchissement du client IMMÉDIATEMENT
-    router.refresh()
-    
-    // Déclencher la mise à jour du calendrier
-    if (onShiftUpdated) {
-      onShiftUpdated()
-    }
-    
-    // Fermer le drawer
+    // Fermer le drawer immédiatement
     onOpenChange(false)
+    
+    // Attendre un peu que le serveur mette à jour les données, puis rafraîchir
+    setTimeout(() => {
+      router.refresh()
+    }, 100)
   }
 
   const handleRemoveReplacement = async (
