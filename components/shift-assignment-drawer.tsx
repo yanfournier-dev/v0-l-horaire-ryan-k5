@@ -773,8 +773,12 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer immédiatement
     onOpenChange(false)
     
-    // Attendre 1 seconde que le serveur finisse de traiter handleShiftUpdated, puis rafraîchir
-    // (En preview, handleShiftUpdated s'exécute côté serveur et prend du temps)
+    // Appeler le callback pour déclencher la mise à jour du calendrier
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    // Rafraîchir après 1 seconde pour synchroniser final
     setTimeout(() => {
       router.refresh()
     }, 1000)
@@ -800,8 +804,12 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer immédiatement
     onOpenChange(false)
     
-    // Attendre 1 seconde que le serveur finisse de traiter handleShiftUpdated, puis rafraîchir
-    // (En preview, handleShiftUpdated s'exécute côté serveur et prend du temps)
+    // Appeler le callback pour déclencher la mise à jour du calendrier
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    // Rafraîchir après 1 seconde pour synchroniser final
     setTimeout(() => {
       router.refresh()
     }, 1000)
@@ -829,8 +837,12 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer immédiatement
     onOpenChange(false)
     
-    // Attendre 1 seconde que le serveur finisse de traiter handleShiftUpdated, puis rafraîchir
-    // (En preview, handleShiftUpdated s'exécute côté serveur et prend du temps)
+    // Appeler le callback pour déclencher la mise à jour du calendrier
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    // Rafraîchir après 1 seconde pour synchroniser final
     setTimeout(() => {
       router.refresh()
     }, 1000)
@@ -856,8 +868,12 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer immédiatement
     onOpenChange(false)
     
-    // Attendre 1 seconde que le serveur finisse de traiter handleShiftUpdated, puis rafraîchir
-    // (En preview, handleShiftUpdated s'exécute côté serveur et prend du temps)
+    // Appeler le callback pour déclencher la mise à jour du calendrier
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    // Rafraîchir après 1 seconde pour synchroniser final
     setTimeout(() => {
       router.refresh()
     }, 1000)
