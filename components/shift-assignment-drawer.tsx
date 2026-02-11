@@ -130,6 +130,11 @@ export function ShiftAssignmentDrawer({
   onReplacementCreated,
   onShiftUpdated,
 }: ShiftAssignmentDrawerProps) {
+  // Guard clause - must be first before any other logic
+  if (!shift) {
+    return null
+  }
+
   const router = useRouter() // Added missing import
 
   const [isLoading, setIsLoading] = useState(false)
@@ -1286,10 +1291,6 @@ export function ShiftAssignmentDrawer({
     } else {
       setDeadlineSeconds(null) // Handle null or Date objects
     }
-  }
-
-  if (!shift) {
-    return null
   }
 
   // Helper to find replacement details by order
