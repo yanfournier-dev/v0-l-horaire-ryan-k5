@@ -770,18 +770,14 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Appeler directement le callback pour mettre à jour le calendrier
-    if (onShiftUpdated) {
-      onShiftUpdated(shift)
-    }
-    
-    // Fermer le drawer
+    // Fermer le drawer immédiatement
     onOpenChange(false)
     
-    // Rafraîchir après le délai pour synchroniser final
+    // Attendre 1 seconde que le serveur finisse de traiter handleShiftUpdated, puis rafraîchir
+    // (En preview, handleShiftUpdated s'exécute côté serveur et prend du temps)
     setTimeout(() => {
       router.refresh()
-    }, 500)
+    }, 1000)
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
@@ -801,18 +797,14 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Appeler directement le callback pour mettre à jour le calendrier
-    if (onShiftUpdated) {
-      onShiftUpdated(shift)
-    }
-    
-    // Fermer le drawer
+    // Fermer le drawer immédiatement
     onOpenChange(false)
     
-    // Rafraîchir après le délai pour synchroniser final
+    // Attendre 1 seconde que le serveur finisse de traiter handleShiftUpdated, puis rafraîchir
+    // (En preview, handleShiftUpdated s'exécute côté serveur et prend du temps)
     setTimeout(() => {
       router.refresh()
-    }, 500)
+    }, 1000)
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
@@ -834,18 +826,14 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Appeler directement le callback pour mettre à jour le calendrier
-    if (onShiftUpdated) {
-      onShiftUpdated(shift)
-    }
-    
-    // Fermer le drawer
+    // Fermer le drawer immédiatement
     onOpenChange(false)
     
-    // Rafraîchir après le délai pour synchroniser final
+    // Attendre 1 seconde que le serveur finisse de traiter handleShiftUpdated, puis rafraîchir
+    // (En preview, handleShiftUpdated s'exécute côté serveur et prend du temps)
     setTimeout(() => {
       router.refresh()
-    }, 500)
+    }, 1000)
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
@@ -865,18 +853,14 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
-    // Appeler directement le callback pour mettre à jour le calendrier
-    if (onShiftUpdated) {
-      onShiftUpdated(shift)
-    }
-    
-    // Fermer le drawer
+    // Fermer le drawer immédiatement
     onOpenChange(false)
     
-    // Rafraîchir après le délai pour synchroniser final
+    // Attendre 1 seconde que le serveur finisse de traiter handleShiftUpdated, puis rafraîchir
+    // (En preview, handleShiftUpdated s'exécute côté serveur et prend du temps)
     setTimeout(() => {
       router.refresh()
-    }, 500)
+    }, 1000)
   }
 
   const handleRemoveReplacement = async (
