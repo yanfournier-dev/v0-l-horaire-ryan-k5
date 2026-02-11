@@ -314,17 +314,17 @@ export async function getNotificationDetail(notificationId: number) {
 }
 
 export async function getNotificationErrorsCount() {
-  const session = await getSession()
-  if (!session) {
-    return 0
-  }
-
-  const userIsAdmin = await isUserAdmin()
-  if (!userIsAdmin) {
-    return 0
-  }
-
   try {
+    const session = await getSession()
+    if (!session) {
+      return 0
+    }
+
+    const userIsAdmin = await isUserAdmin()
+    if (!userIsAdmin) {
+      return 0
+    }
+
     const result = await sql`
       SELECT COUNT(*) as error_count
       FROM notifications
@@ -335,7 +335,8 @@ export async function getNotificationErrorsCount() {
     const count = Number.parseInt(result[0]?.error_count || "0")
     return count
   } catch (error) {
-    console.error("[v0] getNotificationErrorsCount: Error", error)
+    // Silently return 0 on error - this function runs during layout render
+    // and shouldn't break the page if the database is temporarily unavailable
     return 0
   }
 }
