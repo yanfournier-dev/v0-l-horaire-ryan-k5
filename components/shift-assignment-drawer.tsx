@@ -1353,10 +1353,6 @@ export function ShiftAssignmentDrawer({
     }
   }
 
-  if (!shift) {
-    return null
-  }
-
   // Helper to find replacement details by order
   const getReplacementByOrder = (firefighterId: number, order: number) => {
     const replacementsForUser = groupedReplacements.get(firefighterId) || []
@@ -1399,6 +1395,10 @@ export function ShiftAssignmentDrawer({
     } finally {
       setLoadingReplacements(false)
     }
+  }
+
+  if (!shift) {
+    return null
   }
 
   return (
