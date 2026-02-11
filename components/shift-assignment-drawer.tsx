@@ -132,6 +132,11 @@ export function ShiftAssignmentDrawer({
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Log that the drawer is rendering on the client
+  useEffect(() => {
+    console.log("[v0] ShiftAssignmentDrawer - Mounted on CLIENT, shift:", shift?.id)
+  }, [])
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
     id: number
     first_name: string
@@ -745,14 +750,9 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleSetLieutenant = async (userId: number, firefighterName: string) => {
+    console.log("[v0] handleSetLieutenant - CALLED with userId:", userId, "firefighterName:", firefighterName)
+    
     if (!shift) return
-
-    if (typeof window !== "undefined") {
-      const scrollPos = window.scrollY
-      // console.log("[v0] Drawer - saving scroll before setActingLieutenant:", scrollPos)
-      sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
-      sessionStorage.setItem("skip-scroll-to-today", "true")
-    }
 
     setIsLoading(true)
 
@@ -795,6 +795,8 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
+    console.log("[v0] handleRemoveLieutenant - CALLED with userId:", userId, "firefighterName:", firefighterName)
+    
     if (!shift) return
 
     setIsLoading(true)
@@ -836,6 +838,8 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
+    console.log("[v0] handleSetCaptain - CALLED with userId:", userId, "firefighterName:", firefighterName)
+    
     if (!shift) return
 
     setIsLoading(true)
@@ -879,6 +883,8 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
+    console.log("[v0] handleRemoveCaptain - CALLED with userId:", userId, "firefighterName:", firefighterName)
+    
     if (!shift) return
 
     setIsLoading(true)
