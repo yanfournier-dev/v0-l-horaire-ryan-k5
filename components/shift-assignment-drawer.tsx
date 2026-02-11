@@ -923,10 +923,36 @@ export function ShiftAssignmentDrawer({
       console.log("[v0] handleRemoveCaptain - STEP 3: onShiftUpdated NOT available - will rely on router.refresh()")
     }
     
-    // Rafraîchir sans délai pour ne pas perdre la position de scroll
-    console.log("[v0] handleRemoveCaptain - STEP 5: About to call router.refresh()")
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
     router.refresh()
-    console.log("[v0] handleRemoveCaptain - STEP 6: router.refresh() called (may not execute if async)")
+  }
+
+  const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
+    if (!shift) return
+
+    setIsLoading(true)
+
+    const result = await removeActingCaptain(shift.id, userId)
+
+    if (result.error) {
+      toast.error(result.error)
+      setIsLoading(false)
+      return
+    }
+
+    toast.success(`${firefighterName} n'est plus désigné comme capitaine`)
+
+    setIsLoading(false)
+    onOpenChange(false)
+    
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    router.refresh()
   }
 
   const handleRemoveReplacement = async (
