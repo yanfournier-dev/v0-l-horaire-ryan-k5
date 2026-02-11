@@ -516,7 +516,6 @@ export async function setActingLieutenant(shiftId: number, userId: number, shift
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.log("[v0] setActingLieutenant - Cache error:", cacheError)
       // Silently handle cache errors
     }
 
@@ -650,7 +649,6 @@ export async function setActingCaptain(shiftId: number, userId: number, shiftDat
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.log("[v0] setActingCaptain - Cache error:", cacheError)
       // Silently handle cache errors
     }
 
@@ -746,7 +744,6 @@ export async function removeActingLieutenant(shiftId: number, userId: number) {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.log("[v0] removeActingLieutenant - Cache error:", cacheError)
       // Silently handle cache errors
     }
 
@@ -843,7 +840,6 @@ export async function removeActingCaptain(shiftId: number, userId: number) {
       invalidateCache()
       revalidatePath("/dashboard/calendar")
     } catch (cacheError) {
-      console.log("[v0] removeActingCaptain - Cache error:", cacheError)
       // Silently handle cache errors
     }
 

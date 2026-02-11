@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +33,7 @@ import {
   removeDirectAssignment,
   removeReplacement, // Added import from direct-assignments
 } from "@/app/actions/direct-assignments"
+import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
 import { UserPlus, Trash2, Users, Zap } from "lucide-react" // Added Zap icon
 import { toast } from "sonner"
@@ -130,9 +130,9 @@ export function ShiftAssignmentDrawer({
   onReplacementCreated,
   onShiftUpdated,
 }: ShiftAssignmentDrawerProps) {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter() // Added missing import
 
+  const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
     id: number
     first_name: string
@@ -196,11 +196,6 @@ export function ShiftAssignmentDrawer({
 
   const [showReplacementDialog, setShowReplacementDialog] = useState(false) // Added
   const [replacementOrder, setReplacementOrder] = useState<number>(1) // Added
-
-  // Guard clause - must be before all functions and JSX
-  if (!shift) {
-    return null
-  }
 
   const translateShiftType = (type: string): string => {
     const translations: Record<string, string> = {
@@ -753,9 +748,18 @@ export function ShiftAssignmentDrawer({
   const handleSetLieutenant = async (userId: number, firefighterName: string) => {
     if (!shift) return
 
+    if (typeof window !== "undefined") {
+      const scrollPos = window.scrollY
+      // console.log("[v0] Drawer - saving scroll before setActingLieutenant:", scrollPos)
+      sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
+      sessionStorage.setItem("skip-scroll-to-today", "true")
+    }
+
     setIsLoading(true)
 
-    const result = await setActingLieutenant(shift.id, userId)
+    // console.log("[v0] Calling setActingLieutenant for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
+    const result = await setActingLieutenant(shift.id, userId, dateStr)
+    // console.log("[v0] setActingLieutenant result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -766,41 +770,8 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
 
     setIsLoading(false)
-    onOpenChange(false)
-    
-    if (onShiftUpdated) {
-      onShiftUpdated(shift)
-    }
-    
-    router.refresh()
-  }
-
-    toast.success(`${firefighterName} a été désigné comme lieutenant`)
-
-    setIsLoading(false)
-    
-    console.log("[v0] handleSetLieutenant - STEP 1: Success, before onOpenChange")
-    
-    // Fermer le drawer
-    onOpenChange(false)
-    
-    console.log("[v0] handleSetLieutenant - STEP 2: After onOpenChange(false)")
-    
-    console.log("[v0] handleSetLieutenant - STEP 3: Checking if onShiftUpdated exists...")
-    console.log("[v0] handleSetLieutenant - onShiftUpdated type:", typeof onShiftUpdated, "value:", onShiftUpdated ? "EXISTS" : "NULL/UNDEFINED")
-    
-    if (onShiftUpdated) {
-      console.log("[v0] handleSetLieutenant - STEP 3: Calling onShiftUpdated(shift)")
-      onShiftUpdated(shift)
-      console.log("[v0] handleSetLieutenant - STEP 4: onShiftUpdated completed")
-    } else {
-      console.log("[v0] handleSetLieutenant - STEP 3: onShiftUpdated NOT available - will rely on router.refresh()")
-    }
-    
-    // Rafraîchir sans délai pour ne pas perdre la position de scroll
-    console.log("[v0] handleSetLieutenant - STEP 5: About to call router.refresh()")
-    router.refresh()
-    console.log("[v0] handleSetLieutenant - STEP 6: router.refresh() called (may not execute if async)")
+    // console.log("[v0] Calling refreshShiftAndClose after setActingLieutenant")
+    refreshShiftAndClose()
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
@@ -819,13 +790,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} n'est plus désigné comme lieutenant`)
 
     setIsLoading(false)
-    onOpenChange(false)
-    
-    if (onShiftUpdated) {
-      onShiftUpdated(shift)
-    }
-    
-    router.refresh()
+    refreshShiftAndClose()
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
@@ -833,7 +798,9 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
-    const result = await setActingCaptain(shift.id, userId)
+    // console.log("[v0] Calling setActingCaptain for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
+    const result = await setActingCaptain(shift.id, userId, dateStr)
+    // console.log("[v0] setActingCaptain result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -844,39 +811,8 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme capitaine`)
 
     setIsLoading(false)
-    onOpenChange(false)
-    
-    if (onShiftUpdated) {
-      onShiftUpdated(shift)
-    }
-    
-    router.refresh()
-  }
-
-    toast.success(`${firefighterName} a été désigné comme capitaine`)
-
-    setIsLoading(false)
-    
-    console.log("[v0] handleSetCaptain - STEP 1: Success, before onOpenChange")
-    
-    // Fermer le drawer
-    onOpenChange(false)
-    
-    console.log("[v0] handleSetCaptain - STEP 2: After onOpenChange(false)")
-    
-    console.log("[v0] handleSetCaptain - STEP 3: Checking if onShiftUpdated exists...")
-    console.log("[v0] handleSetCaptain - onShiftUpdated type:", typeof onShiftUpdated, "value:", onShiftUpdated ? "EXISTS" : "NULL/UNDEFINED")
-    
-    if (onShiftUpdated) {
-      console.log("[v0] handleSetCaptain - STEP 3: Calling onShiftUpdated(shift)")
-      onShiftUpdated(shift)
-      console.log("[v0] handleSetCaptain - STEP 4: onShiftUpdated completed")
-    } else {
-    if (onShiftUpdated) {
-      onShiftUpdated(shift)
-    }
-    
-    router.refresh()
+    // console.log("[v0] Calling refreshShiftAndClose after setActingCaptain")
+    refreshShiftAndClose()
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
@@ -895,13 +831,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} n'est plus désigné comme capitaine`)
 
     setIsLoading(false)
-    onOpenChange(false)
-    
-    if (onShiftUpdated) {
-      onShiftUpdated(shift)
-    }
-    
-    router.refresh()
+    refreshShiftAndClose()
   }
 
   const handleRemoveReplacement = async (
@@ -1358,6 +1288,10 @@ export function ShiftAssignmentDrawer({
     }
   }
 
+  if (!shift) {
+    return null
+  }
+
   // Helper to find replacement details by order
   const getReplacementByOrder = (firefighterId: number, order: number) => {
     const replacementsForUser = groupedReplacements.get(firefighterId) || []
@@ -1400,20 +1334,6 @@ export function ShiftAssignmentDrawer({
     } finally {
       setLoadingReplacements(false)
     }
-  }
-
-  // Helper to find replacement details by order
-  const getReplacementByOrder = (firefighterId: number, order: number) => {
-    const replacementsForUser = groupedReplacements.get(firefighterId) || []
-    return replacementsForUser.find((r) => r.replacement_order === order)
-  }
-
-  // Define replacement0, replacement1, replacement2 here, derived from getReplacementByOrder
-  const getReplacementDetails = (firefighterId: number) => {
-    const replacement0 = getReplacementByOrder(firefighterId, 0)
-    const replacement1 = getReplacementByOrder(firefighterId, 1)
-    const replacement2 = getReplacementByOrder(firefighterId, 2)
-    return { replacement0, replacement1, replacement2 }
   }
 
   return (
