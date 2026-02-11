@@ -867,13 +867,11 @@ export function ShiftAssignmentDrawer({
       onShiftUpdated(shift)
       console.log("[v0] handleSetCaptain - STEP 4: onShiftUpdated completed")
     } else {
-      console.log("[v0] handleSetCaptain - STEP 3: onShiftUpdated NOT available - will rely on router.refresh()")
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
     }
     
-    // Rafraîchir sans délai pour ne pas perdre la position de scroll
-    console.log("[v0] handleSetCaptain - STEP 5: About to call router.refresh()")
     router.refresh()
-    console.log("[v0] handleSetCaptain - STEP 6: router.refresh() called (may not execute if async)")
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
