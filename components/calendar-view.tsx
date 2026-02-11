@@ -577,7 +577,9 @@ export function CalendarView({
         "[v0] handleShiftUpdated - new actingDesignationMap FULL:",
         JSON.stringify(newActingDesignationMap, null, 2),
       )
+      console.log("[v0] handleShiftUpdated - About to call setActingDesignationMap with", Object.keys(newActingDesignationMap).length, "entries")
       setActingDesignationMap({ ...newActingDesignationMap })
+      console.log("[v0] handleShiftUpdated - setActingDesignationMap called successfully")
 
       const newExtraFirefighterMap: Record<string, any[]> = {}
       if (data.extraFirefighters) {
