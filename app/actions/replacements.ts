@@ -1439,17 +1439,18 @@ export async function removeReplacementAssignment(replacementId: number) {
         }
       }
 
-      if (applicant_id) {
-        await createNotification(
-          applicant_id,
-          "Assignation retirée",
-          `Votre assignation pour le remplacement de ${replaced_first_name || ""} ${replaced_last_name || ""} le ${formatLocalDate(shift_date)} a été retirée.`,
-          "assignment_removed",
-          replacementId,
-          "replacement",
-          user.id, // Track who removed the assignment
-        )
-      }
+      // Notification disabled - candidates no longer receive notification when assignment is removed
+      // if (applicant_id) {
+      //   await createNotification(
+      //     applicant_id,
+      //     "Assignation retirée",
+      //     `Votre assignation pour le remplacement de ${replaced_first_name || ""} ${replaced_last_name || ""} le ${formatLocalDate(shift_date)} a été retirée.`,
+      //     "assignment_removed",
+      //     replacementId,
+      //     "replacement",
+      //     user.id, // Track who removed the assignment
+      //   )
+      // }
 
       await createAuditLog({
         userId: user.id,
