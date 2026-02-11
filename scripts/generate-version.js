@@ -3,26 +3,37 @@
 /**
  * Generate version.ts based on current timestamp
  * This script is run before every build
+ * Uses Eastern Time (EST/EDT) - auto-adjusts for daylight saving
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// Get current date and time
+// Get current date and time in Eastern Time (EST/EDT)
 const now = new Date();
-const year = now.getFullYear().toString().slice(-2);
-const month = String(now.getMonth() + 1).padStart(2, '0');
-const day = String(now.getDate()).padStart(2, '0');
-const hours = String(now.getHours()).padStart(2, '0');
-const minutes = String(now.getMinutes()).padStart(2, '0');
+const formatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Toronto', // Auto-handles EST/EDT
+  year: '2-digit',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false
+});
 
-// Generate version string
-const version = `v${year}${month}${day}.${hours}${minutes}`;
+const parts = formatter.formatToParts(now);
+const dateParts = {};
+parts.forEach(part => {
+  dateParts[part.type] = part.value;
+});
+
+// Generate version string in format: vYYMMDD.HHMM
+const version = `v${dateParts.year}${dateParts.month}${dateParts.day}.${dateParts.hour}${dateParts.minute}`;
 
 // Content for version.ts
 const versionContent = `/**
  * Auto-generated version file
- * Generated at: ${now.toISOString()}
+ * Generated at: ${now.toISOString()} (Eastern Time)
  */
 
 export const APP_VERSION = '${version}';
