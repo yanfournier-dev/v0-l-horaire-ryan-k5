@@ -37,7 +37,7 @@ export default function LoginPage() {
       <div className="fixed bottom-6 right-6 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-default">
         <div className="text-center">
           <div className="font-semibold text-gray-600">Horaire SSIV</div>
-          <div className="text-xs">v0.1.0</div>
+          <div className="text-xs">v120</div>
         </div>
       </div>
       <Card className="w-full max-w-md">
