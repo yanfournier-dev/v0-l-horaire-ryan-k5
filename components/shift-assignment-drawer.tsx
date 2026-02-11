@@ -773,13 +773,13 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer
     onOpenChange(false)
     
-    console.log("[v0] handleSetLieutenant - About to reload page in 500ms")
+    // Appeler le callback pour mettre à jour le calendrier immédiatement (côté client)
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
     
-    // Recharger la page après délai pour garantir que les données du serveur sont à jour
-    setTimeout(() => {
-      console.log("[v0] handleSetLieutenant - Reloading page now")
-      location.reload()
-    }, 500)
+    // Rafraîchir sans délai pour ne pas perdre la position de scroll
+    router.refresh()
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
@@ -802,13 +802,13 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer
     onOpenChange(false)
     
-    console.log("[v0] handleRemoveLieutenant - About to reload page in 500ms")
+    // Appeler le callback pour mettre à jour le calendrier immédiatement (côté client)
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
     
-    // Recharger la page après délai pour garantir que les données du serveur sont à jour
-    setTimeout(() => {
-      console.log("[v0] handleRemoveLieutenant - Reloading page now")
-      location.reload()
-    }, 500)
+    // Rafraîchir sans délai pour ne pas perdre la position de scroll
+    router.refresh()
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
@@ -833,13 +833,13 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer
     onOpenChange(false)
     
-    console.log("[v0] handleSetCaptain - About to reload page in 500ms")
+    // Appeler le callback pour mettre à jour le calendrier immédiatement (côté client)
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
     
-    // Recharger la page après délai pour garantir que les données du serveur sont à jour
-    setTimeout(() => {
-      console.log("[v0] handleSetCaptain - Reloading page now")
-      location.reload()
-    }, 500)
+    // Rafraîchir sans délai pour ne pas perdre la position de scroll
+    router.refresh()
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
@@ -862,13 +862,13 @@ export function ShiftAssignmentDrawer({
     // Fermer le drawer
     onOpenChange(false)
     
-    console.log("[v0] handleRemoveCaptain - About to reload page in 500ms")
+    // Appeler le callback pour mettre à jour le calendrier immédiatement (côté client)
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
     
-    // Recharger la page après délai pour garantir que les données du serveur sont à jour
-    setTimeout(() => {
-      console.log("[v0] handleRemoveCaptain - Reloading page now")
-      location.reload()
-    }, 500)
+    // Rafraîchir sans délai pour ne pas perdre la position de scroll
+    router.refresh()
   }
 
   const handleRemoveReplacement = async (
