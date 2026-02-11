@@ -132,11 +132,7 @@ export function ShiftAssignmentDrawer({
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  
-  // Log that the drawer is rendering on the client
-  useEffect(() => {
-    console.log("[v0] ShiftAssignmentDrawer - Mounted on CLIENT, shift:", shift?.id)
-  }, [])
+
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
     id: number
     first_name: string
@@ -750,21 +746,29 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleSetLieutenant = async (userId: number, firefighterName: string) => {
-    console.log("[v0] handleSetLieutenant - CALLED with userId:", userId, "firefighterName:", firefighterName)
-    
     if (!shift) return
 
     setIsLoading(true)
 
-    // console.log("[v0] Calling setActingLieutenant for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
-    const result = await setActingLieutenant(shift.id, userId, dateStr)
-    // console.log("[v0] setActingLieutenant result:", result)
+    const result = await setActingLieutenant(shift.id, userId)
 
     if (result.error) {
       toast.error(result.error)
       setIsLoading(false)
       return
     }
+
+    toast.success(`${firefighterName} a été désigné comme lieutenant`)
+
+    setIsLoading(false)
+    onOpenChange(false)
+    
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    router.refresh()
+  }
 
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
 
@@ -795,8 +799,6 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
-    console.log("[v0] handleRemoveLieutenant - CALLED with userId:", userId, "firefighterName:", firefighterName)
-    
     if (!shift) return
 
     setIsLoading(true)
@@ -812,47 +814,39 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} n'est plus désigné comme lieutenant`)
 
     setIsLoading(false)
-    
-    console.log("[v0] handleRemoveLieutenant - STEP 1: Success, before onOpenChange")
-    
-    // Fermer le drawer
     onOpenChange(false)
     
-    console.log("[v0] handleRemoveLieutenant - STEP 2: After onOpenChange(false)")
-    
-    console.log("[v0] handleRemoveLieutenant - STEP 3: Checking if onShiftUpdated exists...")
-    console.log("[v0] handleRemoveLieutenant - onShiftUpdated type:", typeof onShiftUpdated, "value:", onShiftUpdated ? "EXISTS" : "NULL/UNDEFINED")
-    
     if (onShiftUpdated) {
-      console.log("[v0] handleRemoveLieutenant - STEP 3: Calling onShiftUpdated(shift)")
       onShiftUpdated(shift)
-      console.log("[v0] handleRemoveLieutenant - STEP 4: onShiftUpdated completed")
-    } else {
-      console.log("[v0] handleRemoveLieutenant - STEP 3: onShiftUpdated NOT available - will rely on router.refresh()")
     }
     
-    // Rafraîchir sans délai pour ne pas perdre la position de scroll
-    console.log("[v0] handleRemoveLieutenant - STEP 5: About to call router.refresh()")
     router.refresh()
-    console.log("[v0] handleRemoveLieutenant - STEP 6: router.refresh() called (may not execute if async)")
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
-    console.log("[v0] handleSetCaptain - CALLED with userId:", userId, "firefighterName:", firefighterName)
-    
     if (!shift) return
 
     setIsLoading(true)
 
-    // console.log("[v0] Calling setActingCaptain for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
-    const result = await setActingCaptain(shift.id, userId, dateStr)
-    // console.log("[v0] setActingCaptain result:", result)
+    const result = await setActingCaptain(shift.id, userId)
 
     if (result.error) {
       toast.error(result.error)
       setIsLoading(false)
       return
     }
+
+    toast.success(`${firefighterName} a été désigné comme capitaine`)
+
+    setIsLoading(false)
+    onOpenChange(false)
+    
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    router.refresh()
+  }
 
     toast.success(`${firefighterName} a été désigné comme capitaine`)
 
@@ -883,8 +877,6 @@ export function ShiftAssignmentDrawer({
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
-    console.log("[v0] handleRemoveCaptain - CALLED with userId:", userId, "firefighterName:", firefighterName)
-    
     if (!shift) return
 
     setIsLoading(true)
@@ -896,6 +888,18 @@ export function ShiftAssignmentDrawer({
       setIsLoading(false)
       return
     }
+
+    toast.success(`${firefighterName} n'est plus désigné comme capitaine`)
+
+    setIsLoading(false)
+    onOpenChange(false)
+    
+    if (onShiftUpdated) {
+      onShiftUpdated(shift)
+    }
+    
+    router.refresh()
+  }
 
     toast.success(`${firefighterName} n'est plus désigné comme capitaine`)
 
