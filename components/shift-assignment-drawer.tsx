@@ -770,16 +770,26 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
+    console.log("[v0] handleSetLieutenant - STEP 1: Success, before onOpenChange")
+    
     // Fermer le drawer
     onOpenChange(false)
     
+    console.log("[v0] handleSetLieutenant - STEP 2: After onOpenChange(false)")
+    
     // Appeler le callback pour mettre à jour le calendrier immédiatement (côté client)
     if (onShiftUpdated) {
+      console.log("[v0] handleSetLieutenant - STEP 3: Calling onShiftUpdated(shift)")
       onShiftUpdated(shift)
+      console.log("[v0] handleSetLieutenant - STEP 4: onShiftUpdated completed")
+    } else {
+      console.log("[v0] handleSetLieutenant - STEP 3: onShiftUpdated NOT available")
     }
     
     // Rafraîchir sans délai pour ne pas perdre la position de scroll
+    console.log("[v0] handleSetLieutenant - STEP 5: About to call router.refresh()")
     router.refresh()
+    console.log("[v0] handleSetLieutenant - STEP 6: router.refresh() called (may not execute if async)")
   }
 
   const handleRemoveLieutenant = async (userId: number, firefighterName: string) => {
@@ -799,16 +809,26 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
+    console.log("[v0] handleRemoveLieutenant - STEP 1: Success, before onOpenChange")
+    
     // Fermer le drawer
     onOpenChange(false)
     
+    console.log("[v0] handleRemoveLieutenant - STEP 2: After onOpenChange(false)")
+    
     // Appeler le callback pour mettre à jour le calendrier immédiatement (côté client)
     if (onShiftUpdated) {
+      console.log("[v0] handleRemoveLieutenant - STEP 3: Calling onShiftUpdated(shift)")
       onShiftUpdated(shift)
+      console.log("[v0] handleRemoveLieutenant - STEP 4: onShiftUpdated completed")
+    } else {
+      console.log("[v0] handleRemoveLieutenant - STEP 3: onShiftUpdated NOT available")
     }
     
     // Rafraîchir sans délai pour ne pas perdre la position de scroll
+    console.log("[v0] handleRemoveLieutenant - STEP 5: About to call router.refresh()")
     router.refresh()
+    console.log("[v0] handleRemoveLieutenant - STEP 6: router.refresh() called (may not execute if async)")
   }
 
   const handleSetCaptain = async (userId: number, firefighterName: string) => {
@@ -830,16 +850,26 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
+    console.log("[v0] handleSetCaptain - STEP 1: Success, before onOpenChange")
+    
     // Fermer le drawer
     onOpenChange(false)
     
+    console.log("[v0] handleSetCaptain - STEP 2: After onOpenChange(false)")
+    
     // Appeler le callback pour mettre à jour le calendrier immédiatement (côté client)
     if (onShiftUpdated) {
+      console.log("[v0] handleSetCaptain - STEP 3: Calling onShiftUpdated(shift)")
       onShiftUpdated(shift)
+      console.log("[v0] handleSetCaptain - STEP 4: onShiftUpdated completed")
+    } else {
+      console.log("[v0] handleSetCaptain - STEP 3: onShiftUpdated NOT available")
     }
     
     // Rafraîchir sans délai pour ne pas perdre la position de scroll
+    console.log("[v0] handleSetCaptain - STEP 5: About to call router.refresh()")
     router.refresh()
+    console.log("[v0] handleSetCaptain - STEP 6: router.refresh() called (may not execute if async)")
   }
 
   const handleRemoveCaptain = async (userId: number, firefighterName: string) => {
@@ -859,16 +889,26 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(false)
     
+    console.log("[v0] handleRemoveCaptain - STEP 1: Success, before onOpenChange")
+    
     // Fermer le drawer
     onOpenChange(false)
     
+    console.log("[v0] handleRemoveCaptain - STEP 2: After onOpenChange(false)")
+    
     // Appeler le callback pour mettre à jour le calendrier immédiatement (côté client)
     if (onShiftUpdated) {
+      console.log("[v0] handleRemoveCaptain - STEP 3: Calling onShiftUpdated(shift)")
       onShiftUpdated(shift)
+      console.log("[v0] handleRemoveCaptain - STEP 4: onShiftUpdated completed")
+    } else {
+      console.log("[v0] handleRemoveCaptain - STEP 3: onShiftUpdated NOT available")
     }
     
     // Rafraîchir sans délai pour ne pas perdre la position de scroll
+    console.log("[v0] handleRemoveCaptain - STEP 5: About to call router.refresh()")
     router.refresh()
+    console.log("[v0] handleRemoveCaptain - STEP 6: router.refresh() called (may not execute if async)")
   }
 
   const handleRemoveReplacement = async (
