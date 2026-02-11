@@ -274,6 +274,10 @@ export function CalendarCell({
                 }
 
                 const actingDesignation = actingDesignationMap[actingKey]
+                
+                if (actingKey && firefighter.userId === 16) {
+                  console.log(`[v0] calendar-cell - Checking actingKey for user 16: ${actingKey}, found: ${!!actingDesignation}`, actingDesignation)
+                }
 
                 if (actingDesignation) {
                   return {
@@ -295,6 +299,8 @@ export function CalendarCell({
 
               const hasActingLieutenant = processedFirefighters.some((f) => f.isActingLieutenant === true)
               const hasActingCaptain = processedFirefighters.some((f) => f.isActingCaptain === true)
+              
+              console.log(`[v0] calendar-cell - Shift ${shift.id} on ${dateStr}: hasActingLieutenant=${hasActingLieutenant}, hasActingCaptain=${hasActingCaptain}, processedFirefighters count=${processedFirefighters.length}`)
 
               const assignmentsWithLtBadge = processedFirefighters.map((assignment: any) => {
                 const calendarIndex = processedFirefighters.findIndex(
