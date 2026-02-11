@@ -28,10 +28,16 @@ const versionContent = `/**
 export const APP_VERSION = '${version}';
 `;
 
-// Write the file
-const versionPath = path.join(__dirname, '..', 'lib', 'version.ts');
+// Write the file - use process.cwd() to get the root directory
+const versionPath = path.join(process.cwd(), 'lib', 'version.ts');
 
 try {
+  // Ensure lib directory exists
+  const libDir = path.join(process.cwd(), 'lib');
+  if (!fs.existsSync(libDir)) {
+    fs.mkdirSync(libDir, { recursive: true });
+  }
+  
   fs.writeFileSync(versionPath, versionContent);
   console.log(`✓ Version file generated: ${version}`);
 } catch (error) {
