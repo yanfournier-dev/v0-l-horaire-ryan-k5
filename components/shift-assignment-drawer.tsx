@@ -1110,10 +1110,12 @@ export function ShiftAssignmentDrawer({
   })
 
   replacements.forEach((r: any) => {
-    // Skip if already processed (has approved application)
+    // Skip only normal (non-extra) replacements that already have approved applications
+    // Keep extra firefighters visible even if they have approved applications
     const hasApprovedApp = r.applications?.some((app: any) => app.status === "approved")
-    if (hasApprovedApp) {
-      return
+    const isExtraFirefighter = r.user_id === null
+    if (hasApprovedApp && !isExtraFirefighter) {
+      return // Skip normal replacements with approved apps, but NOT extra firefighters
     }
 
     // For extra firefighters (user_id is null), use a unique negative ID based on replacement_id
@@ -1146,6 +1148,17 @@ export function ShiftAssignmentDrawer({
       .sort((a: any, b: any) => (a.id || 0) - (b.id || 0))
     const extraNumber = extraFightersForShift.findIndex((rep: any) => rep.id === r.id) + 1
 
+    // Get the approved applicant info if this extra firefighter has an approved application
+    let approvedApplicantName = ""
+    let approvedApplicantId = null
+    if (isExtraFirefighter && hasApprovedApp) {
+      const approvedApp = r.applications.find((app: any) => app.status === "approved")
+      if (approvedApp) {
+        approvedApplicantName = `${approvedApp.first_name || ""} ${approvedApp.last_name || ""}`.trim()
+        approvedApplicantId = approvedApp.applicant_id
+      }
+    }
+
     groupedReplacements.get(groupKey)!.push({
       user_id: null,
       first_name: "Pompier",
@@ -1171,6 +1184,8 @@ export function ShiftAssignmentDrawer({
       applications: r.applications,
       status: r.status,
       shift_id: shift.id, // Added shift_id for handleRemoveDirectAssignment
+      approved_applicant_name: approvedApplicantName, // Store approved applicant name for display
+      approved_applicant_id: approvedApplicantId, // Store approved applicant ID
     })
   })
 
@@ -1564,7 +1579,7 @@ export function ShiftAssignmentDrawer({
                               </div>
 
                               <div className="mt-2 space-y-2">
-                                {replacement0 && !replacement1 && isAdmin && (
+                                {replacement0 && !replacement1 && isAdmin && !replacement0.approved_applicant_name && (
                                   <div className="flex items-center gap-2 mt-2">
                                     {replacement0.applications && replacement0.applications.length > 0 && (
                                       <Button
@@ -1578,19 +1593,19 @@ export function ShiftAssignmentDrawer({
                                       </Button>
                                     )}
 
-                                    <AddManualApplicationDialog
-                                      replacementId={replacement0.replacement_id}
-                                      availableFirefighters={allFirefighters || []}
-                                      existingApplicantIds={
-                                        replacement0.applications?.map((app: any) => app.user_id) || []
-                                      }
-                                      onSuccess={loadData}
-                                      trigger={
-                                        <Button variant="default" size="icon" className="h-8 w-8">
-                                          <UserPlus className="h-4 w-4" />
-                                        </Button>
-                                      }
-                                    />
+                                <AddManualApplicationDialog
+                                  replacementId={replacement0.replacement_id}
+                                  availableFirefighters={allFirefighters || []}
+                                  existingApplicantIds={
+                                    replacement0.applications?.map((app: any) => app.applicant_id) || []
+                                  }
+                                  onSuccess={loadData}
+                                  trigger={
+                                    <Button variant="default" size="icon" className="h-8 w-8">
+                                      <UserPlus className="h-4 w-4" />
+                                    </Button>
+                                  }
+                                />
 
                                     <DeleteReplacementButton
                                       replacementId={replacement0.replacement_id}
@@ -1600,6 +1615,38 @@ export function ShiftAssignmentDrawer({
                                       size="icon"
                                       className="h-8 w-8"
                                     />
+                                  </div>
+                                )}
+
+                                {replacement0 && replacement0.approved_applicant_name && (
+                                  <div className="space-y-2">
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] text-muted-foreground font-medium underline">
+                                        Remplaçant
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[13px] text-green-600 font-medium truncate">
+                                          ✓ {replacement0.approved_applicant_name}
+                                          {replacement0.start_time && replacement0.end_time && (
+                                            <span className="text-[11px]">
+                                              {" "}
+                                              ({replacement0.start_time.slice(0, 5)}-{replacement0.end_time.slice(0, 5)})
+                                            </span>
+                                          )}
+                                        </span>
+
+                                        {isAdmin && replacement0.replacement_id && (
+                                          <DeleteReplacementButton
+                                            replacementId={replacement0.replacement_id}
+                                            onSuccess={loadData}
+                                            hasAssignedCandidate={!!replacement0.approved_applicant_id}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
 
