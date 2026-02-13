@@ -1593,19 +1593,19 @@ export function ShiftAssignmentDrawer({
                                       </Button>
                                     )}
 
-                                    <AddManualApplicationDialog
-                                      replacementId={replacement0.replacement_id}
-                                      availableFirefighters={allFirefighters || []}
-                                      existingApplicantIds={
-                                        replacement0.applications?.map((app: any) => app.user_id) || []
-                                      }
-                                      onSuccess={loadData}
-                                      trigger={
-                                        <Button variant="default" size="icon" className="h-8 w-8">
-                                          <UserPlus className="h-4 w-4" />
-                                        </Button>
-                                      }
-                                    />
+                                <AddManualApplicationDialog
+                                  replacementId={replacement0.replacement_id}
+                                  availableFirefighters={allFirefighters || []}
+                                  existingApplicantIds={
+                                    replacement0.applications?.map((app: any) => app.applicant_id) || []
+                                  }
+                                  onSuccess={loadData}
+                                  trigger={
+                                    <Button variant="default" size="icon" className="h-8 w-8">
+                                      <UserPlus className="h-4 w-4" />
+                                    </Button>
+                                  }
+                                />
 
                                     <DeleteReplacementButton
                                       replacementId={replacement0.replacement_id}
