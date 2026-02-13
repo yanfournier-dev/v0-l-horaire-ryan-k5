@@ -1579,7 +1579,7 @@ export function ShiftAssignmentDrawer({
                               </div>
 
                               <div className="mt-2 space-y-2">
-                                {replacement0 && !replacement1 && isAdmin && (
+                                {replacement0 && !replacement1 && isAdmin && !replacement0.approved_applicant_name && (
                                   <div className="flex items-center gap-2 mt-2">
                                     {replacement0.applications && replacement0.applications.length > 0 && (
                                       <Button
