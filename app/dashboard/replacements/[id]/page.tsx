@@ -254,7 +254,7 @@ export default async function ReplacementDetailPage({
     ORDER BY u.id, u.last_name, u.first_name
   `
 
-  const existingApplicantIds = applicationsWithAbsences.map((app: any) => app.user_id)
+  const existingApplicantIds = applicationsWithAbsences.map((app: any) => app.applicant_id)
 
   const partTimeCandidates = regularCandidates.filter((app: any) => app.team_type === "part_time")
   const temporaryCandidates = regularCandidates.filter((app: any) => app.team_type === "temporary")
