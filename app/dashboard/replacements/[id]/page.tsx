@@ -246,8 +246,8 @@ export default async function ReplacementDetailPage({
       FROM team_members tm
       JOIN teams t ON tm.team_id = t.id
     ) team_info ON team_info.user_id = u.id
-    WHERE (${replacement.leave_user_id}::uuid IS NULL OR u.id != ${replacement.leave_user_id}::uuid)
-      AND (${replacement.user_id}::uuid IS NULL OR u.id != ${replacement.user_id}::uuid)
+    WHERE (${replacement.leave_user_id} IS NULL OR u.id != ${replacement.leave_user_id})
+      AND (${replacement.user_id} IS NULL OR u.id != ${replacement.user_id})
     ORDER BY u.id, u.last_name, u.first_name
   `
 
