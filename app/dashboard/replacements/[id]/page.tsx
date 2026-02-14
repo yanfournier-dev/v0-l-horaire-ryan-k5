@@ -227,6 +227,10 @@ export default async function ReplacementDetailPage({
     (app: any) => !app.has_collective_agreement_priority && !app.has_team_priority,
   )
 
+  // Determine which user ID to exclude (leave_user_id takes precedence)
+  // Use -1 as a default when both are null to include all firefighters
+  const userIdToExclude = replacement.leave_user_id || replacement.user_id || -1
+
   const allFirefighters = await sql`
     SELECT DISTINCT ON (u.id)
       u.id,
@@ -246,11 +250,11 @@ export default async function ReplacementDetailPage({
       FROM team_members tm
       JOIN teams t ON tm.team_id = t.id
     ) team_info ON team_info.user_id = u.id
-    WHERE u.id != ${replacement.leave_user_id || replacement.user_id}
+    WHERE u.id != ${userIdToExclude}
     ORDER BY u.id, u.last_name, u.first_name
   `
 
-  const existingApplicantIds = applicationsWithAbsences.map((app: any) => app.user_id)
+  const existingApplicantIds = applicationsWithAbsences.map((app: any) => app.applicant_id)
 
   const partTimeCandidates = regularCandidates.filter((app: any) => app.team_type === "part_time")
   const temporaryCandidates = regularCandidates.filter((app: any) => app.team_type === "temporary")
