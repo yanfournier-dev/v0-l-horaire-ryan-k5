@@ -228,7 +228,8 @@ export default async function ReplacementDetailPage({
   )
 
   // Determine which user ID to exclude (leave_user_id takes precedence)
-  const userIdToExclude = replacement.leave_user_id || replacement.user_id
+  // Use -1 as a default when both are null to include all firefighters
+  const userIdToExclude = replacement.leave_user_id || replacement.user_id || -1
 
   const allFirefighters = await sql`
     SELECT DISTINCT ON (u.id)
@@ -249,7 +250,7 @@ export default async function ReplacementDetailPage({
       FROM team_members tm
       JOIN teams t ON tm.team_id = t.id
     ) team_info ON team_info.user_id = u.id
-    ${userIdToExclude ? sql`WHERE u.id != ${userIdToExclude}` : sql`WHERE 1=1`}
+    WHERE u.id != ${userIdToExclude}
     ORDER BY u.id, u.last_name, u.first_name
   `
 
