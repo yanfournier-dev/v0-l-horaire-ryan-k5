@@ -1698,7 +1698,6 @@ export function ShiftAssignmentDrawer({
                                         <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0">
                                           Partiel: {replacement0.start_time?.slice(0, 5)} - {replacement0.end_time?.slice(0, 5)}
                                         </Badge>
-                                        <span className="text-[11px] text-muted-foreground">(En attente de candidat)</span>
                                       </div>
                                     </div>
                                   </div>
