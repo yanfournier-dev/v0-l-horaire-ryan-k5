@@ -1072,41 +1072,75 @@ export function ShiftAssignmentDrawer({
     }
 
     const approvedApp = r.applications.find((app: any) => app.status === "approved")
-    const replacementKey = `${approvedApp.applicant_id}_${r.user_id}`
+    
+    // If there's an approved application, handle the replacement with assigned candidate
+    if (approvedApp) {
+      const replacementKey = `${approvedApp.applicant_id}_${r.user_id}`
 
-    // Skip if this replacement already exists in currentAssignments
-    if (existingReplacementKeys.has(replacementKey)) {
-      return
-    }
+      // Skip if this replacement already exists in currentAssignments
+      if (existingReplacementKeys.has(replacementKey)) {
+        return
+      }
 
-    if (!groupedReplacements.has(r.user_id)) {
-      groupedReplacements.set(r.user_id, [])
+      if (!groupedReplacements.has(r.user_id)) {
+        groupedReplacements.set(r.user_id, [])
+      }
+      const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
+      groupedReplacements.get(r.user_id)!.push({
+        user_id: approvedApp.applicant_id,
+        first_name: approvedApp.first_name,
+        last_name: approvedApp.last_name,
+        role: approvedApp.role,
+        email: approvedApp.email,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        is_partial: r.is_partial,
+        is_replacement: true,
+        is_direct_assignment: false,
+        replacement_id: r.id,
+        replacement_order: 1,
+        is_acting_lieutenant: r.is_acting_lieutenant || false,
+        is_acting_captain: r.is_acting_captain || false,
+        replaced_first_name: replacedFF?.first_name || r.first_name,
+        replaced_last_name: replacedFF?.last_name || r.last_name,
+        replaced_position_code: replacedFF?.position_code || "",
+        leave_bank_1: r.leave_bank_1,
+        leave_hours_1: r.leave_hours_1,
+        leave_bank_2: r.leave_bank_2,
+        leave_hours_2: r.leave_hours_2,
+        shift_id: shift.id,
+      })
+    } else {
+      // Handle replacement with no approved candidate (pending replacement)
+      if (!groupedReplacements.has(r.user_id)) {
+        groupedReplacements.set(r.user_id, [])
+      }
+      const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
+      groupedReplacements.get(r.user_id)!.push({
+        user_id: null, // No candidate assigned yet
+        first_name: null,
+        last_name: null,
+        role: null,
+        email: null,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        is_partial: r.is_partial,
+        is_replacement: true,
+        is_direct_assignment: false,
+        replacement_id: r.id,
+        replacement_order: 1,
+        is_acting_lieutenant: r.is_acting_lieutenant || false,
+        is_acting_captain: r.is_acting_captain || false,
+        replaced_first_name: replacedFF?.first_name || r.first_name,
+        replaced_last_name: replacedFF?.last_name || r.last_name,
+        replaced_position_code: replacedFF?.position_code || "",
+        leave_bank_1: r.leave_bank_1,
+        leave_hours_1: r.leave_hours_1,
+        leave_bank_2: r.leave_bank_2,
+        leave_hours_2: r.leave_hours_2,
+        shift_id: shift.id,
+      })
     }
-    const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
-    groupedReplacements.get(r.user_id)!.push({
-      user_id: approvedApp.applicant_id,
-      first_name: approvedApp.first_name,
-      last_name: approvedApp.last_name,
-      role: approvedApp.role,
-      email: approvedApp.email,
-      start_time: r.start_time,
-      end_time: r.end_time,
-      is_partial: r.is_partial,
-      is_replacement: true,
-      is_direct_assignment: false,
-      replacement_id: r.id,
-      replacement_order: 1,
-      is_acting_lieutenant: r.is_acting_lieutenant || false,
-      is_acting_captain: r.is_acting_captain || false,
-      replaced_first_name: replacedFF?.first_name || r.first_name,
-      replaced_last_name: replacedFF?.last_name || r.last_name,
-      replaced_position_code: replacedFF?.position_code || "",
-      leave_bank_1: r.leave_bank_1,
-      leave_hours_1: r.leave_hours_1,
-      leave_bank_2: r.leave_bank_2,
-      leave_hours_2: r.leave_hours_2,
-      shift_id: shift.id, // Added shift_id for handleRemoveDirectAssignment
-    })
   })
 
   replacements.forEach((r: any) => {
