@@ -1663,7 +1663,7 @@ export function ShiftAssignmentDrawer({
                                           </Badge>
                                           <span className="text-[11px] text-muted-foreground">(En attente de candidat)</span>
                                         </div>
-                                      ) : (
+                                      ) : replacement1 ? (
                                         <div className="flex items-center gap-2">
                                           <span className="text-[13px] text-orange-600 font-medium truncate">
                                             {replacement1.first_name} {replacement1.last_name}
@@ -1740,44 +1740,14 @@ export function ShiftAssignmentDrawer({
                                             <Trash2 className="h-3 w-3" />
                                           </Button>
                                         )}
-                                        </span>
+                                        </div>
+                                ) : null}
 
-                                        {replacement1.is_direct_assignment && (
-                                          <span
-                                            className="text-orange-500 text-lg flex-shrink-0"
-                                            title="Assignation directe"
-                                          >
-                                            ⚡
-                                          </span>
-                                        )}
-
-                                        {isAdmin && replacement1.replacement_id && (
-                                          <DeleteReplacementButton
-                                            replacementId={replacement1.replacement_id}
-                                            onSuccess={loadData}
-                                            hasAssignedCandidate={!!replacement1.user_id}
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
-                                          />
-                                        )}
-                                        {isAdmin && !replacement1.replacement_id && (
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => handleRemoveReplacement1(firefighter.id)}
-                                            disabled={isLoading || loadingReplacements}
-                                            className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent flex-shrink-0"
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        )}
-                                      </div>
-                                      )}
+                                {replacement1 && isAdmin && replacement1.user_id && (
+                                  <div className="grid grid-cols-2 gap-2">
                                     </div>
                                   </div>
                                 ) : null}
-                                      <div className="grid grid-cols-2 gap-2">
                                         {replacement1.is_acting_lieutenant ? (
                                           <Button
                                             size="sm"
