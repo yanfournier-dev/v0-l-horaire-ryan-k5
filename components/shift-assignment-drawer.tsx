@@ -1491,32 +1491,41 @@ export function ShiftAssignmentDrawer({
 
                     const { replacement0, replacement1, replacement2 } = getReplacementDetails(firefighter.id)
 
-                    // console.log("[v0] Drawer - replacement details for firefighter", firefighter.id, {
-                    //   replacement0: replacement0
-                    //     ? {
-                    //         user_id: replacement0.user_id,
-                    //         first_name: replacement0.first_name,
-                    //         last_name: replacement0.last_name,
-                    //         replacement_order: replacement0.replacement_order,
-                    //       }
-                    //     : null,
-                    //   replacement1: replacement1
-                    //     ? {
-                    //         user_id: replacement1.user_id,
-                    //         first_name: replacement1.first_name,
-                    //         last_name: replacement1.last_name,
-                    //         replacement_order: replacement1.replacement_order,
-                    //       }
-                    //     : null,
-                    //   replacement2: replacement2
-                    //     ? {
-                    //         user_id: replacement2.user_id,
-                    //         first_name: replacement2.first_name,
-                    //         last_name: replacement2.last_name,
-                    //         replacement_order: replacement2.replacement_order,
-                    //       }
-                    //     : null,
-                    // })
+                    console.log("[v0] Drawer - replacement details for firefighter", firefighter.id, {
+                      replacement0: replacement0
+                        ? {
+                            user_id: replacement0.user_id,
+                            first_name: replacement0.first_name,
+                            last_name: replacement0.last_name,
+                            replacement_order: replacement0.replacement_order,
+                            is_partial: replacement0.is_partial,
+                            start_time: replacement0.start_time,
+                            end_time: replacement0.end_time,
+                          }
+                        : null,
+                      replacement1: replacement1
+                        ? {
+                            user_id: replacement1.user_id,
+                            first_name: replacement1.first_name,
+                            last_name: replacement1.last_name,
+                            replacement_order: replacement1.replacement_order,
+                            is_partial: replacement1.is_partial,
+                            start_time: replacement1.start_time,
+                            end_time: replacement1.end_time,
+                          }
+                        : null,
+                      replacement2: replacement2
+                        ? {
+                            user_id: replacement2.user_id,
+                            first_name: replacement2.first_name,
+                            last_name: replacement2.last_name,
+                            replacement_order: replacement2.replacement_order,
+                            is_partial: replacement2.is_partial,
+                            start_time: replacement2.start_time,
+                            end_time: replacement2.end_time,
+                          }
+                        : null,
+                    })
 
                     if (hasReplacements) {
                       const bankInfo = replacement0 || replacement1 || replacement2
@@ -1650,7 +1659,7 @@ export function ShiftAssignmentDrawer({
                                   </div>
                                 )}
 
-                                {!replacement1 && replacementsForUser.some((r) => r.replacement_order === 1 && r.is_partial && r.start_time && r.end_time) ? (
+                                {replacement1 && !replacement1.user_id && replacement1.is_partial && replacement1.start_time && replacement1.end_time ? (
                                   <div className="space-y-2">
                                     <div className="space-y-1">
                                       <div className="text-[11px] text-muted-foreground font-medium underline">
@@ -1658,7 +1667,7 @@ export function ShiftAssignmentDrawer({
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0">
-                                          Partiel: {replacementsForUser.find((r) => r.replacement_order === 1)?.start_time?.slice(0, 5)} - {replacementsForUser.find((r) => r.replacement_order === 1)?.end_time?.slice(0, 5)}
+                                          Partiel: {replacement1.start_time?.slice(0, 5)} - {replacement1.end_time?.slice(0, 5)}
                                         </Badge>
                                         <span className="text-[11px] text-muted-foreground">(En attente de candidat)</span>
                                       </div>
@@ -1666,7 +1675,7 @@ export function ShiftAssignmentDrawer({
                                   </div>
                                 ) : null}
 
-                                {replacement1 && (
+                                {replacement1 && replacement1.user_id && (
                                   <div className="space-y-2">
                                     <div className="space-y-1">
                                       <div className="text-[11px] text-muted-foreground font-medium underline">
