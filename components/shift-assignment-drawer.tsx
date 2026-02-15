@@ -1773,12 +1773,10 @@ export function ShiftAssignmentDrawer({
                                           </Button>
                                         )}
                                       </div>
-                                      ) : null}
+                                      )}
                                     </div>
                                   </div>
                                 ) : null}
-
-                                    {replacement1 && isAdmin && replacement1.user_id && (
                                       <div className="grid grid-cols-2 gap-2">
                                         {replacement1.is_acting_lieutenant ? (
                                           <Button
