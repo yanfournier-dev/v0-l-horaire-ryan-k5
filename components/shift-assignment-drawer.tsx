@@ -311,8 +311,14 @@ export function ShiftAssignmentDrawer({
       const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
       setReplacements(data)
 
+      // Get replacements with approved candidates
       const assigned = data.filter(
         (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
+      )
+      
+      // Also get pending replacements (status === "assigned" but no approved applications)
+      const pendingReplacements = data.filter(
+        (r: any) => r.status === "assigned" && !r.applications?.some((app: any) => app.status === "approved"),
       )
 
       const assignedWithAssignments = await Promise.all(
@@ -345,7 +351,10 @@ export function ShiftAssignmentDrawer({
           }
         }),
       )
-      setAssignedReplacements(assignedWithAssignments)
+      
+      // Combine assigned replacements with pending replacements (those without approved candidates)
+      const allAssignedReplacements = [...assignedWithAssignments, ...pendingReplacements]
+      setAssignedReplacements(allAssignedReplacements)
 
       const firefighters = await getAllFirefighters()
       setAllFirefighters(firefighters)
@@ -388,8 +397,14 @@ export function ShiftAssignmentDrawer({
     const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
     setReplacements(data)
 
+    // Get replacements with approved candidates
     const assigned = data.filter(
       (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
+    )
+    
+    // Also get pending replacements (status === "assigned" but no approved applications)
+    const pendingReplacements = data.filter(
+      (r: any) => r.status === "assigned" && !r.applications?.some((app: any) => app.status === "approved"),
     )
 
     const assignedWithAssignments = await Promise.all(
@@ -399,7 +414,7 @@ export function ShiftAssignmentDrawer({
         const assignmentResult = await fetch("/api/get-shift-assignment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.JSON.stringify({
+          body: JSON.stringify({
             shiftId: shift.id,
             userId: approvedApp.applicant_id,
           }),
@@ -422,7 +437,9 @@ export function ShiftAssignmentDrawer({
       }),
     )
 
-    setAssignedReplacements(assignedWithAssignments)
+    // Combine assigned replacements with pending replacements
+    const allAssignedReplacements = [...assignedWithAssignments, ...pendingReplacements]
+    setAssignedReplacements(allAssignedReplacements)
 
     setLoadingReplacements(false)
   }
@@ -1071,7 +1088,17 @@ export function ShiftAssignmentDrawer({
       return
     }
 
-    const approvedApp = r.applications.find((app: any) => app.status === "approved")
+    const approvedApp = r.applications?.find((app: any) => app.status === "approved")
+    
+    console.log("[v0] assignedReplacements processing", {
+      user_id: r.user_id,
+      is_partial: r.is_partial,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      replacement_order: r.replacement_order,
+      hasApprovedApp: !!approvedApp,
+      applicationsCount: r.applications?.length || 0
+    })
     
     // If there's an approved application, handle the replacement with assigned candidate
     if (approvedApp) {
