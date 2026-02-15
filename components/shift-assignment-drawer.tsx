@@ -1650,23 +1650,31 @@ export function ShiftAssignmentDrawer({
                                   </div>
                                 )}
 
-                                {replacement1 || (replacementsForUser.some((r) => r.replacement_order === 1 && r.is_partial && r.start_time && r.end_time)) ? (
+                                {!replacement1 && replacementsForUser.some((r) => r.replacement_order === 1 && r.is_partial && r.start_time && r.end_time) ? (
                                   <div className="space-y-2">
                                     <div className="space-y-1">
                                       <div className="text-[11px] text-muted-foreground font-medium underline">
                                         {replacement2 ? "Remplaçant 1" : "Remplaçant"}
                                       </div>
-                                      {!replacement1 && replacementsForUser.some((r) => r.replacement_order === 1 && r.is_partial && r.start_time && r.end_time) ? (
-                                        <div className="flex items-center gap-2">
-                                          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0">
-                                            Partiel: {replacementsForUser.find((r) => r.replacement_order === 1)?.start_time?.slice(0, 5)} - {replacementsForUser.find((r) => r.replacement_order === 1)?.end_time?.slice(0, 5)}
-                                          </Badge>
-                                          <span className="text-[11px] text-muted-foreground">(En attente de candidat)</span>
-                                        </div>
-                                      ) : replacement1 ? (
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-[13px] text-orange-600 font-medium truncate">
-                                            {replacement1.first_name} {replacement1.last_name}
+                                      <div className="flex items-center gap-2">
+                                        <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0">
+                                          Partiel: {replacementsForUser.find((r) => r.replacement_order === 1)?.start_time?.slice(0, 5)} - {replacementsForUser.find((r) => r.replacement_order === 1)?.end_time?.slice(0, 5)}
+                                        </Badge>
+                                        <span className="text-[11px] text-muted-foreground">(En attente de candidat)</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null}
+
+                                {replacement1 && (
+                                  <div className="space-y-2">
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] text-muted-foreground font-medium underline">
+                                        {replacement2 ? "Remplaçant 1" : "Remplaçant"}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[13px] text-orange-600 font-medium truncate">
+                                          {replacement1.first_name} {replacement1.last_name}
                                           {(() => {
                                             const allR1Periods = replacementsForUser.filter(
                                               (r) => r.replacement_order === 1,
@@ -1740,14 +1748,11 @@ export function ShiftAssignmentDrawer({
                                             <Trash2 className="h-3 w-3" />
                                           </Button>
                                         )}
-                                        </div>
-                                ) : null}
-
-                                {replacement1 && isAdmin && replacement1.user_id && (
-                                  <div className="grid grid-cols-2 gap-2">
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : null}
+
+                                    {isAdmin && replacement1.user_id && (
+                                      <div className="grid grid-cols-2 gap-2">
                                         {replacement1.is_acting_lieutenant ? (
                                           <Button
                                             size="sm"
@@ -2009,9 +2014,11 @@ export function ShiftAssignmentDrawer({
                                     </Badge>
                                   )}
                                   {assignment.is_extra &&
-                                    hasPartialReplacement && (
+                                    assignment.is_partial &&
+                                    assignment.start_time &&
+                                    assignment.end_time && (
                                       <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0 truncate max-w-full">
-                                        Partiel: {replacement?.start_time?.slice(0, 5)} - {replacement?.end_time?.slice(0, 5)}
+                                        Partiel: {assignment.start_time.slice(0, 5)} - {assignment.end_time.slice(0, 5)}
                                       </Badge>
                                     )}
                                   {isReplacementFirefighter && (
