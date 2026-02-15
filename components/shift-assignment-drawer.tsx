@@ -311,8 +311,14 @@ export function ShiftAssignmentDrawer({
       const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
       setReplacements(data)
 
+      // Get replacements with approved candidates
       const assigned = data.filter(
         (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
+      )
+      
+      // Also get pending replacements (status === "assigned" but no approved applications)
+      const pendingReplacements = data.filter(
+        (r: any) => r.status === "assigned" && !r.applications?.some((app: any) => app.status === "approved"),
       )
 
       const assignedWithAssignments = await Promise.all(
@@ -345,7 +351,10 @@ export function ShiftAssignmentDrawer({
           }
         }),
       )
-      setAssignedReplacements(assignedWithAssignments)
+      
+      // Combine assigned replacements with pending replacements (those without approved candidates)
+      const allAssignedReplacements = [...assignedWithAssignments, ...pendingReplacements]
+      setAssignedReplacements(allAssignedReplacements)
 
       const firefighters = await getAllFirefighters()
       setAllFirefighters(firefighters)
@@ -388,8 +397,14 @@ export function ShiftAssignmentDrawer({
     const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
     setReplacements(data)
 
+    // Get replacements with approved candidates
     const assigned = data.filter(
       (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
+    )
+    
+    // Also get pending replacements (status === "assigned" but no approved applications)
+    const pendingReplacements = data.filter(
+      (r: any) => r.status === "assigned" && !r.applications?.some((app: any) => app.status === "approved"),
     )
 
     const assignedWithAssignments = await Promise.all(
@@ -399,7 +414,7 @@ export function ShiftAssignmentDrawer({
         const assignmentResult = await fetch("/api/get-shift-assignment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.JSON.stringify({
+          body: JSON.stringify({
             shiftId: shift.id,
             userId: approvedApp.applicant_id,
           }),
@@ -422,7 +437,9 @@ export function ShiftAssignmentDrawer({
       }),
     )
 
-    setAssignedReplacements(assignedWithAssignments)
+    // Combine assigned replacements with pending replacements
+    const allAssignedReplacements = [...assignedWithAssignments, ...pendingReplacements]
+    setAssignedReplacements(allAssignedReplacements)
 
     setLoadingReplacements(false)
   }
@@ -1071,42 +1088,86 @@ export function ShiftAssignmentDrawer({
       return
     }
 
-    const approvedApp = r.applications.find((app: any) => app.status === "approved")
-    const replacementKey = `${approvedApp.applicant_id}_${r.user_id}`
-
-    // Skip if this replacement already exists in currentAssignments
-    if (existingReplacementKeys.has(replacementKey)) {
-      return
-    }
-
-    if (!groupedReplacements.has(r.user_id)) {
-      groupedReplacements.set(r.user_id, [])
-    }
-    const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
-    groupedReplacements.get(r.user_id)!.push({
-      user_id: approvedApp.applicant_id,
-      first_name: approvedApp.first_name,
-      last_name: approvedApp.last_name,
-      role: approvedApp.role,
-      email: approvedApp.email,
+    const approvedApp = r.applications?.find((app: any) => app.status === "approved")
+    
+    console.log("[v0] assignedReplacements processing", {
+      user_id: r.user_id,
+      is_partial: r.is_partial,
       start_time: r.start_time,
       end_time: r.end_time,
-      is_partial: r.is_partial,
-      is_replacement: true,
-      is_direct_assignment: false,
-      replacement_id: r.id,
-      replacement_order: 1,
-      is_acting_lieutenant: r.is_acting_lieutenant || false,
-      is_acting_captain: r.is_acting_captain || false,
-      replaced_first_name: replacedFF?.first_name || r.first_name,
-      replaced_last_name: replacedFF?.last_name || r.last_name,
-      replaced_position_code: replacedFF?.position_code || "",
-      leave_bank_1: r.leave_bank_1,
-      leave_hours_1: r.leave_hours_1,
-      leave_bank_2: r.leave_bank_2,
-      leave_hours_2: r.leave_hours_2,
-      shift_id: shift.id, // Added shift_id for handleRemoveDirectAssignment
+      replacement_order: r.replacement_order,
+      hasApprovedApp: !!approvedApp,
+      applicationsCount: r.applications?.length || 0
     })
+    
+    // If there's an approved application, handle the replacement with assigned candidate
+    if (approvedApp) {
+      const replacementKey = `${approvedApp.applicant_id}_${r.user_id}`
+
+      // Skip if this replacement already exists in currentAssignments
+      if (existingReplacementKeys.has(replacementKey)) {
+        return
+      }
+
+      if (!groupedReplacements.has(r.user_id)) {
+        groupedReplacements.set(r.user_id, [])
+      }
+      const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
+      groupedReplacements.get(r.user_id)!.push({
+        user_id: approvedApp.applicant_id,
+        first_name: approvedApp.first_name,
+        last_name: approvedApp.last_name,
+        role: approvedApp.role,
+        email: approvedApp.email,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        is_partial: r.is_partial,
+        is_replacement: true,
+        is_direct_assignment: false,
+        replacement_id: r.id,
+        replacement_order: 1,
+        is_acting_lieutenant: r.is_acting_lieutenant || false,
+        is_acting_captain: r.is_acting_captain || false,
+        replaced_first_name: replacedFF?.first_name || r.first_name,
+        replaced_last_name: replacedFF?.last_name || r.last_name,
+        replaced_position_code: replacedFF?.position_code || "",
+        leave_bank_1: r.leave_bank_1,
+        leave_hours_1: r.leave_hours_1,
+        leave_bank_2: r.leave_bank_2,
+        leave_hours_2: r.leave_hours_2,
+        shift_id: shift.id,
+      })
+    } else {
+      // Handle replacement with no approved candidate (pending replacement)
+      if (!groupedReplacements.has(r.user_id)) {
+        groupedReplacements.set(r.user_id, [])
+      }
+      const replacedFF = allFirefighters?.find((ff) => ff.id === r.user_id)
+      groupedReplacements.get(r.user_id)!.push({
+        user_id: null, // No candidate assigned yet
+        first_name: null,
+        last_name: null,
+        role: null,
+        email: null,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        is_partial: r.is_partial,
+        is_replacement: true,
+        is_direct_assignment: false,
+        replacement_id: r.id,
+        replacement_order: 1,
+        is_acting_lieutenant: r.is_acting_lieutenant || false,
+        is_acting_captain: r.is_acting_captain || false,
+        replaced_first_name: replacedFF?.first_name || r.first_name,
+        replaced_last_name: replacedFF?.last_name || r.last_name,
+        replaced_position_code: replacedFF?.position_code || "",
+        leave_bank_1: r.leave_bank_1,
+        leave_hours_1: r.leave_hours_1,
+        leave_bank_2: r.leave_bank_2,
+        leave_hours_2: r.leave_hours_2,
+        shift_id: shift.id,
+      })
+    }
   })
 
   replacements.forEach((r: any) => {
@@ -1491,32 +1552,41 @@ export function ShiftAssignmentDrawer({
 
                     const { replacement0, replacement1, replacement2 } = getReplacementDetails(firefighter.id)
 
-                    // console.log("[v0] Drawer - replacement details for firefighter", firefighter.id, {
-                    //   replacement0: replacement0
-                    //     ? {
-                    //         user_id: replacement0.user_id,
-                    //         first_name: replacement0.first_name,
-                    //         last_name: replacement0.last_name,
-                    //         replacement_order: replacement0.replacement_order,
-                    //       }
-                    //     : null,
-                    //   replacement1: replacement1
-                    //     ? {
-                    //         user_id: replacement1.user_id,
-                    //         first_name: replacement1.first_name,
-                    //         last_name: replacement1.last_name,
-                    //         replacement_order: replacement1.replacement_order,
-                    //       }
-                    //     : null,
-                    //   replacement2: replacement2
-                    //     ? {
-                    //         user_id: replacement2.user_id,
-                    //         first_name: replacement2.first_name,
-                    //         last_name: replacement2.last_name,
-                    //         replacement_order: replacement2.replacement_order,
-                    //       }
-                    //     : null,
-                    // })
+                    console.log("[v0] Drawer - replacement details for firefighter", firefighter.id, {
+                      replacement0: replacement0
+                        ? {
+                            user_id: replacement0.user_id,
+                            first_name: replacement0.first_name,
+                            last_name: replacement0.last_name,
+                            replacement_order: replacement0.replacement_order,
+                            is_partial: replacement0.is_partial,
+                            start_time: replacement0.start_time,
+                            end_time: replacement0.end_time,
+                          }
+                        : null,
+                      replacement1: replacement1
+                        ? {
+                            user_id: replacement1.user_id,
+                            first_name: replacement1.first_name,
+                            last_name: replacement1.last_name,
+                            replacement_order: replacement1.replacement_order,
+                            is_partial: replacement1.is_partial,
+                            start_time: replacement1.start_time,
+                            end_time: replacement1.end_time,
+                          }
+                        : null,
+                      replacement2: replacement2
+                        ? {
+                            user_id: replacement2.user_id,
+                            first_name: replacement2.first_name,
+                            last_name: replacement2.last_name,
+                            replacement_order: replacement2.replacement_order,
+                            is_partial: replacement2.is_partial,
+                            start_time: replacement2.start_time,
+                            end_time: replacement2.end_time,
+                          }
+                        : null,
+                    })
 
                     if (hasReplacements) {
                       const bankInfo = replacement0 || replacement1 || replacement2
@@ -1618,6 +1688,21 @@ export function ShiftAssignmentDrawer({
                                   </div>
                                 )}
 
+                                {replacement0 && !replacement0.user_id && replacement0.is_partial && replacement0.start_time && replacement0.end_time ? (
+                                  <div className="space-y-2">
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] text-muted-foreground font-medium underline">
+                                        Remplaçant
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0">
+                                          Partiel: {replacement0.start_time?.slice(0, 5)} - {replacement0.end_time?.slice(0, 5)}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null}
+
                                 {replacement0 && replacement0.approved_applicant_name && (
                                   <div className="space-y-2">
                                     <div className="space-y-1">
@@ -1650,7 +1735,23 @@ export function ShiftAssignmentDrawer({
                                   </div>
                                 )}
 
-                                {replacement1 && (
+                                {replacement1 && !replacement1.user_id && replacement1.is_partial && replacement1.start_time && replacement1.end_time ? (
+                                  <div className="space-y-2">
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] text-muted-foreground font-medium underline">
+                                        {replacement2 ? "Remplaçant 1" : "Remplaçant"}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0">
+                                          Partiel: {replacement1.start_time?.slice(0, 5)} - {replacement1.end_time?.slice(0, 5)}
+                                        </Badge>
+                                        <span className="text-[11px] text-muted-foreground">(En attente de candidat)</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null}
+
+                                {replacement1 && replacement1.user_id && (
                                   <div className="space-y-2">
                                     <div className="space-y-1">
                                       <div className="text-[11px] text-muted-foreground font-medium underline">
