@@ -1998,11 +1998,9 @@ export function ShiftAssignmentDrawer({
                                     </Badge>
                                   )}
                                   {assignment.is_extra &&
-                                    assignment.is_partial &&
-                                    assignment.start_time &&
-                                    assignment.end_time && (
+                                    hasPartialReplacement && (
                                       <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0 truncate max-w-full">
-                                        Partiel: {assignment.start_time.slice(0, 5)} - {assignment.end_time.slice(0, 5)}
+                                        Partiel: {replacement?.start_time?.slice(0, 5)} - {replacement?.end_time?.slice(0, 5)}
                                       </Badge>
                                     )}
                                   {isReplacementFirefighter && (
