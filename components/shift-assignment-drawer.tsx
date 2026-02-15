@@ -1688,6 +1688,22 @@ export function ShiftAssignmentDrawer({
                                   </div>
                                 )}
 
+                                {replacement0 && !replacement0.user_id && replacement0.is_partial && replacement0.start_time && replacement0.end_time ? (
+                                  <div className="space-y-2">
+                                    <div className="space-y-1">
+                                      <div className="text-[11px] text-muted-foreground font-medium underline">
+                                        Remplaçant
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0">
+                                          Partiel: {replacement0.start_time?.slice(0, 5)} - {replacement0.end_time?.slice(0, 5)}
+                                        </Badge>
+                                        <span className="text-[11px] text-muted-foreground">(En attente de candidat)</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null}
+
                                 {replacement0 && replacement0.approved_applicant_name && (
                                   <div className="space-y-2">
                                     <div className="space-y-1">
