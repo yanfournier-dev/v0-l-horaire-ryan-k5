@@ -1740,11 +1740,43 @@ export function ShiftAssignmentDrawer({
                                             <Trash2 className="h-3 w-3" />
                                           </Button>
                                         )}
-                                      </div>
-                                    </div>
+                                        </span>
+
+                                        {replacement1.is_direct_assignment && (
+                                          <span
+                                            className="text-orange-500 text-lg flex-shrink-0"
+                                            title="Assignation directe"
+                                          >
+                                            ⚡
+                                          </span>
+                                        )}
+
+                                        {isAdmin && replacement1.replacement_id && (
+                                          <DeleteReplacementButton
+                                            replacementId={replacement1.replacement_id}
+                                            onSuccess={loadData}
+                                            hasAssignedCandidate={!!replacement1.user_id}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                                          />
+                                        )}
+                                        {isAdmin && !replacement1.replacement_id && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleRemoveReplacement1(firefighter.id)}
+                                            disabled={isLoading || loadingReplacements}
+                                            className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent flex-shrink-0"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
                                         )}
                                       </div>
+                                      ) : null}
                                     </div>
+                                  </div>
+                                ) : null}
 
                                     {replacement1 && isAdmin && replacement1.user_id && (
                                       <div className="grid grid-cols-2 gap-2">
