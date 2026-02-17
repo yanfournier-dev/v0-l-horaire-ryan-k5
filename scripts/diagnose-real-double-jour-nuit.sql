@@ -1,5 +1,5 @@
--- Diagnostic remplacement DOUBLE pour JOUR/NUIT
--- Cherche les shifts jour/nuit (7h-17h, 17h-7h) avec 2 remplacement directs
+-- Cherche les shifts jour/nuit avec UN SEUL replaced_user_id mais DEUX remplacement directs
+-- C'est un vrai remplacement double
 
 SELECT 
   s.id as shift_id,
@@ -20,14 +20,15 @@ LEFT JOIN shift_assignments sa ON s.id = sa.shift_id
 LEFT JOIN users u ON sa.user_id = u.id
 LEFT JOIN users replaced ON sa.replaced_user_id = replaced.id
 WHERE s.id IN (
-  -- Shifts jour/nuit avec 2 remplacement directs
+  -- Shifts jour/nuit avec 2 remplacement directs POUR LA MÊME PERSONNE
   SELECT shift_id FROM shift_assignments 
   WHERE is_direct_assignment = true
-  GROUP BY shift_id 
+    AND replaced_user_id IS NOT NULL
+  GROUP BY shift_id, replaced_user_id
   HAVING COUNT(*) = 2
 )
 AND sa.is_direct_assignment = true
 -- Exclure 24h (quand start = end)
 AND NOT (s.start_time = s.end_time)
-ORDER BY s.id, sa.replacement_order
+ORDER BY s.id, sa.replaced_user_id, sa.replacement_order
 LIMIT 20;
