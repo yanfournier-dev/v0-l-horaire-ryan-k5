@@ -326,10 +326,414 @@ export async function addSecondReplacement(params: {
       }
     }
 
-    // Note: We don't modify R1 in the database anymore
-    // R1 keeps its original hours in the database (start_time/end_time unchanged)
-    // The frontend handles displaying adjusted hours temporarily without persisting them
-    // This ensures that when R2 is removed, R1 automatically returns to "Quart complet"
+    const normalizeTime = (time: string): string => {
+      if (!time) return time
+      return time.length === 5 ? `${time}:00` : time
+    }
+
+    // Get the shift details to get the correct start/end times
+    const shiftDetails = await sql`
+      SELECT shift_type, start_time, end_time FROM shifts WHERE id = ${shiftId}
+    `
+
+    if (shiftDetails.length === 0) {
+      return { success: false, error: "Quart introuvable" }
+    }
+
+    const shiftStartTime = shiftDetails[0].start_time
+    const shiftEndTime = shiftDetails[0].end_time
+
+    // Safety check: if r1 times are NULL or invalid, get them from the shift
+    const r1Start = normalizeTime(originalStartTime || shiftStartTime || "07:00:00")
+    const r1End = normalizeTime(adjustedEndTime || shiftEndTime || "17:00:00")
+    const r2Start = normalizeTime(params.startTime)
+    const r2End = normalizeTime(params.endTime)
+
+    // Helper function: check if time is within a range that may cross midnight
+    const timeIsWithinRange = (time: string, rangeStart: string, rangeEnd: string): boolean => {
+      if (rangeStart < rangeEnd) {
+        // Normal range (day shift): 07:00 to 17:00
+        return time >= rangeStart && time <= rangeEnd
+      } else {
+        // Range crosses midnight (night shift): 17:00 to 07:00
+        return time >= rangeStart || time <= rangeEnd
+      }
+    }
+
+    // Helper function: compare two times within a shift context that may cross midnight
+    // Returns true if time1 < time2 within the shift context
+    const isTimeBeforeInShift = (time1: string, time2: string, shiftStart: string, shiftEnd: string, is24h?: boolean): boolean => {
+      if (time1 === time2) return false
+
+      // Treat 24h shifts like night shifts (crosses midnight)
+      const treatAsNightShift = shiftStart > shiftEnd || is24h
+
+      if (shiftStart < shiftEnd) {
+        // Day shift: simple comparison
+        return time1 < time2
+      } else if (treatAsNightShift) {
+        // Night shift or 24h shift (crosses midnight)
+        // Order: shiftStart(17:00) < ... < 23:59 < 00:00 < ... < shiftEnd(07:00)
+        if (time1 >= shiftStart && time2 >= shiftStart) {
+          // Both after shift start (evening)
+          return time1 < time2
+        } else if (time1 < shiftEnd && time2 < shiftEnd) {
+          // Both before shift end (morning after midnight)
+          return time1 < time2
+        } else if (time1 >= shiftStart && time2 < shiftEnd) {
+          // time1 is in evening, time2 is in morning
+          return true
+        } else {
+          // time1 is in morning, time2 is in evening
+          return false
+        }
+      } else {
+        // Fallback: simple comparison
+        return time1 < time2
+      }
+    }
+
+    // Check if R2 is completely in the middle of R1 (invalid configuration)
+    const r2IsInMiddle = 
+      isTimeBeforeInShift(r1Start, r2Start, shiftStartTime, shiftEndTime) &&
+      isTimeBeforeInShift(r2End, r1End, shiftStartTime, shiftEndTime)
+
+    if (r2IsInMiddle) {
+      return {
+        success: false,
+        error:
+          "Le remplaçant 2 doit couvrir soit le début, soit la fin du remplacement, mais pas le milieu. Veuillez ajuster les heures pour que le remplaçant 2 commence au début ou se termine à la fin.",
+      }
+    }
+
+    // Special handling for 24h shifts (shiftStart === shiftEnd)
+    const is24hShift = shiftStartTime === shiftEndTime
+    
+    if (is24hShift) {
+      // Case 2 for 24h: R2 covers the beginning
+      // R2Start == shiftStart (07:00) AND R2End > R2Start (same-day, not full shift)
+      const r2CoversBeginning24h = r2Start === shiftStartTime && r2End > r2Start
+
+      if (r2CoversBeginning24h) {
+        await sql`
+          DELETE FROM shift_assignments
+          WHERE shift_id = ${shiftId}
+            AND replaced_user_id = ${replacedUserId}
+            AND replacement_order = 1
+        `
+        await sql`
+          INSERT INTO shift_assignments (
+            shift_id, 
+            user_id, 
+            replaced_user_id,
+            is_extra, 
+            is_direct_assignment,
+            is_partial,
+            start_time,
+            end_time,
+            replacement_order,
+            shift_date
+          )
+          VALUES (
+            ${shiftId}, 
+            ${r1UserId}, 
+            ${replacedUserId},
+            false, 
+            ${r1IsDirectAssignment},
+            true,
+            ${r2End},
+            ${shiftEndTime},
+            1,
+            ${finalShiftDate || shiftDateFromShifts}
+          )
+        `
+        
+        await sql`
+          INSERT INTO shift_assignments (
+            shift_id, 
+            user_id, 
+            replaced_user_id,
+            is_extra, 
+            is_direct_assignment,
+            is_partial,
+            start_time,
+            end_time,
+            replacement_order,
+            shift_date
+          )
+          VALUES (
+            ${shiftId}, 
+            ${assignedUserId}, 
+            ${replacedUserId},
+            false, 
+            true,
+            true,
+            ${r2Start},
+            ${r2End},
+            2,
+            ${finalShiftDate || shiftDateFromShifts}
+          )
+        `
+
+        revalidatePath("/dashboard")
+        revalidatePath("/calendar")
+
+        return { success: true }
+      }
+
+      // Case 3 for 24h: R2 covers the end
+      // (R2Start < shiftStart AND R2End == shiftEnd) OR (R2Start > shiftStart AND R2Start >= R2End)
+      // This covers: times after midnight going to 07:00, or crossing midnight from daytime
+      const r2CoversEnd24h = 
+        (r2Start < shiftStartTime && r2End === shiftEndTime) ||
+        (r2Start > shiftStartTime && r2Start >= r2End)
+
+      if (r2CoversEnd24h) {
+        await sql`
+          DELETE FROM shift_assignments
+          WHERE shift_id = ${shiftId}
+            AND replaced_user_id = ${replacedUserId}
+            AND replacement_order = 1
+        `
+        await sql`
+          INSERT INTO shift_assignments (
+            shift_id, 
+            user_id, 
+            replaced_user_id,
+            is_extra, 
+            is_direct_assignment,
+            is_partial,
+            start_time,
+            end_time,
+            replacement_order,
+            shift_date
+          )
+          VALUES (
+            ${shiftId}, 
+            ${r1UserId}, 
+            ${replacedUserId},
+            false, 
+            ${r1IsDirectAssignment},
+            true,
+            ${shiftStartTime},
+            ${r2Start},
+            1,
+            ${finalShiftDate || shiftDateFromShifts}
+          )
+        `
+
+        await sql`
+          INSERT INTO shift_assignments (
+            shift_id, 
+            user_id, 
+            replaced_user_id,
+            is_extra, 
+            is_direct_assignment,
+            is_partial,
+            start_time,
+            end_time,
+            replacement_order,
+            shift_date
+          )
+          VALUES (
+            ${shiftId}, 
+            ${assignedUserId}, 
+            ${replacedUserId},
+            false, 
+            true,
+            true,
+            ${r2Start},
+            ${r2End},
+            2,
+            ${finalShiftDate || shiftDateFromShifts}
+          )
+        `
+
+        revalidatePath("/dashboard")
+        revalidatePath("/calendar")
+
+        return { success: true }
+      }
+    }
+
+    // Case: R2 starts after R1 ends (or far past R1 end)
+    if (isTimeBeforeInShift(r1End, r2Start, shiftStartTime, shiftEndTime)) {
+      await sql`
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order,
+          shift_date
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          ${r1IsDirectAssignment},
+          true,
+          ${r1Start},
+          ${r1End},
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
+        )
+      `
+    } 
+    // Case: R2 covers entire R1 (r2Start <= r1Start AND r2End >= r1End)
+    else if (timeIsWithinRange(r1Start, r2Start, r2End) && timeIsWithinRange(r1End, r2Start, r2End)) {
+      await sql`
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+    } 
+    // Case: R2 covers the beginning (r2Start <= r1Start AND r2End < r1End)
+    else if (timeIsWithinRange(r1Start, r2Start, r2End) && !timeIsWithinRange(r1End, r2Start, r2End)) {
+      await sql`
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order,
+          shift_date
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          ${r1IsDirectAssignment},
+          true,
+          ${r2End},
+          ${r1End},
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
+        )
+      `
+    } 
+    // Case: R2 covers the end (r2Start > r1Start AND r2End >= r1End)
+    else if (timeIsWithinRange(r2Start, r1Start, r1End) && timeIsWithinRange(r1End, r2Start, r2End)) {
+      await sql`
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order,
+          shift_date
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          ${r1IsDirectAssignment},
+          true,
+          ${r1Start},
+          ${r2Start},
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
+        )
+      `
+    } 
+    // Case: R2 is completely outside R1 range (shouldn't happen based on earlier logic)
+    else {
+      await sql`
+        DELETE FROM shift_assignments
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order,
+          shift_date
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          ${r1IsDirectAssignment},
+          true,
+          ${r1Start},
+          ${r2Start},
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
+        )
+      `
+
+      await sql`
+        INSERT INTO shift_assignments (
+          shift_id, 
+          user_id, 
+          replaced_user_id,
+          is_extra, 
+          is_direct_assignment,
+          is_partial,
+          start_time,
+          end_time,
+          replacement_order,
+          shift_date
+        )
+        VALUES (
+          ${shiftId}, 
+          ${r1UserId}, 
+          ${replacedUserId},
+          false, 
+          ${r1IsDirectAssignment},
+          true,
+          ${r2End},
+          ${r1End},
+          1,
+          ${finalShiftDate || shiftDateFromShifts}
+        )
+      `
+    }
 
     const verifyResult = await sql`
       SELECT id, user_id, start_time, end_time, replacement_order 
