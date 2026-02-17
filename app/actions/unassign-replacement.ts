@@ -12,7 +12,7 @@ export async function unassignReplacement(applicationId: number) {
 
   try {
     const applicationResult = await sql`
-      SELECT ra.*, r.id as replacement_id
+      SELECT ra.*, r.id as replacement_id, r.shift_id
       FROM replacement_applications ra
       JOIN replacements r ON ra.replacement_id = r.id
       WHERE ra.id = ${applicationId}
@@ -24,6 +24,36 @@ export async function unassignReplacement(applicationId: number) {
     }
 
     const application = applicationResult[0]
+    const shiftId = application.shift_id
+
+    // Get the full shift hours
+    const shiftResult = await sql`
+      SELECT start_time, end_time
+      FROM shifts
+      WHERE id = ${shiftId}
+    `
+
+    if (shiftResult.length === 0) {
+      return { success: false, error: "Quart non trouvé" }
+    }
+
+    const shift = shiftResult[0]
+
+    // Restore R1 (replacement_order = 1) to full shift hours
+    await sql`
+      UPDATE shift_assignments
+      SET start_time = ${shift.start_time},
+          end_time = ${shift.end_time},
+          is_partial = false
+      WHERE shift_id = ${shiftId}
+        AND replaced_user_id IN (
+          SELECT replaced_user_id 
+          FROM shift_assignments 
+          WHERE shift_id = ${shiftId} 
+            AND replacement_order = 2
+        )
+        AND replacement_order = 1
+    `
 
     await sql`
       UPDATE replacement_applications
