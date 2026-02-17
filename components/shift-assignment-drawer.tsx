@@ -1170,6 +1170,74 @@ export function ShiftAssignmentDrawer({
     }
   })
 
+  // Helper function to calculate displayed hours for R1 when R2 exists
+  const getDisplayedHoursForR1 = (replacement1: any, replacement2: any, shiftType: string) => {
+    if (!replacement2 || !replacement1) {
+      return { start_time: replacement1?.start_time, end_time: replacement1?.end_time, is_partial: replacement1?.is_partial }
+    }
+
+    const r1Start = replacement1.start_time || "07:00:00"
+    const r1End = replacement1.end_time || "17:00:00"
+    const r2Start = replacement2.start_time
+    const r2End = replacement2.end_time
+
+    // Helper to compare times in a shift context
+    const isTimeBeforeInShift = (time1: string, time2: string, shiftStart: string, shiftEnd: string): boolean => {
+      if (time1 === time2) return false
+      if (shiftStart < shiftEnd) {
+        // Day shift: simple comparison
+        return time1 < time2
+      } else {
+        // Night shift (crosses midnight)
+        if (time1 >= shiftStart && time2 >= shiftStart) {
+          return time1 < time2
+        } else if (time1 < shiftEnd && time2 < shiftEnd) {
+          return time1 < time2
+        } else if (time1 >= shiftStart && time2 < shiftEnd) {
+          return true
+        } else {
+          return false
+        }
+      }
+    }
+
+    const timeIsWithinRange = (time: string, rangeStart: string, rangeEnd: string): boolean => {
+      if (rangeStart < rangeEnd) {
+        return time >= rangeStart && time <= rangeEnd
+      } else {
+        return time >= rangeStart || time <= rangeEnd
+      }
+    }
+
+    // Determine shift start/end based on type
+    const shiftStart = shiftType === "night" ? "17:00:00" : "07:00:00"
+    const shiftEnd = shiftType === "night" ? "07:00:00" : (shiftType === "full_24h" ? "07:00:00" : "17:00:00")
+
+    // Case: R2 covers the end (R2 starts before R1 ends)
+    if (timeIsWithinRange(r2Start, shiftStart, shiftEnd) && 
+        timeIsWithinRange(r2End, shiftStart, shiftEnd) &&
+        isTimeBeforeInShift(r2Start, r1End, shiftStart, shiftEnd)) {
+      // R1 should display until R2 starts
+      return { start_time: r1Start, end_time: r2Start, is_partial: true }
+    }
+
+    // Case: R2 covers the beginning (R2 starts at R1 start)
+    if (isTimeBeforeInShift(r1Start, r2End, shiftStart, shiftEnd) && 
+        !isTimeBeforeInShift(r1End, r2End, shiftStart, shiftEnd)) {
+      // R1 should display from R2 end to R1 end
+      return { start_time: r2End, end_time: r1End, is_partial: true }
+    }
+
+    // Case: R2 covers entire R1
+    if (timeIsWithinRange(r1Start, r2Start, r2End) && timeIsWithinRange(r1End, r2Start, r2End)) {
+      // R1 is fully covered by R2 - don't display hours
+      return { start_time: r1Start, end_time: r1End, is_partial: true, hidden: true }
+    }
+
+    // Default: R1 displays as-is with full hours
+    return { start_time: r1Start, end_time: r1End, is_partial: false }
+  }
+
   replacements.forEach((r: any) => {
     // Skip only normal (non-extra) replacements that already have approved applications
     // Keep extra firefighters visible even if they have approved applications
