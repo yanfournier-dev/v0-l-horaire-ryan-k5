@@ -26,28 +26,6 @@ export async function unassignReplacement(applicationId: number) {
     const application = applicationResult[0]
     const shiftId = application.shift_id
 
-    // Get the full shift hours
-    const shiftResult = await sql`
-      SELECT start_time, end_time
-      FROM shifts
-      WHERE id = ${shiftId}
-    `
-
-    if (shiftResult.length === 0) {
-      return { success: false, error: "Quart non trouvé" }
-    }
-
-    const shift = shiftResult[0]
-
-    // Restore R1 (replacement_order = 1) to is_partial = false
-    // This will make "Quart complet" display instead of partial hours
-    await sql`
-      UPDATE shift_assignments
-      SET is_partial = false
-      WHERE shift_id = ${shiftId}
-        AND replacement_order = 1
-    `
-
     await sql`
       UPDATE replacement_applications
       SET status = 'pending',
@@ -69,6 +47,14 @@ export async function unassignReplacement(applicationId: number) {
           notification_sent_by = NULL,
           notification_types_sent = '[]'::jsonb
       WHERE id = ${application.replacement_id}
+    `
+
+    // Restore R1 (replacement_order = 1) to is_partial = false when removing R2
+    await sql`
+      UPDATE shift_assignments
+      SET is_partial = false
+      WHERE shift_id = ${shiftId}
+        AND replacement_order = 1
     `
 
     revalidatePath("/dashboard/replacements")
