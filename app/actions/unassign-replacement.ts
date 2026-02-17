@@ -39,19 +39,12 @@ export async function unassignReplacement(applicationId: number) {
 
     const shift = shiftResult[0]
 
-    // Restore R1 (replacement_order = 1) to full shift hours
+    // Restore R1 (replacement_order = 1) to is_partial = false
+    // This will make "Quart complet" display instead of partial hours
     await sql`
       UPDATE shift_assignments
-      SET start_time = ${shift.start_time},
-          end_time = ${shift.end_time},
-          is_partial = false
+      SET is_partial = false
       WHERE shift_id = ${shiftId}
-        AND replaced_user_id IN (
-          SELECT replaced_user_id 
-          FROM shift_assignments 
-          WHERE shift_id = ${shiftId} 
-            AND replacement_order = 2
-        )
         AND replacement_order = 1
     `
 
