@@ -410,10 +410,9 @@ export async function addSecondReplacement(params: {
     const is24hShift = shiftStartTime === shiftEndTime
     
     if (is24hShift) {
-      // Case 2 for 24h: R2 covers the beginning (R2Start ≤ shiftStart AND R2End ≠ shiftEnd)
-      const r2CoversBeginning24h = 
-        isTimeBeforeInShift(shiftStartTime, r2Start, shiftStartTime, shiftEndTime, true) &&
-        !isTimeBeforeInShift(shiftEndTime, r2End, r2Start, shiftEndTime, true)
+      // Case 2 for 24h: R2 covers the beginning
+      // R2Start == shiftStart (07:00) AND R2End > R2Start (same-day, not full shift)
+      const r2CoversBeginning24h = r2Start === shiftStartTime && r2End > r2Start
 
       if (r2CoversBeginning24h) {
         await sql`
@@ -482,10 +481,12 @@ export async function addSecondReplacement(params: {
         return { success: true }
       }
 
-      // Case 3 for 24h: R2 covers the end (R2Start > shiftStart AND R2End = shiftEnd)
+      // Case 3 for 24h: R2 covers the end
+      // (R2Start < shiftStart AND R2End == shiftEnd) OR (R2Start > shiftStart AND R2Start >= R2End)
+      // This covers: times after midnight going to 07:00, or crossing midnight from daytime
       const r2CoversEnd24h = 
-        !isTimeBeforeInShift(shiftStartTime, r2Start, shiftStartTime, shiftEndTime, true) &&
-        isTimeBeforeInShift(shiftEndTime, r2End, r2Start, shiftEndTime, true)
+        (r2Start < shiftStartTime && r2End === shiftEndTime) ||
+        (r2Start > shiftStartTime && r2Start >= r2End)
 
       if (r2CoversEnd24h) {
         await sql`
