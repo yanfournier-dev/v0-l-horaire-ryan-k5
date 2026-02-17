@@ -481,7 +481,7 @@ export async function addSecondReplacement(params: {
       `
     } 
     // Case: R2 covers the end (r2Start > r1Start AND r2End >= r1End)
-    else if (!timeIsWithinRange(r2Start, r1Start, r1End) && timeIsWithinRange(r1End, r2Start, r2End)) {
+    else if (timeIsWithinRange(r2Start, r1Start, r1End) && timeIsWithinRange(r1End, r2Start, r2End)) {
       await sql`
         DELETE FROM shift_assignments
         WHERE shift_id = ${shiftId}
