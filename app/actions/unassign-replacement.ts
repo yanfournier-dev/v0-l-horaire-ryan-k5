@@ -50,12 +50,29 @@ export async function unassignReplacement(applicationId: number) {
     `
 
     // Restore R1 (replacement_order = 1) to is_partial = false when removing R2
-    await sql`
-      UPDATE shift_assignments
-      SET is_partial = false
-      WHERE shift_id = ${shiftId}
-        AND replacement_order = 1
+    // First, we need to get the replaced_user_id from R2 to find R1
+    const r2Result = await sql`
+      SELECT replaced_user_id 
+      FROM shift_assignments 
+      WHERE shift_id = ${shiftId} 
+        AND replacement_order = 2
+      LIMIT 1
     `
+
+    if (r2Result.length > 0) {
+      const replacedUserId = r2Result[0].replaced_user_id
+      console.log("[v0] unassignReplacement - found R2 with replaced_user_id:", replacedUserId)
+      
+      // Now update R1 with the same replaced_user_id
+      await sql`
+        UPDATE shift_assignments
+        SET is_partial = false
+        WHERE shift_id = ${shiftId}
+          AND replaced_user_id = ${replacedUserId}
+          AND replacement_order = 1
+      `
+      console.log("[v0] unassignReplacement - updated R1 to is_partial = false")
+    }
 
     revalidatePath("/dashboard/replacements")
     revalidatePath(`/dashboard/replacements/${application.replacement_id}`)
