@@ -12,7 +12,7 @@ export async function unassignReplacement(applicationId: number) {
 
   try {
     const applicationResult = await sql`
-      SELECT ra.*, r.id as replacement_id, r.shift_id
+      SELECT ra.*, r.id as replacement_id
       FROM replacement_applications ra
       JOIN replacements r ON ra.replacement_id = r.id
       WHERE ra.id = ${applicationId}
@@ -24,7 +24,6 @@ export async function unassignReplacement(applicationId: number) {
     }
 
     const application = applicationResult[0]
-    const shiftId = application.shift_id
 
     await sql`
       UPDATE replacement_applications
@@ -48,31 +47,6 @@ export async function unassignReplacement(applicationId: number) {
           notification_types_sent = '[]'::jsonb
       WHERE id = ${application.replacement_id}
     `
-
-    // Restore R1 (replacement_order = 1) to is_partial = false when removing R2
-    // First, we need to get the replaced_user_id from R2 to find R1
-    const r2Result = await sql`
-      SELECT replaced_user_id 
-      FROM shift_assignments 
-      WHERE shift_id = ${shiftId} 
-        AND replacement_order = 2
-      LIMIT 1
-    `
-
-    if (r2Result.length > 0) {
-      const replacedUserId = r2Result[0].replaced_user_id
-      console.log("[v0] unassignReplacement - found R2 with replaced_user_id:", replacedUserId)
-      
-      // Now update R1 with the same replaced_user_id
-      await sql`
-        UPDATE shift_assignments
-        SET is_partial = false
-        WHERE shift_id = ${shiftId}
-          AND replaced_user_id = ${replacedUserId}
-          AND replacement_order = 1
-      `
-      console.log("[v0] unassignReplacement - updated R1 to is_partial = false")
-    }
 
     revalidatePath("/dashboard/replacements")
     revalidatePath(`/dashboard/replacements/${application.replacement_id}`)
