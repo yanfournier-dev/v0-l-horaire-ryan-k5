@@ -273,43 +273,32 @@ export async function addSecondReplacement(params: {
 
     const r1UserId = replacement1Info[0].user_id
     const r1IsDirectAssignment = replacement1Info[0].is_direct_assignment
+    const isR1Partial = replacement1Info[0].is_partial
+
+    if (!isR1Partial) {
+      // If R1 is "Quart complet" (not partial), we need the actual shift times
+      // not the placeholder times (07:00-07:00) stored in shift_assignments
+    }
+
+    // Get the shift details early to always have access to true shift times
+    const shiftDetails = await sql`
+      SELECT shift_type, start_time, end_time FROM shifts WHERE id = ${shiftId}
+    `
+
+    if (shiftDetails.length === 0) {
+      return { success: false, error: "Quart introuvable" }
+    }
+
+    const shiftStartTime = shiftDetails[0].start_time
+    const shiftEndTime = shiftDetails[0].end_time
+
     let adjustedEndTime = replacement1Info[0].end_time
     const originalStartTime = replacement1Info[0].start_time
 
-    if (!adjustedEndTime) {
-      const replacementInfo = await sql`
-        SELECT end_time, is_partial
-        FROM replacements
-        WHERE shift_date || '-' || shift_type || '-' || team_id IN (
-          SELECT CONCAT(
-            TO_CHAR((
-              SELECT start_date + (s.cycle_day - 1) * INTERVAL '1 day'
-              FROM cycle_config
-              WHERE is_active = true
-              LIMIT 1
-            ), 'YYYY-MM-DD'), '-', s.shift_type, '-', s.team_id
-          )
-          FROM shifts s
-          WHERE s.id = ${shiftId}
-        )
-        AND user_id = ${replacedUserId}
-        AND status != 'cancelled'
-        LIMIT 1
-      `
-
-      if (replacementInfo.length > 0 && replacementInfo[0].end_time) {
-        adjustedEndTime = replacementInfo[0].end_time
-      } else {
-        const shiftInfo = await sql`
-          SELECT end_time FROM shifts WHERE id = ${shiftId}
-        `
-
-        if (shiftInfo.length === 0) {
-          return { success: false, error: "Quart introuvable" }
-        }
-
-        adjustedEndTime = shiftInfo[0].end_time
-      }
+    // If R1 was "Quart complet", its start_time and end_time are just placeholders
+    // Use the actual shift times instead
+    if (!isR1Partial) {
+      adjustedEndTime = shiftEndTime
     }
 
     const existingSecond = await sql`
@@ -331,21 +320,9 @@ export async function addSecondReplacement(params: {
       return time.length === 5 ? `${time}:00` : time
     }
 
-    // Get the shift details to get the correct start/end times
-    const shiftDetails = await sql`
-      SELECT shift_type, start_time, end_time FROM shifts WHERE id = ${shiftId}
-    `
-
-    if (shiftDetails.length === 0) {
-      return { success: false, error: "Quart introuvable" }
-    }
-
-    const shiftStartTime = shiftDetails[0].start_time
-    const shiftEndTime = shiftDetails[0].end_time
-
-    // Safety check: if r1 times are NULL or invalid, get them from the shift
-    const r1Start = normalizeTime(originalStartTime || shiftStartTime || "07:00:00")
-    const r1End = normalizeTime(adjustedEndTime || shiftEndTime || "17:00:00")
+    // Use true shift times, not the placeholder times from R1 if it was "Quart complet"
+    const r1Start = normalizeTime(isR1Partial ? originalStartTime : shiftStartTime)
+    const r1End = normalizeTime(adjustedEndTime)
     const r2Start = normalizeTime(params.startTime)
     const r2End = normalizeTime(params.endTime)
 
