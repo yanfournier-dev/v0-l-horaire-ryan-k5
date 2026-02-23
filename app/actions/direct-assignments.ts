@@ -951,10 +951,23 @@ export async function removeDirectAssignment(shiftId: number, userId: number, re
 
     const shift = shiftInfo[0]
 
+    // First, get the replaced_user_id of the assignment being removed
+    const removingAssignment = await sql`
+      SELECT replaced_user_id FROM shift_assignments
+      WHERE shift_id = ${shiftId}
+        AND user_id = ${userId}
+        AND is_direct_assignment = true
+      LIMIT 1
+    `
+
+    const replacedUserId = removingAssignment.length > 0 ? removingAssignment[0].replaced_user_id : null
+
+    // Find all replacements for the SAME replaced user, not just any replacement on this shift
     const allReplacements = await sql`
       SELECT id, user_id, replacement_order, is_partial, start_time, end_time, replaced_user_id, is_direct_assignment, original_start_time, original_end_time
       FROM shift_assignments
       WHERE shift_id = ${shiftId}
+        AND replaced_user_id = ${replacedUserId}
         AND (replaced_user_id IS NOT NULL OR is_direct_assignment = true)
       ORDER BY replacement_order ASC
     `
@@ -983,6 +996,7 @@ export async function removeDirectAssignment(shiftId: number, userId: number, re
         SELECT user_id FROM shift_assignments
         WHERE shift_id = ${shiftId}
           AND replacement_order = 2
+          AND replaced_user_id = ${replacedUserId}
       `
 
       if (secondReplacement.length > 0) {
@@ -991,6 +1005,7 @@ export async function removeDirectAssignment(shiftId: number, userId: number, re
           SET replacement_order = 1
           WHERE shift_id = ${shiftId}
             AND replacement_order = 2
+            AND replaced_user_id = ${replacedUserId}
         `
       }
     }
