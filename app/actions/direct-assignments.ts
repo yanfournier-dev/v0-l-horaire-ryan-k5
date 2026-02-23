@@ -432,7 +432,9 @@ export async function addSecondReplacement(params: {
             start_time,
             end_time,
             replacement_order,
-            shift_date
+            shift_date,
+            original_start_time,
+            original_end_time
           )
           VALUES (
             ${shiftId}, 
@@ -444,7 +446,9 @@ export async function addSecondReplacement(params: {
             ${r2End},
             ${shiftEndTime},
             1,
-            ${finalShiftDate || shiftDateFromShifts}
+            ${finalShiftDate || shiftDateFromShifts},
+            ${r1Start},
+            ${r1End}
           )
         `
         
@@ -506,7 +510,9 @@ export async function addSecondReplacement(params: {
             start_time,
             end_time,
             replacement_order,
-            shift_date
+            shift_date,
+            original_start_time,
+            original_end_time
           )
           VALUES (
             ${shiftId}, 
@@ -518,7 +524,9 @@ export async function addSecondReplacement(params: {
             ${shiftStartTime},
             ${r2Start},
             1,
-            ${finalShiftDate || shiftDateFromShifts}
+            ${finalShiftDate || shiftDateFromShifts},
+            ${r1Start},
+            ${r1End}
           )
         `
 
@@ -944,10 +952,10 @@ export async function removeDirectAssignment(shiftId: number, userId: number, re
     const shift = shiftInfo[0]
 
     const allReplacements = await sql`
-      SELECT id, user_id, replacement_order, is_partial, start_time, end_time, replaced_user_id, is_direct_assignment
+      SELECT id, user_id, replacement_order, is_partial, start_time, end_time, replaced_user_id, is_direct_assignment, original_start_time, original_end_time
       FROM shift_assignments
       WHERE shift_id = ${shiftId}
-        AND replaced_user_id IS NOT NULL
+        AND (replaced_user_id IS NOT NULL OR is_direct_assignment = true)
       ORDER BY replacement_order ASC
     `
 
@@ -956,14 +964,17 @@ export async function removeDirectAssignment(shiftId: number, userId: number, re
 
     if (isDoubleReplacement && replacementToKeep) {
       // Restore the kept replacement to its original shift hours
-      const coversFullShift = shift.start_time === replacementToKeep.start_time && shift.end_time === replacementToKeep.end_time
+      // For 24h shifts that were previously split, use the stored original times
+      // For other shifts (day/night), use the shift's start and end times
+      const restoreStartTime = replacementToKeep.original_start_time ?? shift.start_time
+      const restoreEndTime = replacementToKeep.original_end_time ?? shift.end_time
 
       await sql`
         UPDATE shift_assignments
         SET 
           replacement_order = 1,
-          start_time = ${shift.start_time},
-          end_time = ${shift.end_time},
+          start_time = ${restoreStartTime},
+          end_time = ${restoreEndTime},
           is_partial = ${false}
         WHERE id = ${replacementToKeep.id}
       `
