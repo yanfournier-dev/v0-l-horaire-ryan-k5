@@ -277,6 +277,16 @@ export async function addSecondReplacement(params: {
     // This ensures we preserve the original planned end time of the shift
     let adjustedEndTime = replacement1Info[0].original_end_time || shiftEndTime || replacement1Info[0].end_time
     const originalStartTime = replacement1Info[0].start_time
+    
+    console.log("[v0] addSecondReplacement - DEBUG:", JSON.stringify({
+      replacement1_original_end_time: replacement1Info[0].original_end_time,
+      replacement1_end_time: replacement1Info[0].end_time,
+      replacement1_start_time: replacement1Info[0].start_time,
+      shiftEndTime: shiftEndTime,
+      shiftStartTime: shiftStartTime,
+      is24hShift: shiftStartTime === shiftEndTime,
+      adjustedEndTime_calculated: adjustedEndTime
+    }))
 
     if (!adjustedEndTime) {
       const replacementInfo = await sql`
