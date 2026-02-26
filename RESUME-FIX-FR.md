@@ -53,9 +53,9 @@
 ### VÉRIFICATION
 
 Exécute ce script SQL pour confirmer que les données sont correctes:
-```bash
+\`\`\`bash
 # scripts/verify-partial-fix.sql
-```
+\`\`\`
 
 Ça affichera:
 - Tommy Plouride - 2026-03-01

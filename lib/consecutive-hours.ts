@@ -15,16 +15,14 @@ interface ShiftInfo {
  */
 function calculateShiftDuration(shiftType: string, isPartial: boolean, startTime?: string, endTime?: string): number {
   if (isPartial && startTime && endTime) {
-    const [startHour, startMinute] = startTime.split(":").map(Number)
-    const [endHour, endMinute] = endTime.split(":").map(Number)
+    const [startHour] = startTime.split(":").map(Number)
+    const [endHour] = endTime.split(":").map(Number)
 
-    let duration = endHour - startHour + (endMinute - startMinute) / 60
-
-    // Handle overnight shifts
+    let duration = endHour - startHour
     if (duration < 0) {
       duration += 24
     }
-
+    console.log("[v0] calculateShiftDuration partial:", { startTime, endTime, startHour, endHour, duration })
     return duration
   }
 
@@ -44,12 +42,22 @@ function calculateShiftDuration(shiftType: string, isPartial: boolean, startTime
 /**
  * Get the end datetime of a shift
  */
-function getShiftEnd(date: Date, shiftType: string, isPartial: boolean, endTime?: string): Date {
+function getShiftEnd(date: Date, shiftType: string, isPartial: boolean, endTime?: string, startTime?: string): Date {
   const endDate = new Date(date)
 
   if (isPartial && endTime) {
     const [endHour, endMinute] = endTime.split(":").map(Number)
     endDate.setHours(endHour, endMinute, 0, 0)
+
+    // If this is a partial night shift (end time is before start time, meaning it goes to next day)
+    if (startTime) {
+      const [startHour] = startTime.split(":").map(Number)
+      if (endHour < startHour) {
+        // End time is on the next day
+        endDate.setDate(endDate.getDate() + 1)
+      }
+    }
+
     return endDate
   }
 
@@ -274,7 +282,7 @@ export async function checkConsecutiveHours(
     for (const shift of allShiftsData) {
       const shiftDate = new Date(shift.shift_date + "T00:00:00")
       const start = getShiftStart(shiftDate, shift.shift_type, shift.is_partial, shift.start_time)
-      const end = getShiftEnd(shiftDate, shift.shift_type, shift.is_partial, shift.end_time)
+      const end = getShiftEnd(shiftDate, shift.shift_type, shift.is_partial, shift.end_time, shift.start_time)
       const hours = calculateShiftDuration(shift.shift_type, shift.is_partial, shift.start_time, shift.end_time)
 
       allShifts.push({ start, end, hours })
@@ -282,7 +290,7 @@ export async function checkConsecutiveHours(
 
     // Add the new shift
     const newStart = getShiftStart(newDate, newShiftType, isPartial, startTime)
-    const newEnd = getShiftEnd(newDate, newShiftType, isPartial, endTime)
+    const newEnd = getShiftEnd(newDate, newShiftType, isPartial, endTime, startTime)
     const newHours = calculateShiftDuration(newShiftType, isPartial, startTime, endTime)
 
     allShifts.push({ start: newStart, end: newEnd, hours: newHours })

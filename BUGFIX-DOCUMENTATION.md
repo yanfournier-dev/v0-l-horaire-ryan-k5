@@ -23,7 +23,7 @@ When a second replacement overlaps with the first partial replacement, we now:
 2. **NEW**: Insert the R1 with **original_start_time** and **original_end_time** preserved
 
 **Case: R2 covers the beginning (7:00-8:30)**
-```typescript
+\`\`\`typescript
 INSERT INTO shift_assignments (
   ...,
   start_time = ${r2End},        // 08:30 (new start after R2)
@@ -32,10 +32,10 @@ INSERT INTO shift_assignments (
   original_end_time = ${r1End},      // 15:00 (preserved)
   ...
 )
-```
+\`\`\`
 
 **Case: R2 covers the end (14:00-15:00)**
-```typescript
+\`\`\`typescript
 INSERT INTO shift_assignments (
   ...,
   start_time = ${r1Start},      // 07:00 (original start)
@@ -44,19 +44,19 @@ INSERT INTO shift_assignments (
   original_end_time = ${r1End},      // 15:00 (preserved)
   ...
 )
-```
+\`\`\`
 
 ### Fix #2: Restore is_partial State When Removing R2 (Line 999)
 
 Changed from:
-```typescript
+\`\`\`typescript
 is_partial = ${false}  // ❌ Always resets to false
-```
+\`\`\`
 
 To:
-```typescript
+\`\`\`typescript
 is_partial = ${replacementToKeep.is_partial}  // ✅ Preserves original state
-```
+\`\`\`
 
 ## How It Works Now
 
@@ -91,8 +91,8 @@ is_partial = ${replacementToKeep.is_partial}  // ✅ Preserves original state
 ## Verification
 
 Run the diagnostic script to verify the fix:
-```sql
+\`\`\`sql
 -- scripts/verify-partial-fix.sql
-```
+\`\`\`
 
 This shows all replacements for Tommy Plouride on March 1st with their time values and partial status.
