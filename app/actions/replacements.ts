@@ -519,7 +519,7 @@ export async function approveApplication(
     const cycleDay = (daysDiff % cycle_length_days) + 1
 
     const shiftResult = await db`
-      SELECT id FROM shifts
+      SELECT id, start_time as shift_start_time, end_time as shift_end_time FROM shifts
       WHERE team_id = ${team_id}
         AND cycle_day = ${cycleDay}
         AND shift_type = ${shift_type}
@@ -531,6 +531,8 @@ export async function approveApplication(
     }
 
     const shiftId = shiftResult[0].id
+    const shiftStartTime = shiftResult[0].shift_start_time
+    const shiftEndTime = shiftResult[0].shift_end_time
 
     const users = await db`
       SELECT id, first_name, last_name FROM users
@@ -577,6 +579,8 @@ export async function approveApplication(
         is_partial,
         start_time,
         end_time,
+        original_start_time,
+        original_end_time,
         replacement_order,
         shift_date
       )
@@ -589,6 +593,8 @@ export async function approveApplication(
         ${is_partial || false},
         ${start_time || null},
         ${end_time || null},
+        ${shiftStartTime},
+        ${shiftEndTime},
         1,
         ${shiftDateStr}
       )
