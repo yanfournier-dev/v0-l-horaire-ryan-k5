@@ -454,9 +454,20 @@ export function ShiftAssignmentDrawer({
 
     if (!selectedFirefighter || isLoading) return
 
-    if (isPartial && partialStartTime >= partialEndTime) {
-      toast.error("L'heure de début doit être avant l'heure de fin")
-      return
+    if (isPartial) {
+      // Convert times to numbers for comparison
+      const [startHour] = partialStartTime.split(":").map(Number)
+      const [endHour] = partialEndTime.split(":").map(Number)
+
+      // For night shifts and 24h shifts, endTime can be less than startTime (crosses midnight)
+      // For day shifts, endTime must be greater than startTime
+      const isNightOrFullDay = shift.shift_type === "night" || shift.shift_type === "full_24h"
+      const isInvalidTime = isNightOrFullDay ? false : startHour >= endHour
+
+      if (startHour === endHour || isInvalidTime) {
+        toast.error("L'heure de début doit être avant l'heure de fin")
+        return
+      }
     }
 
     if (deadlineSeconds === null || deadlineSeconds === undefined || deadlineSeconds === 0) {
