@@ -15,15 +15,16 @@ interface ShiftInfo {
  */
 function calculateShiftDuration(shiftType: string, isPartial: boolean, startTime?: string, endTime?: string): number {
   if (isPartial && startTime && endTime) {
-    const [startHour, startMinute] = startTime.split(":").map(Number)
-    const [endHour, endMinute] = endTime.split(":").map(Number)
+    const [startHour] = startTime.split(":").map(Number)
+    const [endHour] = endTime.split(":").map(Number)
 
-    let duration = endHour - startHour + (endMinute - startMinute) / 60
-
-    // Handle overnight shifts
+    let duration = endHour - startHour
     if (duration < 0) {
       duration += 24
     }
+    console.log("[v0] calculateShiftDuration partial:", { startTime, endTime, startHour, endHour, duration })
+    return duration
+  }
 
     return duration
   }

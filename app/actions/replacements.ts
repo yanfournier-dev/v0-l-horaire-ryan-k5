@@ -1337,19 +1337,18 @@ export async function requestReplacement(
 
   // Validate consecutive hours before creating the replacement
   console.log("[v0] requestReplacement - Checking consecutive hours")
-  const { canWork, conflictingShift } = await checkConsecutiveHours(
+  const { exceeds, totalHours, message } = await checkConsecutiveHours(
     user.id,
     shiftDate,
     shiftType,
     isPartial,
     finalStartTime,
-    finalEndTime,
-    db
+    finalEndTime
   )
 
-  if (!canWork) {
-    console.log("[v0] requestReplacement - Consecutive hours violation:", conflictingShift)
-    return { error: conflictingShift || "Trop d'heures consécutives" }
+  if (exceeds) {
+    console.log("[v0] requestReplacement - Consecutive hours violation:", message)
+    return { error: message || "Trop d'heures consécutives" }
   }
 
   await db`
