@@ -215,7 +215,7 @@ export async function addSecondReplacement(params: {
     }
 
     const replacement1Info = await sql`
-      SELECT id, user_id, start_time, end_time, is_partial, is_direct_assignment 
+      SELECT id, user_id, start_time, end_time, original_start_time, original_end_time, is_partial, is_direct_assignment 
       FROM shift_assignments
       WHERE shift_id = ${shiftId}
         AND replaced_user_id = ${replacedUserId}
@@ -273,7 +273,9 @@ export async function addSecondReplacement(params: {
 
     const r1UserId = replacement1Info[0].user_id
     const r1IsDirectAssignment = replacement1Info[0].is_direct_assignment
-    let adjustedEndTime = replacement1Info[0].end_time
+    // For partial replacements, use original_end_time if available, otherwise use shift's end time
+    // This ensures we preserve the original planned end time of the shift
+    let adjustedEndTime = replacement1Info[0].original_end_time || replacement1Info[0].end_time
     const originalStartTime = replacement1Info[0].start_time
 
     if (!adjustedEndTime) {
@@ -444,7 +446,7 @@ export async function addSecondReplacement(params: {
             ${r1IsDirectAssignment},
             true,
             ${r2End},
-            ${shiftEndTime},
+            ${r1End},
             1,
             ${finalShiftDate || shiftDateFromShifts},
             ${r1Start},
@@ -521,7 +523,7 @@ export async function addSecondReplacement(params: {
             false, 
             ${r1IsDirectAssignment},
             true,
-            ${shiftStartTime},
+            ${r1Start},
             ${r2Start},
             1,
             ${finalShiftDate || shiftDateFromShifts},
@@ -583,6 +585,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
+          original_start_time,
+          original_end_time,
           replacement_order,
           shift_date
         )
@@ -593,6 +597,8 @@ export async function addSecondReplacement(params: {
           false, 
           ${r1IsDirectAssignment},
           true,
+          ${r2End},
+          ${r1End},
           ${r1Start},
           ${r1End},
           1,
@@ -627,6 +633,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
+          original_start_time,
+          original_end_time,
           replacement_order,
           shift_date
         )
@@ -638,6 +646,8 @@ export async function addSecondReplacement(params: {
           ${r1IsDirectAssignment},
           true,
           ${r2End},
+          ${r1End},
+          ${r1Start},
           ${r1End},
           1,
           ${finalShiftDate || shiftDateFromShifts}
@@ -662,6 +672,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
+          original_start_time,
+          original_end_time,
           replacement_order,
           shift_date
         )
@@ -674,6 +686,8 @@ export async function addSecondReplacement(params: {
           true,
           ${r1Start},
           ${r2Start},
+          ${r1Start},
+          ${r1End},
           1,
           ${finalShiftDate || shiftDateFromShifts}
         )
@@ -698,6 +712,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
+          original_start_time,
+          original_end_time,
           replacement_order,
           shift_date
         )
@@ -710,6 +726,8 @@ export async function addSecondReplacement(params: {
           true,
           ${r1Start},
           ${r2Start},
+          ${r1Start},
+          ${r1End},
           1,
           ${finalShiftDate || shiftDateFromShifts}
         )
@@ -725,6 +743,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
+          original_start_time,
+          original_end_time,
           replacement_order,
           shift_date
         )
@@ -736,6 +756,8 @@ export async function addSecondReplacement(params: {
           ${r1IsDirectAssignment},
           true,
           ${r2End},
+          ${r1End},
+          ${r1Start},
           ${r1End},
           1,
           ${finalShiftDate || shiftDateFromShifts}
@@ -988,7 +1010,7 @@ export async function removeDirectAssignment(shiftId: number, userId: number, re
           replacement_order = 1,
           start_time = ${restoreStartTime},
           end_time = ${restoreEndTime},
-          is_partial = ${false}
+          is_partial = ${replacementToKeep.is_partial}
         WHERE id = ${replacementToKeep.id}
       `
     } else if (replacementOrder === 1 && allReplacements.length === 2) {
