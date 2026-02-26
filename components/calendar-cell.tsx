@@ -75,18 +75,25 @@ export function CalendarCell({
   }
 
   const handleShiftUpdatedWithRefresh = useCallback(async () => {
+    console.log("[v0] CalendarCell - handleShiftUpdatedWithRefresh called")
+    
     // First call parent's onShiftUpdated to update calendar
+    console.log("[v0] CalendarCell - Calling parent onShiftUpdated")
     onShiftUpdated()
 
     // Then refresh local currentAssignments if drawer is open and shift is selected
     if (selectedShift) {
+      console.log("[v0] CalendarCell - Refreshing local shift data for shift:", selectedShift.id)
       try {
         const shiftDetails = await getShiftWithAssignments(selectedShift.id, day.date)
+        console.log("[v0] CalendarCell - Refreshed shift details for shift:", selectedShift.id)
         setCurrentAssignments(shiftDetails.assignments)
         setTeamFirefighters(shiftDetails.teamFirefighters)
       } catch (error) {
-        console.error("Error refreshing assignments:", error)
+        console.error("[v0] CalendarCell - Error refreshing assignments:", error)
       }
+    } else {
+      console.log("[v0] CalendarCell - No selectedShift, skipping local refresh")
     }
   }, [onShiftUpdated, selectedShift, day.date])
 

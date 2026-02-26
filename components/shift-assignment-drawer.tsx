@@ -287,16 +287,16 @@ export function ShiftAssignmentDrawer({
   }, [onReplacementCreated, onOpenChange])
 
   const refreshShiftAndClose = useCallback(async () => {
-    // console.log("[v0] Drawer - refreshShiftAndClose called")
+    console.log("[v0] Drawer - refreshShiftAndClose called")
 
     if (onShiftUpdated) {
-      // console.log("[v0] Drawer - Calling onShiftUpdated callback")
+      console.log("[v0] Drawer - Calling onShiftUpdated callback with shift:", shift?.id)
       await onShiftUpdated(shift)
     } else {
-      // console.log("[v0] Drawer - No onShiftUpdated callback available")
+      console.log("[v0] Drawer - No onShiftUpdated callback available")
     }
 
-    // console.log("[v0] Drawer - Closing drawer")
+    console.log("[v0] Drawer - Closing drawer")
     onOpenChange(false)
   }, [onShiftUpdated, shift, onOpenChange])
 
@@ -778,16 +778,16 @@ export function ShiftAssignmentDrawer({
 
     if (typeof window !== "undefined") {
       const scrollPos = window.scrollY
-      // console.log("[v0] Drawer - saving scroll before setActingLieutenant:", scrollPos)
+      console.log("[v0] Drawer - saving scroll before setActingLieutenant:", scrollPos)
       sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
       sessionStorage.setItem("skip-scroll-to-today", "true")
     }
 
     setIsLoading(true)
 
-    // console.log("[v0] Calling setActingLieutenant for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
+    console.log("[v0] Drawer - Calling setActingLieutenant for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
     const result = await setActingLieutenant(shift.id, userId, dateStr)
-    // console.log("[v0] setActingLieutenant result:", result)
+    console.log("[v0] Drawer - setActingLieutenant result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -798,7 +798,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
 
     setIsLoading(false)
-    // console.log("[v0] Calling refreshShiftAndClose after setActingLieutenant")
+    console.log("[v0] Drawer - Calling refreshShiftAndClose after setActingLieutenant")
     refreshShiftAndClose()
   }
 
@@ -826,9 +826,9 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
-    // console.log("[v0] Calling setActingCaptain for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
+    console.log("[v0] Drawer - Calling setActingCaptain for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
     const result = await setActingCaptain(shift.id, userId, dateStr)
-    // console.log("[v0] setActingCaptain result:", result)
+    console.log("[v0] Drawer - setActingCaptain result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -839,7 +839,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme capitaine`)
 
     setIsLoading(false)
-    // console.log("[v0] Calling refreshShiftAndClose after setActingCaptain")
+    console.log("[v0] Drawer - Calling refreshShiftAndClose after setActingCaptain")
     refreshShiftAndClose()
   }
 
