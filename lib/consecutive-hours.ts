@@ -26,9 +26,6 @@ function calculateShiftDuration(shiftType: string, isPartial: boolean, startTime
     return duration
   }
 
-    return duration
-  }
-
   // Standard shift durations
   switch (shiftType) {
     case "full_24h":
