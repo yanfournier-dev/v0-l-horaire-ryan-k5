@@ -35,7 +35,7 @@ import {
 } from "@/app/actions/direct-assignments"
 import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
-import { UserPlus, Trash2, Users, Zap } from "lucide-react" // Added Zap icon
+import { UserPlus, Trash2, Users, Zap, Loader } from "lucide-react" // Added Loader icon
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -108,6 +108,7 @@ interface ShiftAssignmentDrawerProps {
   currentUserId?: number
   onReplacementCreated?: () => void
   onShiftUpdated?: (shift: any) => void
+  isLoadingData?: boolean
 }
 
 function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
@@ -129,6 +130,7 @@ export function ShiftAssignmentDrawer({
   currentUserId,
   onReplacementCreated,
   onShiftUpdated,
+  isLoadingData = false,
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter() // Added missing import
 
@@ -1448,13 +1450,22 @@ export function ShiftAssignmentDrawer({
             </div>
           </SheetHeader>
 
+          {isLoadingData && (
+            <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+              <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">
+                Chargement des données du quart...
+              </div>
+            </div>
+          )}
+
           <div className="mt-4">
             <Button
               onClick={() => {
                 setExtraRequestMode("request") // Ensure mode is "request" when opening
                 setShowExtraDialog(true)
               }}
-              disabled={isLoading || loadingReplacements}
+              disabled={isLoading || loadingReplacements || isLoadingData}
               className="w-full"
               variant="outline"
               size="sm"
@@ -1874,7 +1885,7 @@ export function ShiftAssignmentDrawer({
                                                 `${replacement1.first_name} ${replacement1.last_name}`,
                                               )
                                             }
-                                            disabled={isLoading || loadingReplacements}
+                                            disabled={isLoading || loadingReplacements || isLoadingData}
                                             className="text-cyan-600 hover:bg-cyan-50"
                                           >
                                             Désigner Lt
@@ -1905,7 +1916,7 @@ export function ShiftAssignmentDrawer({
                                                 `${replacement1.first_name} ${replacement1.last_name}`,
                                               )
                                             }
-                                            disabled={isLoading || loadingReplacements}
+                                            disabled={isLoading || loadingReplacements || isLoadingData}
                                             className="text-cyan-600 hover:bg-cyan-50"
                                           >
                                             Désigner Cpt
@@ -2354,7 +2365,7 @@ export function ShiftAssignmentDrawer({
                                         onClick={() =>
                                           handleSetLieutenant(assignment.user_id || assignment.id, displayName)
                                         }
-                                        disabled={isLoading || loadingReplacements}
+                                        disabled={isLoading || loadingReplacements || isLoadingData}
                                         className="text-cyan-600 hover:bg-cyan-50 h-8 text-xs"
                                       >
                                         Désigner Lt
@@ -2379,7 +2390,7 @@ export function ShiftAssignmentDrawer({
                                         onClick={() =>
                                           handleSetCaptain(assignment.user_id || assignment.id, displayName)
                                         }
-                                        disabled={isLoading || loadingReplacements}
+                                        disabled={isLoading || loadingReplacements || isLoadingData}
                                         className="text-cyan-600 hover:bg-cyan-50 h-8 text-xs"
                                       >
                                         Désigner Cpt

@@ -69,6 +69,7 @@ export function CalendarCell({
   const [noteDialogOpen, setNoteDialogOpen] = useState(false)
   const [selectedShiftForNote, setSelectedShiftForNote] = useState<any>(null)
   const [currentNote, setCurrentNote] = useState<any>(null)
+  const [isLoadingData, setIsLoadingData] = useState(false)
 
   const formatFirefighterName = (firstName: string, lastName: string) => {
     return `${lastName} ${firstName.charAt(0)}.`
@@ -103,6 +104,7 @@ export function CalendarCell({
     }
 
     try {
+      setIsLoadingData(true)
       const shiftDetails = await getShiftWithAssignments(shift.id, day.date)
 
       const shiftIndex = shifts.findIndex((s) => s.id === shift.id)
@@ -118,6 +120,8 @@ export function CalendarCell({
       setDrawerOpen(true)
     } catch (error) {
       console.error("[v0] Error in handleShiftClick:", error)
+    } finally {
+      setIsLoadingData(false)
     }
   }
 
@@ -903,6 +907,7 @@ export function CalendarCell({
           isAdmin={isAdmin}
           onReplacementCreated={onReplacementCreated}
           onShiftUpdated={handleShiftUpdatedWithRefresh}
+          isLoadingData={isLoadingData}
         />
       )}
 
