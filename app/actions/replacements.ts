@@ -1335,6 +1335,23 @@ export async function requestReplacement(
   const finalStartTime = isPartial ? (startTime || null) : (shiftStartTime || null)
   const finalEndTime = isPartial ? (endTime || null) : (shiftEndTime || null)
 
+  // Validate consecutive hours before creating the replacement
+  console.log("[v0] requestReplacement - Checking consecutive hours")
+  const { canWork, conflictingShift } = await checkConsecutiveHours(
+    user.id,
+    shiftDate,
+    shiftType,
+    isPartial,
+    finalStartTime,
+    finalEndTime,
+    db
+  )
+
+  if (!canWork) {
+    console.log("[v0] requestReplacement - Consecutive hours violation:", conflictingShift)
+    return { error: conflictingShift || "Trop d'heures consécutives" }
+  }
+
   await db`
     INSERT INTO replacements (
       shift_date, shift_type, team_id, user_id, status, is_partial, start_time, end_time,
