@@ -35,6 +35,7 @@ interface AssignedShift {
 }
 
 export function RequestReplacementDialog({ open, onOpenChange, userId }: RequestReplacementDialogProps) {
+  console.log("[v0] RequestReplacementDialog - Component mounted, open:", open, "userId:", userId)
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -103,8 +104,19 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
   }, [isPartial, selectedShiftId, assignedShifts])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log("[v0] RequestReplacementDialog - handleSubmit triggered")
     e.preventDefault()
+    console.log("[v0] RequestReplacementDialog - handleSubmit triggered")
+    console.log("[v0] RequestReplacementDialog - Form data:", {
+      selectedDate,
+      selectedShiftId,
+      isPartial,
+      startTime,
+      endTime,
+      leaveBank1,
+      leaveHours1,
+      leaveBank2,
+      leaveHours2,
+    })
     setLoading(true)
 
     const selectedShift = assignedShifts.find((s) => s.id.toString() === selectedShiftId)
