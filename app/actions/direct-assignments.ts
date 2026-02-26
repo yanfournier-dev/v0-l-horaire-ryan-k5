@@ -215,12 +215,25 @@ export async function addSecondReplacement(params: {
     }
 
     const replacement1Info = await sql`
-      SELECT id, user_id, start_time, end_time, original_end_time, is_partial, is_direct_assignment 
+      SELECT id, user_id, start_time, end_time, original_start_time, original_end_time, is_partial, is_direct_assignment 
       FROM shift_assignments
       WHERE shift_id = ${shiftId}
         AND replaced_user_id = ${replacedUserId}
         AND replacement_order = 1
     `
+    
+    console.log("[v0] addSecondReplacement - replacement1Info queried:", JSON.stringify({
+      count: replacement1Info.length,
+      data: replacement1Info.length > 0 ? {
+        id: replacement1Info[0].id,
+        user_id: replacement1Info[0].user_id,
+        start_time: replacement1Info[0].start_time,
+        end_time: replacement1Info[0].end_time,
+        original_start_time: replacement1Info[0].original_start_time,
+        original_end_time: replacement1Info[0].original_end_time,
+        is_partial: replacement1Info[0].is_partial
+      } : null
+    }))
 
     if (replacement1Info.length === 0) {
       const existingSecond = await sql`
@@ -275,6 +288,13 @@ export async function addSecondReplacement(params: {
     const r1IsDirectAssignment = replacement1Info[0].is_direct_assignment
     let adjustedEndTime = replacement1Info[0].original_end_time || replacement1Info[0].end_time
     const originalStartTime = replacement1Info[0].start_time
+    
+    console.log("[v0] addSecondReplacement - initial calculations:", JSON.stringify({
+      adjustedEndTime: adjustedEndTime,
+      original_end_time_from_db: replacement1Info[0].original_end_time,
+      end_time_from_db: replacement1Info[0].end_time,
+      start_time_from_db: replacement1Info[0].start_time
+    }))
 
     if (!adjustedEndTime) {
       const replacementInfo = await sql`
@@ -348,6 +368,17 @@ export async function addSecondReplacement(params: {
     const r1End = normalizeTime(adjustedEndTime || shiftEndTime || "17:00:00")
     const r2Start = normalizeTime(params.startTime)
     const r2End = normalizeTime(params.endTime)
+    
+    console.log("[v0] addSecondReplacement - final times before case logic:", JSON.stringify({
+      r1Start: r1Start,
+      r1End: r1End,
+      r2Start: r2Start,
+      r2End: r2End,
+      shiftStartTime: shiftStartTime,
+      shiftEndTime: shiftEndTime,
+      adjustedEndTime: adjustedEndTime,
+      params: params
+    }))
 
     // Helper function: check if time is within a range that may cross midnight
     const timeIsWithinRange = (time: string, rangeStart: string, rangeEnd: string): boolean => {
@@ -413,6 +444,17 @@ export async function addSecondReplacement(params: {
       // Case 2 for 24h: R2 covers the beginning
       // R2Start == shiftStart (07:00) AND R2End > R2Start (same-day, not full shift)
       const r2CoversBeginning24h = r2Start === shiftStartTime && r2End > r2Start
+
+      console.log("[v0] addSecondReplacement - 24h shift case detection:", JSON.stringify({
+        is24hShift: is24hShift,
+        r2CoversBeginning24h: r2CoversBeginning24h,
+        r2Start: r2Start,
+        r2End: r2End,
+        shiftStartTime: shiftStartTime,
+        shiftEndTime: shiftEndTime,
+        r1Start: r1Start,
+        r1End: r1End
+      }))
 
       if (r2CoversBeginning24h) {
         await sql`
