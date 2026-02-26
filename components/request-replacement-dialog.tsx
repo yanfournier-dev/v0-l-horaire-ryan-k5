@@ -51,14 +51,18 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
   const [leaveHours2, setLeaveHours2] = useState("")
 
   useEffect(() => {
+    console.log("[v0] RequestReplacementDialog - selectedDate changed:", selectedDate)
     if (selectedDate) {
       setLoadingShifts(true)
+      console.log("[v0] RequestReplacementDialog - Fetching shifts for userId:", userId, "date:", selectedDate)
       getUserAssignedShifts(userId, selectedDate).then((shifts) => {
+        console.log("[v0] RequestReplacementDialog - Shifts received:", shifts)
         setAssignedShifts(shifts as AssignedShift[])
         setLoadingShifts(false)
         setSelectedShiftId("") // Reset shift selection when date changes
       })
     } else {
+      console.log("[v0] RequestReplacementDialog - No date selected, clearing shifts")
       setAssignedShifts([])
       setSelectedShiftId("")
     }
@@ -80,15 +84,19 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
   }, [open])
 
   useEffect(() => {
+    console.log("[v0] RequestReplacementDialog - isPartial changed:", isPartial, "selectedShiftId:", selectedShiftId)
     if (isPartial && selectedShiftId) {
       const selectedShift = assignedShifts.find((s) => s.id.toString() === selectedShiftId)
+      console.log("[v0] RequestReplacementDialog - Found shift for default times:", selectedShift)
 
       if (selectedShift) {
         const { startTime: defaultStart, endTime: defaultEnd } = getDefaultReplacementTimes(selectedShift.shift_type)
+        console.log("[v0] RequestReplacementDialog - Setting default times:", defaultStart, defaultEnd)
         setStartTime(defaultStart)
         setEndTime(defaultEnd)
       }
     } else if (!isPartial) {
+      console.log("[v0] RequestReplacementDialog - Not partial, clearing times")
       setStartTime("")
       setEndTime("")
     }
@@ -195,7 +203,10 @@ export function RequestReplacementDialog({ open, onOpenChange, userId }: Request
             <Label htmlFor="shift-select">Quart assigné</Label>
             <Select
               value={selectedShiftId}
-              onValueChange={setSelectedShiftId}
+              onValueChange={(value) => {
+                console.log("[v0] RequestReplacementDialog - Shift selected:", value, "assignedShifts:", assignedShifts)
+                setSelectedShiftId(value)
+              }}
               disabled={!selectedDate || loadingShifts}
             >
               <SelectTrigger id="shift-select">
