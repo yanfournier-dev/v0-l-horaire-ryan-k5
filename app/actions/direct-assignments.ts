@@ -215,7 +215,7 @@ export async function addSecondReplacement(params: {
     }
 
     const replacement1Info = await sql`
-      SELECT id, user_id, start_time, end_time, is_partial, is_direct_assignment 
+      SELECT id, user_id, start_time, end_time, original_end_time, is_partial, is_direct_assignment 
       FROM shift_assignments
       WHERE shift_id = ${shiftId}
         AND replaced_user_id = ${replacedUserId}
@@ -273,7 +273,7 @@ export async function addSecondReplacement(params: {
 
     const r1UserId = replacement1Info[0].user_id
     const r1IsDirectAssignment = replacement1Info[0].is_direct_assignment
-    let adjustedEndTime = replacement1Info[0].end_time
+    let adjustedEndTime = replacement1Info[0].original_end_time || replacement1Info[0].end_time
     const originalStartTime = replacement1Info[0].start_time
 
     if (!adjustedEndTime) {
