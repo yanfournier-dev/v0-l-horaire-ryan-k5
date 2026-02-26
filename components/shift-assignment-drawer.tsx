@@ -2529,8 +2529,8 @@ export function ShiftAssignmentDrawer({
                 checked={isPartial}
                 onCheckedChange={(checked) => {
                   setIsPartial(checked === true)
-                  // Reset times if switching off partial
-                  if (checked !== true) {
+                  // Initialize with default times when enabling partial replacement
+                  if (checked === true) {
                     setPartialStartTime(getDefaultReplacementTimes(shift?.shift_type).startTime)
                     setPartialEndTime(getDefaultReplacementTimes(shift?.shift_type).endTime)
                   }
