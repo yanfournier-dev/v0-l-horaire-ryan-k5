@@ -583,6 +583,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
+          original_start_time,
+          original_end_time,
           replacement_order,
           shift_date
         )
@@ -593,6 +595,8 @@ export async function addSecondReplacement(params: {
           false, 
           ${r1IsDirectAssignment},
           true,
+          ${r2End},
+          ${r1End},
           ${r1Start},
           ${r1End},
           1,
@@ -627,6 +631,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
+          original_start_time,
+          original_end_time,
           replacement_order,
           shift_date
         )
@@ -638,6 +644,8 @@ export async function addSecondReplacement(params: {
           ${r1IsDirectAssignment},
           true,
           ${r2End},
+          ${r1End},
+          ${r1Start},
           ${r1End},
           1,
           ${finalShiftDate || shiftDateFromShifts}
@@ -662,6 +670,8 @@ export async function addSecondReplacement(params: {
           is_partial,
           start_time,
           end_time,
+          original_start_time,
+          original_end_time,
           replacement_order,
           shift_date
         )
@@ -674,6 +684,8 @@ export async function addSecondReplacement(params: {
           true,
           ${r1Start},
           ${r2Start},
+          ${r1Start},
+          ${r1End},
           1,
           ${finalShiftDate || shiftDateFromShifts}
         )
@@ -988,7 +1000,7 @@ export async function removeDirectAssignment(shiftId: number, userId: number, re
           replacement_order = 1,
           start_time = ${restoreStartTime},
           end_time = ${restoreEndTime},
-          is_partial = ${false}
+          is_partial = ${replacementToKeep.is_partial}
         WHERE id = ${replacementToKeep.id}
       `
     } else if (replacementOrder === 1 && allReplacements.length === 2) {
