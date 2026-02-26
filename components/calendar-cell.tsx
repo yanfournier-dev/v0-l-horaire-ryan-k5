@@ -104,8 +104,11 @@ export function CalendarCell({
     }
 
     try {
+      console.log("[v0] CalendarCell - handleShiftClick called, shift id:", shift.id)
+      console.log("[v0] CalendarCell - Setting isLoadingData to TRUE")
       setIsLoadingData(true)
       const shiftDetails = await getShiftWithAssignments(shift.id, day.date)
+      console.log("[v0] CalendarCell - getShiftWithAssignments completed, duration logged")
 
       const shiftIndex = shifts.findIndex((s) => s.id === shift.id)
       const shiftExchanges = exchanges[shiftIndex] || []
@@ -117,10 +120,12 @@ export function CalendarCell({
       })
       setTeamFirefighters(shiftDetails.teamFirefighters)
       setCurrentAssignments(shiftDetails.assignments)
+      console.log("[v0] CalendarCell - Opening drawer")
       setDrawerOpen(true)
     } catch (error) {
       console.error("[v0] Error in handleShiftClick:", error)
     } finally {
+      console.log("[v0] CalendarCell - Setting isLoadingData to FALSE in finally")
       setIsLoadingData(false)
     }
   }

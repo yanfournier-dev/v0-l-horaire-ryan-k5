@@ -133,6 +133,8 @@ export function ShiftAssignmentDrawer({
   isLoadingData = false,
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter() // Added missing import
+  
+  console.log("[v0] ShiftAssignmentDrawer rendered - isLoadingData:", isLoadingData, "open:", open)
 
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
