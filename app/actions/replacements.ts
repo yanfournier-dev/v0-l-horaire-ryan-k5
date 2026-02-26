@@ -593,8 +593,8 @@ export async function approveApplication(
         ${is_partial || false},
         ${start_time || null},
         ${end_time || null},
-        ${shiftStartTime},
-        ${shiftEndTime},
+        ${start_time || shiftStartTime},
+        ${end_time || shiftEndTime},
         1,
         ${shiftDateStr}
       )
