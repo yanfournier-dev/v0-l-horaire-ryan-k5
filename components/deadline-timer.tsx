@@ -76,8 +76,16 @@ export function DeadlineTimer({ deadline, deadlineDuration, shiftDate, className
       "déc.",
     ]
     const month = monthNames[date.getUTCMonth()]
-    const hour = date.getUTCHours()
-    const minute = date.getUTCMinutes()
+    // Convert UTC to America/Toronto timezone
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Toronto",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+    const torontoParts = formatter.formatToParts(date)
+    const hour = parseInt(torontoParts.find((p) => p.type === "hour")?.value || "0")
+    const minute = parseInt(torontoParts.find((p) => p.type === "minute")?.value || "0")
     const timeStr = minute > 0 ? `${hour}h${minute.toString().padStart(2, "0")}` : `${hour}h`
     setDisplayDeadline(`${day} ${month}. ${timeStr}`)
 
