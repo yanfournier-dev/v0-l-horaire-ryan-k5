@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Roboto_Mono } from "next/font/google"
+import Script from "next/script"
 import "./globals.css"
 import { Suspense } from "react"
 import { Toaster } from "@/components/ui/toaster"
@@ -30,7 +31,9 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <head>
-        <script
+        <Script
+          id="scroll-restoration"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               if ('scrollRestoration' in window.history) {
