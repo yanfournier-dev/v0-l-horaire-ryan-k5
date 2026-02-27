@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -145,8 +145,8 @@ export function ShiftAssignmentDrawer({
   } | null>(null)
   const [replacements, setReplacements] = useState<any[]>([])
   const [loadingReplacements, setLoadingReplacements] = useState(false)
-  const [initialLoadDone, setInitialLoadDone] = useState(false) // Track if first load completed
   const [isPartial, setIsPartial] = useState(false) // Declared isPartial
+  const hasLoadedReplacementsRef = useRef(false) // Use ref to avoid re-triggering
   const startTime = "07:00" // Placeholder, this should be managed by state
   const endTime = "17:00" // Placeholder, this should be managed by state
   const [deadlineSeconds, setDeadlineSeconds] = useState<number | null>(null)
@@ -281,24 +281,29 @@ export function ShiftAssignmentDrawer({
 
   // Reset isLoadingData when replacement data finishes loading (with minimum display time)
   useEffect(() => {
-    if (open && isLoadingData) {
-      // Track when loadingReplacements transitions from true to false
-      if (!initialLoadDone && !loadingReplacements) {
-        // First time loadingReplacements becomes false after drawer opens
-        setInitialLoadDone(true)
-        // Add minimum 2 second display time for spinner visibility, then call complete
-        const timer = setTimeout(() => {
-          if (onLoadingComplete) {
-            onLoadingComplete()
-          }
-        }, 2000)
-        return () => clearTimeout(timer)
-      }
-    } else if (!open) {
+    console.log("[v0] Loading effect triggered - open:", open, "isLoadingData:", isLoadingData, "loadingReplacements:", loadingReplacements, "hasLoaded:", hasLoadedReplacementsRef.current)
+    
+    if (open && isLoadingData && !loadingReplacements && !hasLoadedReplacementsRef.current) {
+      // First time loadingReplacements becomes false after drawer opens
+      console.log("[v0] CONDITION MET - Setting hasLoadedReplacementsRef to true and starting timer")
+      hasLoadedReplacementsRef.current = true
+      
+      // Add minimum 2 second display time for spinner visibility, then call complete
+      const timer = setTimeout(() => {
+        console.log("[v0] Timer fired - calling onLoadingComplete")
+        if (onLoadingComplete) {
+          onLoadingComplete()
+        }
+      }, 2000)
+      return () => clearTimeout(timer)
+    } 
+    
+    if (!open) {
+      console.log("[v0] Drawer closed - resetting hasLoadedReplacementsRef")
       // Reset when drawer closes
-      setInitialLoadDone(false)
+      hasLoadedReplacementsRef.current = false
     }
-  }, [open, isLoadingData, loadingReplacements, initialLoadDone, onLoadingComplete])
+  }, [open, isLoadingData, loadingReplacements, onLoadingComplete])
 
   const refreshAndClose = useCallback(() => {
     // console.log("[v0] Drawer - refreshAndClose called")
