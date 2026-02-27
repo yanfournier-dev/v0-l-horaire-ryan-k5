@@ -109,6 +109,7 @@ interface ShiftAssignmentDrawerProps {
   onReplacementCreated?: () => void
   onShiftUpdated?: (shift: any) => void
   isLoadingData?: boolean
+  onLoadingComplete?: () => void
 }
 
 function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
@@ -131,10 +132,9 @@ export function ShiftAssignmentDrawer({
   onReplacementCreated,
   onShiftUpdated,
   isLoadingData = false,
+  onLoadingComplete,
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter() // Added missing import
-  
-  console.log("[v0] ShiftAssignmentDrawer rendered - isLoadingData:", isLoadingData, "open:", open)
 
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFirefighter, setSelectedFirefighter] = useState<{
@@ -278,14 +278,18 @@ export function ShiftAssignmentDrawer({
     }
   }, [open, shift, dateStr])
 
-  // Mark data as loaded after drawer has opened and rendered
+  // Reset isLoadingData after drawer has fully rendered and data is ready
   useEffect(() => {
-    if (open && isLoadingData && currentAssignments.length > 0) {
-      console.log("[v0] Drawer - Drawer opened and content ready, can now display spinner")
-      // The spinner will show because isLoadingData=true
-      // Once this useEffect runs, it means the drawer has rendered its content
+    if (open && isLoadingData && currentAssignments && currentAssignments.length > 0) {
+      // Small delay to ensure render is complete, then mark data as loaded
+      const timer = setTimeout(() => {
+        if (onLoadingComplete) {
+          onLoadingComplete()
+        }
+      }, 500) // Give it 500ms to ensure all rendering is done
+      return () => clearTimeout(timer)
     }
-  }, [open, isLoadingData, currentAssignments.length])
+  }, [open, isLoadingData, currentAssignments, onLoadingComplete])
 
   const refreshAndClose = useCallback(() => {
     // console.log("[v0] Drawer - refreshAndClose called")

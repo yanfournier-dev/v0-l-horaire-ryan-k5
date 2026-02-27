@@ -105,10 +105,8 @@ export function CalendarCell({
 
     try {
       console.log("[v0] CalendarCell - handleShiftClick called, shift id:", shift.id)
-      console.log("[v0] CalendarCell - Setting isLoadingData to TRUE")
       setIsLoadingData(true)
       const shiftDetails = await getShiftWithAssignments(shift.id, day.date)
-      console.log("[v0] CalendarCell - getShiftWithAssignments completed, duration logged")
 
       const shiftIndex = shifts.findIndex((s) => s.id === shift.id)
       const shiftExchanges = exchanges[shiftIndex] || []
@@ -120,7 +118,6 @@ export function CalendarCell({
       })
       setTeamFirefighters(shiftDetails.teamFirefighters)
       setCurrentAssignments(shiftDetails.assignments)
-      console.log("[v0] CalendarCell - Opening drawer")
       setDrawerOpen(true)
       // DO NOT set isLoadingData to false here - it will be handled by the drawer's useEffect
     } catch (error) {
@@ -132,10 +129,13 @@ export function CalendarCell({
   // Reset isLoadingData when drawer closes
   useEffect(() => {
     if (!drawerOpen) {
-      console.log("[v0] CalendarCell - Drawer closed, resetting isLoadingData")
       setIsLoadingData(false)
     }
   }, [drawerOpen])
+
+  const handleLoadingComplete = useCallback(() => {
+    setIsLoadingData(false)
+  }, [])
 
   const handleNoteClick = async (shift: any, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent shift click handler from firing
@@ -920,6 +920,7 @@ export function CalendarCell({
           onReplacementCreated={onReplacementCreated}
           onShiftUpdated={handleShiftUpdatedWithRefresh}
           isLoadingData={isLoadingData}
+          onLoadingComplete={handleLoadingComplete}
         />
       )}
 
