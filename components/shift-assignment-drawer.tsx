@@ -145,6 +145,7 @@ export function ShiftAssignmentDrawer({
   } | null>(null)
   const [replacements, setReplacements] = useState<any[]>([])
   const [loadingReplacements, setLoadingReplacements] = useState(false)
+  const [initialLoadDone, setInitialLoadDone] = useState(false) // Track if first load completed
   const [isPartial, setIsPartial] = useState(false) // Declared isPartial
   const startTime = "07:00" // Placeholder, this should be managed by state
   const endTime = "17:00" // Placeholder, this should be managed by state
@@ -278,17 +279,26 @@ export function ShiftAssignmentDrawer({
     }
   }, [open, shift, dateStr])
 
-  // Reset isLoadingData when replacement data finishes loading
+  // Reset isLoadingData when replacement data finishes loading (with minimum display time)
   useEffect(() => {
-    console.log("[v0] Drawer - Loading effect: open=", open, "isLoadingData=", isLoadingData, "loadingReplacements=", loadingReplacements)
-    if (open && isLoadingData && loadingReplacements === false) {
-      console.log("[v0] Drawer - Replacements loaded, calling onLoadingComplete")
-      // Replacements have finished loading, mark initial load as complete
-      if (onLoadingComplete) {
-        onLoadingComplete()
+    if (open && isLoadingData) {
+      // Track when loadingReplacements transitions from true to false
+      if (!initialLoadDone && !loadingReplacements) {
+        // First time loadingReplacements becomes false after drawer opens
+        setInitialLoadDone(true)
+        // Add minimum 2 second display time for spinner visibility, then call complete
+        const timer = setTimeout(() => {
+          if (onLoadingComplete) {
+            onLoadingComplete()
+          }
+        }, 2000)
+        return () => clearTimeout(timer)
       }
+    } else if (!open) {
+      // Reset when drawer closes
+      setInitialLoadDone(false)
     }
-  }, [open, isLoadingData, loadingReplacements, onLoadingComplete])
+  }, [open, isLoadingData, loadingReplacements, initialLoadDone, onLoadingComplete])
 
   const refreshAndClose = useCallback(() => {
     // console.log("[v0] Drawer - refreshAndClose called")
@@ -1466,7 +1476,6 @@ export function ShiftAssignmentDrawer({
 
           {isLoadingData && (
             <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-              {console.log("[v0] Drawer - Displaying spinner, isLoadingData=true")}
               <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
               <div className="text-sm text-muted-foreground">
                 Chargement des données du quart...
