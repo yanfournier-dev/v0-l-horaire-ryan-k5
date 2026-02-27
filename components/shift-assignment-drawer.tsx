@@ -280,7 +280,9 @@ export function ShiftAssignmentDrawer({
 
   // Reset isLoadingData when replacement data finishes loading
   useEffect(() => {
-    if (open && isLoadingData && !loadingReplacements) {
+    console.log("[v0] Drawer - Loading effect: open=", open, "isLoadingData=", isLoadingData, "loadingReplacements=", loadingReplacements)
+    if (open && isLoadingData && loadingReplacements === false) {
+      console.log("[v0] Drawer - Replacements loaded, calling onLoadingComplete")
       // Replacements have finished loading, mark initial load as complete
       if (onLoadingComplete) {
         onLoadingComplete()
@@ -1464,6 +1466,7 @@ export function ShiftAssignmentDrawer({
 
           {isLoadingData && (
             <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+              {console.log("[v0] Drawer - Displaying spinner, isLoadingData=true")}
               <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
               <div className="text-sm text-muted-foreground">
                 Chargement des données du quart...
