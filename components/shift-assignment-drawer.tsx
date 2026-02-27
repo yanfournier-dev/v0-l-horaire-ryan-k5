@@ -218,9 +218,8 @@ export function ShiftAssignmentDrawer({
       setExtraDeadlineSeconds(value)
     } else {
       setExtraDeadlineSeconds(null) // Handle null or Date objects
-      }
     }
-  }, [open, shift, currentAssignments])
+  }
 
   useEffect(() => {
     if (open && shift) {
