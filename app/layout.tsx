@@ -29,11 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <head>
-        <script suppressHydrationWarning>
-          {`if ('scrollRestoration' in window.history) { window.history.scrollRestoration = 'manual'; }`}
-        </script>
-      </head>
+      <head></head>
       <body className={`font-sans ${geistSans.variable} ${geistMono.variable}`}>
         <Suspense fallback={null}>{children}</Suspense>
         <Toaster />
