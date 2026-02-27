@@ -281,26 +281,26 @@ export function ShiftAssignmentDrawer({
 
   // Reset isLoadingData when replacement data finishes loading (with minimum display time)
   useEffect(() => {
-    console.log("[v0] Loading effect triggered - open:", open, "isLoadingData:", isLoadingData, "loadingReplacements:", loadingReplacements, "hasLoaded:", hasLoadedReplacementsRef.current)
-    
     if (open && isLoadingData && !loadingReplacements && !hasLoadedReplacementsRef.current) {
-      // First time loadingReplacements becomes false after drawer opens
-      console.log("[v0] CONDITION MET - Setting hasLoadedReplacementsRef to true and starting timer")
+      // First time replacements finish loading - set ref and start timer
+      console.log("[v0] Timer - Setting timer for 2 seconds")
       hasLoadedReplacementsRef.current = true
       
-      // Add minimum 2 second display time for spinner visibility, then call complete
       const timer = setTimeout(() => {
         console.log("[v0] Timer fired - calling onLoadingComplete")
         if (onLoadingComplete) {
           onLoadingComplete()
         }
       }, 2000)
-      return () => clearTimeout(timer)
+      
+      return () => {
+        console.log("[v0] Cleanup - clearing timer")
+        clearTimeout(timer)
+      }
     } 
     
+    // Reset ref when drawer closes
     if (!open) {
-      console.log("[v0] Drawer closed - resetting hasLoadedReplacementsRef")
-      // Reset when drawer closes
       hasLoadedReplacementsRef.current = false
     }
   }, [open, isLoadingData, loadingReplacements, onLoadingComplete])
