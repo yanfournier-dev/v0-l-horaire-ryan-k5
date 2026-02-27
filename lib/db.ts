@@ -2,11 +2,22 @@ import "server-only"
 import { neon } from "@neondatabase/serverless"
 
 function getConnectionString() {
-  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL
+  // Try multiple possible environment variable names
+  const connectionString = 
+    process.env.DATABASE_URL || 
+    process.env.POSTGRES_URL ||
+    process.env.NEON_DATABASE_URL
 
   if (!connectionString) {
+    const availableEnvVars = Object.keys(process.env)
+      .filter(key => key.toLowerCase().includes('database') || key.toLowerCase().includes('postgres') || key.toLowerCase().includes('neon'))
+      .join(', ')
+    
+    console.error("[v0] DATABASE ERROR: No connection string found!")
+    console.error("[v0] Available database-related env vars:", availableEnvVars || "NONE")
+    
     throw new Error(
-      "Database connection string not found. Please set DATABASE_URL or POSTGRES_URL environment variable.",
+      "Database connection string not found. Please set DATABASE_URL, POSTGRES_URL, or NEON_DATABASE_URL environment variable.",
     )
   }
 
@@ -17,10 +28,17 @@ let sqlClient: ReturnType<typeof neon> | null = null
 
 function getSqlClient() {
   if (!sqlClient) {
-    sqlClient = neon(getConnectionString(), {
-      fetchConnectionCache: true,
-      disableWarningInBrowsers: true,
-    })
+    try {
+      const connectionString = getConnectionString()
+      sqlClient = neon(connectionString, {
+        fetchConnectionCache: true,
+        disableWarningInBrowsers: true,
+      })
+      console.log("[v0] Database client initialized successfully")
+    } catch (error) {
+      console.error("[v0] Failed to initialize database client:", error)
+      throw error
+    }
   }
   return sqlClient
 }
