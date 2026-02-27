@@ -281,12 +281,13 @@ export function ShiftAssignmentDrawer({
   // Reset isLoadingData after drawer has fully rendered and data is ready
   useEffect(() => {
     if (open && isLoadingData && currentAssignments && currentAssignments.length > 0) {
-      // Small delay to ensure render is complete, then mark data as loaded
+      // Wait long enough for all data to fully load from DB/server (5-10 seconds typical)
+      // Then add extra buffer to ensure no race conditions
       const timer = setTimeout(() => {
         if (onLoadingComplete) {
           onLoadingComplete()
         }
-      }, 500) // Give it 500ms to ensure all rendering is done
+      }, 10000) // Wait 10 seconds to ensure all replacement data is loaded
       return () => clearTimeout(timer)
     }
   }, [open, isLoadingData, currentAssignments, onLoadingComplete])
