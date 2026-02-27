@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -69,32 +69,24 @@ export function CalendarCell({
   const [noteDialogOpen, setNoteDialogOpen] = useState(false)
   const [selectedShiftForNote, setSelectedShiftForNote] = useState<any>(null)
   const [currentNote, setCurrentNote] = useState<any>(null)
-  const [isLoadingData, setIsLoadingData] = useState(false)
 
   const formatFirefighterName = (firstName: string, lastName: string) => {
     return `${lastName} ${firstName.charAt(0)}.`
   }
 
   const handleShiftUpdatedWithRefresh = useCallback(async () => {
-    console.log("[v0] CalendarCell - handleShiftUpdatedWithRefresh called")
-    
     // First call parent's onShiftUpdated to update calendar
-    console.log("[v0] CalendarCell - Calling parent onShiftUpdated")
     onShiftUpdated()
 
     // Then refresh local currentAssignments if drawer is open and shift is selected
     if (selectedShift) {
-      console.log("[v0] CalendarCell - Refreshing local shift data for shift:", selectedShift.id)
       try {
         const shiftDetails = await getShiftWithAssignments(selectedShift.id, day.date)
-        console.log("[v0] CalendarCell - Refreshed shift details for shift:", selectedShift.id)
         setCurrentAssignments(shiftDetails.assignments)
         setTeamFirefighters(shiftDetails.teamFirefighters)
       } catch (error) {
-        console.error("[v0] CalendarCell - Error refreshing assignments:", error)
+        console.error("Error refreshing assignments:", error)
       }
-    } else {
-      console.log("[v0] CalendarCell - No selectedShift, skipping local refresh")
     }
   }, [onShiftUpdated, selectedShift, day.date])
 
@@ -104,8 +96,6 @@ export function CalendarCell({
     }
 
     try {
-      console.log("[v0] CalendarCell - handleShiftClick called, shift id:", shift.id)
-      setIsLoadingData(true)
       const shiftDetails = await getShiftWithAssignments(shift.id, day.date)
 
       const shiftIndex = shifts.findIndex((s) => s.id === shift.id)
@@ -119,23 +109,10 @@ export function CalendarCell({
       setTeamFirefighters(shiftDetails.teamFirefighters)
       setCurrentAssignments(shiftDetails.assignments)
       setDrawerOpen(true)
-      // DO NOT set isLoadingData to false here - it will be handled by the drawer's useEffect
     } catch (error) {
       console.error("[v0] Error in handleShiftClick:", error)
-      setIsLoadingData(false) // Reset on error
     }
   }
-
-  // Reset isLoadingData when drawer closes
-  useEffect(() => {
-    if (!drawerOpen) {
-      setIsLoadingData(false)
-    }
-  }, [drawerOpen])
-
-  const handleLoadingComplete = useCallback(() => {
-    setIsLoadingData(false)
-  }, [])
 
   const handleNoteClick = async (shift: any, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent shift click handler from firing
@@ -919,8 +896,6 @@ export function CalendarCell({
           isAdmin={isAdmin}
           onReplacementCreated={onReplacementCreated}
           onShiftUpdated={handleShiftUpdatedWithRefresh}
-          isLoadingData={isLoadingData}
-          onLoadingComplete={handleLoadingComplete}
         />
       )}
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -22,7 +22,6 @@ import {
   // removeReplacement, // Moved import
 } from "@/app/actions/replacements"
 import {
-  getAllFirefighters,
   removeFirefighterFromShift,
   setActingLieutenant,
   removeActingLieutenant,
@@ -35,7 +34,7 @@ import {
 } from "@/app/actions/direct-assignments"
 import { useRouter } from "next/navigation"
 import { getShiftTypeLabel, getShiftTypeColor, getTeamColor } from "@/lib/colors"
-import { UserPlus, Trash2, Users, Zap, Loader } from "lucide-react" // Added Loader icon
+import { UserPlus, Trash2, Users, Zap } from "lucide-react" // Added Zap icon
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -108,8 +107,6 @@ interface ShiftAssignmentDrawerProps {
   currentUserId?: number
   onReplacementCreated?: () => void
   onShiftUpdated?: (shift: any) => void
-  isLoadingData?: boolean
-  onLoadingComplete?: () => void
 }
 
 function getFirefighterLeaveForDate(firefighterId: number, date: Date, leaves: Array<any>) {
@@ -131,8 +128,6 @@ export function ShiftAssignmentDrawer({
   currentUserId,
   onReplacementCreated,
   onShiftUpdated,
-  isLoadingData = false,
-  onLoadingComplete,
 }: ShiftAssignmentDrawerProps) {
   const router = useRouter() // Added missing import
 
@@ -146,7 +141,6 @@ export function ShiftAssignmentDrawer({
   const [replacements, setReplacements] = useState<any[]>([])
   const [loadingReplacements, setLoadingReplacements] = useState(false)
   const [isPartial, setIsPartial] = useState(false) // Declared isPartial
-  const hasLoadedReplacementsRef = useRef(false) // Use ref to avoid re-triggering
   const startTime = "07:00" // Placeholder, this should be managed by state
   const endTime = "17:00" // Placeholder, this should be managed by state
   const [deadlineSeconds, setDeadlineSeconds] = useState<number | null>(null)
@@ -223,9 +217,19 @@ export function ShiftAssignmentDrawer({
 
   useEffect(() => {
     if (open && shift) {
+      console.log("[v0] ShiftAssignmentDrawer - currentAssignments:", currentAssignments.length)
       const withReplacementOrder = currentAssignments.filter((a) => a.replacement_order)
       if (withReplacementOrder.length > 0) {
-        // Assignment order logging
+        console.log(
+          "[v0] Assignments with replacement_order:",
+          withReplacementOrder.map((a) => ({
+            name: `${a.first_name} ${a.last_name}`,
+            replacement_order: a.replacement_order,
+            start_time: a.start_time,
+            end_time: a.end_time,
+            replaced_user_id: a.replaced_user_id,
+          })),
+        )
       }
     }
   }, [open, shift, currentAssignments])
@@ -246,44 +250,8 @@ export function ShiftAssignmentDrawer({
     }
   }, [open, shift, dateStr])
 
-  useEffect(() => {
-    if (open && shift && dateStr) {
-      const loadReplacements = async () => {
-        try {
-          const shiftDate = dateStr
-          const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
-
-          const assigned = data.filter((r: any) => {
-            const hasApprovedApp = r.applications.some((app: any) => app.status === "approved")
-            return hasApprovedApp
-          })
-
-          setAssignedReplacements(assigned)
-        } catch (error) {
-          console.error("[v0] Error loading replacements:", error)
-          setAssignedReplacements([])
-        }
-      }
-
-      loadReplacements()
-    }
-  }, [open, shift, dateStr])
-
-  // Reset isLoadingData when replacement data finishes loading
-  useEffect(() => {
-    if (open && isLoadingData && !loadingReplacements && !hasLoadedReplacementsRef.current) {
-      // Replacements have finished loading - mark as done
-      hasLoadedReplacementsRef.current = true
-      if (onLoadingComplete) {
-        onLoadingComplete()
-      }
-    } 
-    
-    // Reset ref when drawer closes
-    if (!open) {
-      hasLoadedReplacementsRef.current = false
-    }
-  }, [open, isLoadingData, loadingReplacements, onLoadingComplete])
+  // REMOVED: Redundant useEffect that loaded replacements twice
+  // This duplicate logic is now handled by loadData() below
 
   const refreshAndClose = useCallback(() => {
     // console.log("[v0] Drawer - refreshAndClose called")
@@ -298,11 +266,16 @@ export function ShiftAssignmentDrawer({
   }, [onReplacementCreated, onOpenChange])
 
   const refreshShiftAndClose = useCallback(async () => {
+    // console.log("[v0] Drawer - refreshShiftAndClose called")
+
     if (onShiftUpdated) {
+      // console.log("[v0] Drawer - Calling onShiftUpdated callback")
       await onShiftUpdated(shift)
+    } else {
+      // console.log("[v0] Drawer - No onShiftUpdated callback available")
     }
 
-    console.log("[v0] Drawer - Closing drawer")
+    // console.log("[v0] Drawer - Closing drawer")
     onOpenChange(false)
   }, [onShiftUpdated, shift, onOpenChange])
 
@@ -327,43 +300,51 @@ export function ShiftAssignmentDrawer({
         (r: any) => r.status === "assigned" && !r.applications?.some((app: any) => app.status === "approved"),
       )
 
-      const assignedWithAssignments = await Promise.all(
-        assigned.map(async (r: any) => {
-          const approvedApp = r.applications.find((app: any) => app.status === "approved")
+      // OPTIMIZATION: Batch fetch all shift assignments in ONE API call instead of N calls
+      let assignmentsByUserId: Record<number, any> = {}
+      if (assigned.length > 0) {
+        const userIds = assigned.map((r: any) => r.applications.find((app: any) => app.status === "approved")?.applicant_id).filter(Boolean)
+        
+        if (userIds.length > 0) {
+          try {
+            const batchResponse = await fetch("/api/get-shift-assignment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                shiftId: shift.id,
+                userIds: userIds, // Send ALL userIds in one request
+              }),
+            })
 
-          // Fetch shift_assignments for this replacement firefighter
-          const assignmentResult = await fetch("/api/get-shift-assignment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              shiftId: shift.id,
-              userId: approvedApp.applicant_id,
-            }),
-          })
-
-          let isActingLieutenant = false
-          let isActingCaptain = false
-
-          if (assignmentResult.ok) {
-            const assignmentData = await assignmentResult.json()
-            isActingLieutenant = assignmentData.is_acting_lieutenant || false
-            isActingCaptain = assignmentData.is_acting_captain || false
+            if (batchResponse.ok) {
+              assignmentsByUserId = await batchResponse.json()
+            }
+          } catch (error) {
+            console.error("[v0] Error fetching batch shift assignments:", error)
           }
+        }
+      }
 
-          return {
-            ...r,
-            is_acting_lieutenant: isActingLieutenant,
-            is_acting_captain: isActingCaptain,
-          }
-        }),
-      )
+      const assignedWithAssignments = assigned.map((r: any) => {
+        const approvedApp = r.applications.find((app: any) => app.status === "approved")
+        const assignment = assignmentsByUserId[approvedApp.applicant_id] || {
+          is_acting_lieutenant: false,
+          is_acting_captain: false,
+        }
+
+        return {
+          ...r,
+          is_acting_lieutenant: assignment.is_acting_lieutenant || false,
+          is_acting_captain: assignment.is_acting_captain || false,
+        }
+      })
       
       // Combine assigned replacements with pending replacements (those without approved candidates)
       const allAssignedReplacements = [...assignedWithAssignments, ...pendingReplacements]
       setAssignedReplacements(allAssignedReplacements)
 
-      const firefighters = await getAllFirefighters()
-      setAllFirefighters(firefighters)
+      // Use teamFirefighters from props instead of fetching all firefighters
+      setAllFirefighters(teamFirefighters)
 
       if (onShiftUpdated) {
         onShiftUpdated(shift)
@@ -376,7 +357,7 @@ export function ShiftAssignmentDrawer({
     } finally {
       setLoadingReplacements(false)
     }
-  }, [open, shift, onShiftUpdated, allFirefighters.length])
+  }, [open, shift, onShiftUpdated])
 
   useEffect(() => {
     loadData()
@@ -413,35 +394,44 @@ export function ShiftAssignmentDrawer({
       (r: any) => r.status === "assigned" && !r.applications?.some((app: any) => app.status === "approved"),
     )
 
-    const assignedWithAssignments = await Promise.all(
-      assigned.map(async (r: any) => {
-        const approvedApp = r.applications.find((app: any) => app.status === "approved")
+    // OPTIMIZATION: Batch fetch all shift assignments in ONE API call instead of N calls
+    let assignmentsByUserId: Record<number, any> = {}
+    if (assigned.length > 0) {
+      const userIds = assigned.map((r: any) => r.applications.find((app: any) => app.status === "approved")?.applicant_id).filter(Boolean)
+      
+      if (userIds.length > 0) {
+        try {
+          const batchResponse = await fetch("/api/get-shift-assignment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              shiftId: shift.id,
+              userIds: userIds, // Send ALL userIds in one request
+            }),
+          })
 
-        const assignmentResult = await fetch("/api/get-shift-assignment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            shiftId: shift.id,
-            userId: approvedApp.applicant_id,
-          }),
-        })
-
-        let isActingLieutenant = false
-        let isActingCaptain = false
-
-        if (assignmentResult.ok) {
-          const assignmentData = await assignmentResult.json()
-          isActingLieutenant = assignmentData.is_acting_lieutenant || false
-          isActingCaptain = assignmentData.is_acting_captain || false
+          if (batchResponse.ok) {
+            assignmentsByUserId = await batchResponse.json()
+          }
+        } catch (error) {
+          console.error("[v0] Error fetching batch shift assignments:", error)
         }
+      }
+    }
 
-        return {
-          ...r,
-          is_acting_lieutenant: isActingLieutenant,
-          is_acting_captain: isActingCaptain,
-        }
-      }),
-    )
+    const assignedWithAssignments = assigned.map((r: any) => {
+      const approvedApp = r.applications.find((app: any) => app.status === "approved")
+      const assignment = assignmentsByUserId[approvedApp.applicant_id] || {
+        is_acting_lieutenant: false,
+        is_acting_captain: false,
+      }
+
+      return {
+        ...r,
+        is_acting_lieutenant: assignment.is_acting_lieutenant || false,
+        is_acting_captain: assignment.is_acting_captain || false,
+      }
+    })
 
     // Combine assigned replacements with pending replacements
     const allAssignedReplacements = [...assignedWithAssignments, ...pendingReplacements]
@@ -784,16 +774,16 @@ export function ShiftAssignmentDrawer({
 
     if (typeof window !== "undefined") {
       const scrollPos = window.scrollY
-      console.log("[v0] Drawer - saving scroll before setActingLieutenant:", scrollPos)
+      // console.log("[v0] Drawer - saving scroll before setActingLieutenant:", scrollPos)
       sessionStorage.setItem("calendar-scroll-position", scrollPos.toString())
       sessionStorage.setItem("skip-scroll-to-today", "true")
     }
 
     setIsLoading(true)
 
-    console.log("[v0] Drawer - Calling setActingLieutenant for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
+    // console.log("[v0] Calling setActingLieutenant for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
     const result = await setActingLieutenant(shift.id, userId, dateStr)
-    console.log("[v0] Drawer - setActingLieutenant result:", result)
+    // console.log("[v0] setActingLieutenant result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -804,7 +794,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme lieutenant`)
 
     setIsLoading(false)
-    console.log("[v0] Drawer - Calling refreshShiftAndClose after setActingLieutenant")
+    // console.log("[v0] Calling refreshShiftAndClose after setActingLieutenant")
     refreshShiftAndClose()
   }
 
@@ -832,9 +822,9 @@ export function ShiftAssignmentDrawer({
 
     setIsLoading(true)
 
-    console.log("[v0] Drawer - Calling setActingCaptain for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
+    // console.log("[v0] Calling setActingCaptain for userId:", userId, "shiftId:", shift.id, "date:", dateStr)
     const result = await setActingCaptain(shift.id, userId, dateStr)
-    console.log("[v0] Drawer - setActingCaptain result:", result)
+    // console.log("[v0] setActingCaptain result:", result)
 
     if (result.error) {
       toast.error(result.error)
@@ -845,7 +835,7 @@ export function ShiftAssignmentDrawer({
     toast.success(`${firefighterName} a été désigné comme capitaine`)
 
     setIsLoading(false)
-    console.log("[v0] Drawer - Calling refreshShiftAndClose after setActingCaptain")
+    // console.log("[v0] Calling refreshShiftAndClose after setActingCaptain")
     refreshShiftAndClose()
   }
 
@@ -1454,22 +1444,13 @@ export function ShiftAssignmentDrawer({
             </div>
           </SheetHeader>
 
-          {isLoadingData && (
-            <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-              <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
-              <div className="text-sm text-muted-foreground">
-                Chargement des données du quart...
-              </div>
-            </div>
-          )}
-
           <div className="mt-4">
             <Button
               onClick={() => {
                 setExtraRequestMode("request") // Ensure mode is "request" when opening
                 setShowExtraDialog(true)
               }}
-              disabled={isLoading || loadingReplacements || isLoadingData}
+              disabled={isLoading || loadingReplacements}
               className="w-full"
               variant="outline"
               size="sm"
@@ -1889,7 +1870,7 @@ export function ShiftAssignmentDrawer({
                                                 `${replacement1.first_name} ${replacement1.last_name}`,
                                               )
                                             }
-                                            disabled={isLoading || loadingReplacements || isLoadingData}
+                                            disabled={isLoading || loadingReplacements}
                                             className="text-cyan-600 hover:bg-cyan-50"
                                           >
                                             Désigner Lt
@@ -1920,7 +1901,7 @@ export function ShiftAssignmentDrawer({
                                                 `${replacement1.first_name} ${replacement1.last_name}`,
                                               )
                                             }
-                                            disabled={isLoading || loadingReplacements || isLoadingData}
+                                            disabled={isLoading || loadingReplacements}
                                             className="text-cyan-600 hover:bg-cyan-50"
                                           >
                                             Désigner Cpt
@@ -2369,7 +2350,7 @@ export function ShiftAssignmentDrawer({
                                         onClick={() =>
                                           handleSetLieutenant(assignment.user_id || assignment.id, displayName)
                                         }
-                                        disabled={isLoading || loadingReplacements || isLoadingData}
+                                        disabled={isLoading || loadingReplacements}
                                         className="text-cyan-600 hover:bg-cyan-50 h-8 text-xs"
                                       >
                                         Désigner Lt
@@ -2394,7 +2375,7 @@ export function ShiftAssignmentDrawer({
                                         onClick={() =>
                                           handleSetCaptain(assignment.user_id || assignment.id, displayName)
                                         }
-                                        disabled={isLoading || loadingReplacements || isLoadingData}
+                                        disabled={isLoading || loadingReplacements}
                                         className="text-cyan-600 hover:bg-cyan-50 h-8 text-xs"
                                       >
                                         Désigner Cpt
