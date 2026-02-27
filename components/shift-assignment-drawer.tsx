@@ -344,7 +344,7 @@ export function ShiftAssignmentDrawer({
       setAssignedReplacements(allAssignedReplacements)
 
       // Use teamFirefighters from props instead of fetching all firefighters
-      setAllFirefighters(teamFirefighters)
+      setAllFirefighters(Array.isArray(teamFirefighters) ? teamFirefighters : [])
 
       if (onShiftUpdated) {
         onShiftUpdated(shift)
@@ -362,6 +362,13 @@ export function ShiftAssignmentDrawer({
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Initialize allFirefighters from teamFirefighters prop
+  useEffect(() => {
+    if (Array.isArray(teamFirefighters) && teamFirefighters.length > 0) {
+      setAllFirefighters(teamFirefighters)
+    }
+  }, [teamFirefighters])
 
   useEffect(() => {
     if (!open) return
