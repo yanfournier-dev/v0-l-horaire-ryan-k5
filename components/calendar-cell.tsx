@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -122,13 +122,20 @@ export function CalendarCell({
       setCurrentAssignments(shiftDetails.assignments)
       console.log("[v0] CalendarCell - Opening drawer")
       setDrawerOpen(true)
+      // DO NOT set isLoadingData to false here - it will be handled by the drawer's useEffect
     } catch (error) {
       console.error("[v0] Error in handleShiftClick:", error)
-    } finally {
-      console.log("[v0] CalendarCell - Setting isLoadingData to FALSE in finally")
-      setIsLoadingData(false)
+      setIsLoadingData(false) // Reset on error
     }
   }
+
+  // Reset isLoadingData when drawer closes
+  useEffect(() => {
+    if (!drawerOpen) {
+      console.log("[v0] CalendarCell - Drawer closed, resetting isLoadingData")
+      setIsLoadingData(false)
+    }
+  }, [drawerOpen])
 
   const handleNoteClick = async (shift: any, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent shift click handler from firing

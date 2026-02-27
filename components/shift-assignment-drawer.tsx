@@ -278,6 +278,15 @@ export function ShiftAssignmentDrawer({
     }
   }, [open, shift, dateStr])
 
+  // Mark data as loaded after drawer has opened and rendered
+  useEffect(() => {
+    if (open && isLoadingData && currentAssignments.length > 0) {
+      console.log("[v0] Drawer - Drawer opened and content ready, can now display spinner")
+      // The spinner will show because isLoadingData=true
+      // Once this useEffect runs, it means the drawer has rendered its content
+    }
+  }, [open, isLoadingData, currentAssignments.length])
+
   const refreshAndClose = useCallback(() => {
     // console.log("[v0] Drawer - refreshAndClose called")
     if (onReplacementCreated) {
