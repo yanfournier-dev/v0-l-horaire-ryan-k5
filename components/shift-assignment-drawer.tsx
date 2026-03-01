@@ -1769,8 +1769,8 @@ export function ShiftAssignmentDrawer({
                                         {replacement2 ? "Remplaçant 1" : "Remplaçant"}
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <span className="text-[13px] text-orange-600 font-medium truncate">
-                                          {replacement1.first_name} {replacement1.last_name}
+                                        <span className="text-[13px] text-green-600 font-medium truncate">
+                                          ✓ {replacement1.first_name} {replacement1.last_name}
                                           {(() => {
                                             const allR1Periods = replacementsForUser.filter(
                                               (r) => r.replacement_order === 1,
@@ -1938,8 +1938,8 @@ export function ShiftAssignmentDrawer({
                                       {replacement1 ? "Remplaçant 2" : "Remplaçant"}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-[13px] text-orange-600 font-medium truncate">
-                                        {replacement2.first_name} {replacement2.last_name}
+                                      <span className="text-[13px] text-green-600 font-medium truncate">
+                                        ✓ {replacement2.first_name} {replacement2.last_name}
                                         {replacement2.start_time && replacement2.end_time && (
                                           <span className="text-[11px]">
                                             {" "}
