@@ -540,28 +540,8 @@ export function CalendarView({
     },
     [],
   )
-              is_direct_assignment: ad.is_direct_assignment,
-              replaced_user_id: ad.replaced_user_id,
-            })
-            newActingDesignationMap[key] = {
-              isActingLieutenant: ad.is_acting_lieutenant,
-              isActingCaptain: ad.is_acting_captain,
-            }
-          }
-        })
-      }
-      console.log("[v0] handleShiftUpdated - new actingDesignationMap keys:", Object.keys(newActingDesignationMap))
-      console.log(
-        "[v0] handleShiftUpdated - new actingDesignationMap FULL:",
-        JSON.stringify(newActingDesignationMap, null, 2),
-      )
-      setActingDesignationMap({ ...newActingDesignationMap })
 
-      const newExtraFirefighterMap: Record<string, any[]> = {}
-      if (data.extraFirefighters) {
-        data.extraFirefighters.forEach((firefighter: any) => {
-          const dateOnly = formatLocalDate(firefighter.shift_date)
-          const key = `${dateOnly}_${firefighter.shift_type}_${firefighter.team_id}`
+  // Get initial calendar data on mount
           if (!newExtraFirefighterMap[key]) {
             newExtraFirefighterMap[key] = []
           }
