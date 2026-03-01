@@ -827,7 +827,19 @@ async function sendTelegramNotificationMessage(
             day: "numeric",
           })
 
-          const shiftTypeLabel = r.shift_type === "jour" ? "Jour (7h-17h)" : "Nuit (17h-7h)"
+          const getShiftTypeLabel = (type: string) => {
+            switch (type) {
+              case "day":
+                return "Jour (7h-17h)"
+              case "night":
+                return "Nuit (17h-7h)"
+              case "full_24h":
+                return "24h (7h-7h)"
+              default:
+                return type
+            }
+          }
+          const shiftTypeLabel = getShiftTypeLabel(r.shift_type)
           const partialInfo =
             r.is_partial && r.start_time && r.end_time
               ? `\n⏰ Heures: ${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
@@ -873,7 +885,19 @@ async function sendTelegramNotificationMessage(
             day: "numeric",
           })
 
-          const shiftTypeLabel = r.shift_type === "jour" ? "Jour (7h-17h)" : "Nuit (17h-7h)"
+          const getShiftTypeLabel = (type: string) => {
+            switch (type) {
+              case "day":
+                return "Jour (7h-17h)"
+              case "night":
+                return "Nuit (17h-7h)"
+              case "full_24h":
+                return "24h (7h-7h)"
+              default:
+                return type
+            }
+          }
+          const shiftTypeLabel = getShiftTypeLabel(r.shift_type)
           const partialInfo =
             r.is_partial && r.start_time && r.end_time
               ? `\n⏰ Heures: ${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
@@ -930,7 +954,19 @@ Félicitations! Votre candidature a été acceptée.
             day: "numeric",
           })
 
-          const shiftTypeLabel = r.shift_type === "jour" ? "Jour (7h-17h)" : "Nuit (17h-7h)"
+          const getShiftTypeLabel = (type: string) => {
+            switch (type) {
+              case "day":
+                return "Jour (7h-17h)"
+              case "night":
+                return "Nuit (17h-7h)"
+              case "full_24h":
+                return "24h (7h-7h)"
+              default:
+                return type
+            }
+          }
+          const shiftTypeLabel = getShiftTypeLabel(r.shift_type)
           const partialInfo =
             r.is_partial && r.start_time && r.end_time
               ? `\n⏰ Heures: ${r.start_time.substring(0, 5)} - ${r.end_time.substring(0, 5)}`
