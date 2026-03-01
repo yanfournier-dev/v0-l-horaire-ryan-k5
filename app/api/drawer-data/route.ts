@@ -14,30 +14,34 @@ export async function POST(request: NextRequest) {
 
     const startTime = performance.now()
 
-    // Get all data in ONE query for better performance
-    // This includes replacements with applications and shift assignments
+    // Get all replacements for this shift with their applications
     const replacementsResult = await sql`
-      SELECT 
-        r.id,
-        r.shift_id,
-        r.original_firefighter_id,
-        r.status,
-        r.created_at,
-        json_agg(
-          json_build_object(
-            'id', a.id,
-            'applicant_id', a.applicant_id,
-            'applicant_name', ff.first_name || ' ' || ff.last_name,
-            'applicant_phone', ff.phone,
-            'status', a.status,
-            'created_at', a.created_at
+      SELECT
+        r.*,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.email,
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', ra.id,
+              'applicant_id', ra.applicant_id,
+              'status', ra.status,
+              'applied_at', ra.applied_at,
+              'first_name', app_user.first_name,
+              'last_name', app_user.last_name
+            )
           )
+          FROM replacement_applications ra
+          JOIN users app_user ON ra.applicant_id = app_user.id
+          WHERE ra.replacement_id = r.id
         ) as applications
       FROM replacements r
-      LEFT JOIN replacement_applications a ON r.id = a.replacement_id
-      LEFT JOIN firefighters ff ON a.applicant_id = ff.id
-      WHERE r.shift_id = ${shiftId}
-      GROUP BY r.id, r.shift_id, r.original_firefighter_id, r.status, r.created_at
+      LEFT JOIN users u ON r.user_id = u.id
+      WHERE r.shift_date = ${shiftDate}
+        AND r.shift_type = ${shiftType}
+        AND r.team_id = ${teamId}
       ORDER BY r.created_at DESC
     `
 
@@ -51,22 +55,12 @@ export async function POST(request: NextRequest) {
       WHERE shift_id = ${shiftId}
     `
 
-    // Get acting designations for the date range
-    const actingDesignationsResult = await sql`
-      SELECT 
-        user_id,
-        role
-      FROM acting_designations
-      WHERE date = ${shiftDate}
-    `
-
     const duration = performance.now() - startTime
     console.log(`[v0] API drawer-data completed in ${duration.toFixed(0)}ms`)
 
     return NextResponse.json({
       replacements: replacementsResult,
       assignments: assignmentsResult,
-      actingDesignations: actingDesignationsResult,
       duration,
     })
   } catch (error) {
