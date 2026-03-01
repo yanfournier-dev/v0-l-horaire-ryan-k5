@@ -282,12 +282,18 @@ export function ShiftAssignmentDrawer({
   const loadData = useCallback(async () => {
     if (!open || !shift) return
 
-    // </CHANGE> Removed debug logs
+    const startTime = performance.now()
+    console.log("[v0] DRAWER: loadData started")
     setLoadingReplacements(true)
     const shiftDate = formatDateForDB(shift.date)
 
     try {
+      // Step 1: Get replacements for shift
+      const replacementsStart = performance.now()
       const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
+      const replacementsDuration = performance.now() - replacementsStart
+      console.log(`[v0] DRAWER: getReplacementsForShift took ${replacementsDuration.toFixed(0)}ms`)
+      
       setReplacements(data)
 
       // Get replacements with approved candidates
@@ -307,6 +313,7 @@ export function ShiftAssignmentDrawer({
         
         if (userIds.length > 0) {
           try {
+            const batchStart = performance.now()
             const batchResponse = await fetch("/api/get-shift-assignment", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -319,6 +326,8 @@ export function ShiftAssignmentDrawer({
             if (batchResponse.ok) {
               assignmentsByUserId = await batchResponse.json()
             }
+            const batchDuration = performance.now() - batchStart
+            console.log(`[v0] DRAWER: Batch fetch ${userIds.length} assignments took ${batchDuration.toFixed(0)}ms`)
           } catch (error) {
             console.error("[v0] Error fetching batch shift assignments:", error)
           }
@@ -351,13 +360,16 @@ export function ShiftAssignmentDrawer({
       }
 
       setRefreshKey((prev) => prev + 1)
+      
+      const totalDuration = performance.now() - startTime
+      console.log(`[v0] DRAWER: loadData completed in ${totalDuration.toFixed(0)}ms`)
     } catch (error) {
       console.error("[v0] Drawer - Error fetching data:", error)
       toast.error("Erreur lors du chargement des données.")
     } finally {
       setLoadingReplacements(false)
     }
-  }, [open, shift, onShiftUpdated])
+  }, [open, shift, onShiftUpdated, teamFirefighters])
 
   useEffect(() => {
     loadData()
