@@ -489,52 +489,54 @@ export function CalendarView({
 
   const handleShiftUpdated = useCallback(
     (updatedShift: any) => {
-      console.log("[v0] CalendarView - shift updated (optimized update), shiftId:", updatedShift?.id)
+      console.log("[v0] CalendarView - shift updated (optimized update), received shift:", {
+        user_id: updatedShift?.user_id,
+        date: updatedShift?.date,
+        shift_type: updatedShift?.shift_type,
+        team_id: updatedShift?.team_id,
+      })
 
-      if (!updatedShift || !updatedShift.id) return
+      if (!updatedShift || !updatedShift.user_id || !updatedShift.date) return
 
       // OPTIMIZATION: Instead of reloading entire calendar data,
       // just update the specific shift's data in local state
       const shiftDate = formatLocalDate(updatedShift.date)
       const key = `${shiftDate}_${updatedShift.shift_type}_${updatedShift.team_id}`
 
-      // Update the specific shift in directAssignmentMap if it exists
+      console.log("[v0] CalendarView - looking for shifts with key:", key)
+
+      // Update direct assignments that match this shift
       setDirectAssignmentMap((prev) => {
         const updated = { ...prev }
         if (updated[key]) {
+          console.log("[v0] CalendarView - updating direct assignments for key:", key)
           updated[key] = updated[key].map((assignment: any) =>
-            assignment.shift_id === updatedShift.id ? { ...assignment, ...updatedShift } : assignment,
+            assignment.user_id === updatedShift.user_id
+              ? { 
+                  ...assignment,
+                  is_acting_lieutenant: updatedShift.is_acting_lieutenant,
+                  is_acting_captain: updatedShift.is_acting_captain,
+                }
+              : assignment,
           )
         }
         return updated
       })
 
-      // Update the specific shift in replacementMap if it exists
-      setReplacementMap((prev) => {
+      // Update acting designations map with the new LT/CPT status
+      setActingDesignationMap((prev) => {
         const updated = { ...prev }
-        if (updated[key]) {
-          updated[key] = updated[key].map((replacement: any) =>
-            replacement.shift_id === updatedShift.id ? { ...replacement, ...updatedShift } : replacement,
-          )
+        const designationKey = `${shiftDate}_${updatedShift.shift_type}_${updatedShift.team_id}_${updatedShift.user_id}_original`
+        console.log("[v0] CalendarView - updating acting designation key:", designationKey, "with:", {
+          isActingLieutenant: updatedShift.is_acting_lieutenant,
+          isActingCaptain: updatedShift.is_acting_captain,
+        })
+        updated[designationKey] = {
+          isActingLieutenant: updatedShift.is_acting_lieutenant || false,
+          isActingCaptain: updatedShift.is_acting_captain || false,
         }
         return updated
       })
-
-      // Update acting designations for this specific shift
-      // The updatedShift should contain the new is_acting_lieutenant and is_acting_captain values
-      if (updatedShift.is_acting_lieutenant !== undefined || updatedShift.is_acting_captain !== undefined) {
-        setActingDesignationMap((prev) => {
-          const updated = { ...prev }
-          const lieutenantKey = `${shiftDate}_${updatedShift.shift_type}_${updatedShift.team_id}_${updatedShift.user_id}_original`
-          if (updated[lieutenantKey]) {
-            updated[lieutenantKey] = {
-              isActingLieutenant: updatedShift.is_acting_lieutenant || false,
-              isActingCaptain: updatedShift.is_acting_captain || false,
-            }
-          }
-          return updated
-        })
-      }
 
       console.log("[v0] CalendarView - shift updated locally (optimized)")
     },
