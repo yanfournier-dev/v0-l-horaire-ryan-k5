@@ -1,5 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
+import Script from "next/script"
 import { Inter, Roboto_Mono } from "next/font/google"
 import "./globals.css"
 import { Suspense } from "react"
@@ -29,7 +30,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <head></head>
+      <head>
+        <Script
+          id="scroll-restoration"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('scrollRestoration' in window.history) {
+                window.history.scrollRestoration = 'manual';
+              }
+            `,
+          }}
+        />
+      </head>
       <body className={`font-sans ${geistSans.variable} ${geistMono.variable}`}>
         <Suspense fallback={null}>{children}</Suspense>
         <Toaster />

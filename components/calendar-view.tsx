@@ -488,59 +488,116 @@ export function CalendarView({
   }, [months])
 
   const handleShiftUpdated = useCallback(
-    (updatedShift: any) => {
-      console.log("[v0] CalendarView - shift updated (optimized update), received shift:", {
-        user_id: updatedShift?.user_id,
-        date: updatedShift?.date,
-        shift_type: updatedShift?.shift_type,
-        team_id: updatedShift?.team_id,
-      })
+    async (updatedShift: any) => {
+      console.log("[v0] CalendarView - shift updated, refreshing calendar data")
 
-      if (!updatedShift || !updatedShift.user_id || !updatedShift.date) return
+      const firstMonth = months[0]
+      if (!firstMonth || !firstMonth.days.length) return
 
-      // OPTIMIZATION: Instead of reloading entire calendar data,
-      // just update the specific shift's data in local state
-      const shiftDate = formatLocalDate(updatedShift.date)
-      const key = `${shiftDate}_${updatedShift.shift_type}_${updatedShift.team_id}`
+      const firstDay = firstMonth.days[0].date
+      const lastMonth = months[months.length - 1]
+      const lastDay = lastMonth.days[lastMonth.days.length - 1].date
 
-      console.log("[v0] CalendarView - looking for shifts with key:", key)
+      console.log(
+        "[v0] handleShiftUpdated - fetching data from",
+        formatDateForDB(firstDay),
+        "to",
+        formatDateForDB(lastDay),
+      )
 
-      // Update direct assignments that match this shift
-      setDirectAssignmentMap((prev) => {
-        const updated = { ...prev }
-        if (updated[key]) {
-          console.log("[v0] CalendarView - updating direct assignments for key:", key)
-          updated[key] = updated[key].map((assignment: any) =>
-            assignment.user_id === updatedShift.user_id
-              ? { 
-                  ...assignment,
-                  is_acting_lieutenant: updatedShift.is_acting_lieutenant,
-                  is_acting_captain: updatedShift.is_acting_captain,
-                }
-              : assignment,
-          )
-        }
-        return updated
-      })
+      const [data, directAssignmentsData] = await Promise.all([
+        getCalendarDataForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)),
+        getDirectAssignmentsForDateRange(formatDateForDB(firstDay), formatDateForDB(lastDay)),
+      ])
 
-      // Update acting designations map with the new LT/CPT status
-      setActingDesignationMap((prev) => {
-        const updated = { ...prev }
-        const designationKey = `${shiftDate}_${updatedShift.shift_type}_${updatedShift.team_id}_${updatedShift.user_id}_original`
-        console.log("[v0] CalendarView - updating acting designation key:", designationKey, "with:", {
-          isActingLieutenant: updatedShift.is_acting_lieutenant,
-          isActingCaptain: updatedShift.is_acting_captain,
+      console.log("[v0] handleShiftUpdated - received data:", data)
+      console.log("[v0] handleShiftUpdated - received directAssignments:", directAssignmentsData?.length || 0)
+      console.log("[v0] handleShiftUpdated - received replacements:", data.replacements?.length || 0)
+      console.log("[v0] handleShiftUpdated - received actingDesignations COUNT:", data.actingDesignations?.length || 0)
+      console.log(
+        "[v0] handleShiftUpdated - received actingDesignations FULL DATA:",
+        JSON.stringify(data.actingDesignations, null, 2),
+      )
+      console.log("[v0] handleShiftUpdated - received extraFirefighters:", data.extraFirefighters?.length || 0)
+
+      const newDirectAssignmentMap: Record<string, any[]> = {}
+      if (directAssignmentsData) {
+        directAssignmentsData.forEach((assignment: any) => {
+          const dateOnly = formatLocalDate(assignment.shift_date)
+          const key = `${dateOnly}_${assignment.shift_type}_${assignment.team_id}`
+          if (!newDirectAssignmentMap[key]) {
+            newDirectAssignmentMap[key] = []
+          }
+          newDirectAssignmentMap[key].push(assignment)
         })
-        updated[designationKey] = {
-          isActingLieutenant: updatedShift.is_acting_lieutenant || false,
-          isActingCaptain: updatedShift.is_acting_captain || false,
-        }
-        return updated
-      })
+      }
+      console.log("[v0] handleShiftUpdated - new directAssignmentMap keys:", Object.keys(newDirectAssignmentMap))
+      setDirectAssignmentMap(newDirectAssignmentMap)
 
-      console.log("[v0] CalendarView - shift updated locally (optimized)")
+      // Also update replacement map since other actions might have happened
+      const newReplacementMap: Record<string, any[]> = {}
+      data.replacements.forEach((repl: any) => {
+        const dateOnly = formatLocalDate(repl.shift_date)
+        const key = `${dateOnly}_${repl.shift_type}_${repl.team_id}`
+        if (!newReplacementMap[key]) {
+          newReplacementMap[key] = []
+        }
+        newReplacementMap[key].push(repl)
+      })
+      setReplacementMap(newReplacementMap)
+
+      const newActingDesignationMap: Record<string, { isActingLieutenant: boolean; isActingCaptain: boolean }> = {}
+      if (data.actingDesignations) {
+        console.log("[v0] handleShiftUpdated - processing", data.actingDesignations.length, "acting designations")
+        data.actingDesignations.forEach((ad: any) => {
+          const dateStr = ad.shift_date ? formatLocalDate(ad.shift_date) : null
+          if (dateStr) {
+            let key: string
+            if (ad.is_direct_assignment && ad.replaced_user_id) {
+              key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}_direct_${ad.replaced_user_id}`
+            } else {
+              key = `${dateStr}_${ad.shift_type}_${ad.team_id}_${ad.user_id}_original`
+            }
+            console.log("[v0] actingDesignationMap adding key:", key, "with values:", {
+              isActingLieutenant: ad.is_acting_lieutenant,
+              isActingCaptain: ad.is_acting_captain,
+              user_id: ad.user_id,
+              is_direct_assignment: ad.is_direct_assignment,
+              replaced_user_id: ad.replaced_user_id,
+            })
+            newActingDesignationMap[key] = {
+              isActingLieutenant: ad.is_acting_lieutenant,
+              isActingCaptain: ad.is_acting_captain,
+            }
+          }
+        })
+      }
+      console.log("[v0] handleShiftUpdated - new actingDesignationMap keys:", Object.keys(newActingDesignationMap))
+      console.log(
+        "[v0] handleShiftUpdated - new actingDesignationMap FULL:",
+        JSON.stringify(newActingDesignationMap, null, 2),
+      )
+      setActingDesignationMap({ ...newActingDesignationMap })
+
+      const newExtraFirefighterMap: Record<string, any[]> = {}
+      if (data.extraFirefighters) {
+        data.extraFirefighters.forEach((firefighter: any) => {
+          const dateOnly = formatLocalDate(firefighter.shift_date)
+          const key = `${dateOnly}_${firefighter.shift_type}_${firefighter.team_id}`
+          if (!newExtraFirefighterMap[key]) {
+            newExtraFirefighterMap[key] = []
+          }
+          newExtraFirefighterMap[key].push(firefighter)
+        })
+      }
+      console.log("[v0] handleShiftUpdated - new extraFirefighterMap keys:", Object.keys(newExtraFirefighterMap))
+      setExtraFirefighterMap(newExtraFirefighterMap)
+
+      console.log(
+        "[v0] CalendarView - direct assignment map, replacement map, acting designation map, and extra firefighters map updated",
+      )
     },
-    [],
+    [months],
   )
 
   const handleNoteChange = async () => {
