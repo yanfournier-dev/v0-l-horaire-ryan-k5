@@ -541,23 +541,6 @@ export function CalendarView({
     [],
   )
 
-  // Get initial calendar data on mount
-          if (!newExtraFirefighterMap[key]) {
-            newExtraFirefighterMap[key] = []
-          }
-          newExtraFirefighterMap[key].push(firefighter)
-        })
-      }
-      console.log("[v0] handleShiftUpdated - new extraFirefighterMap keys:", Object.keys(newExtraFirefighterMap))
-      setExtraFirefighterMap(newExtraFirefighterMap)
-
-      console.log(
-        "[v0] CalendarView - direct assignment map, replacement map, acting designation map, and extra firefighters map updated",
-      )
-    },
-    [months],
-  )
-
   const handleNoteChange = async () => {
     try {
       console.log("[v0] CalendarView - note changed, reloading notes")
