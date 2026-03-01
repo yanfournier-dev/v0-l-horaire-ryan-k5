@@ -460,32 +460,6 @@ export function ShiftAssignmentDrawer({
       setLoadingReplacements(false)
     }
   }
-        } catch (error) {
-          console.error("[v0] Error fetching batch shift assignments:", error)
-        }
-      }
-    }
-
-    const assignedWithAssignments = assigned.map((r: any) => {
-      const approvedApp = r.applications.find((app: any) => app.status === "approved")
-      const assignment = assignmentsByUserId[approvedApp.applicant_id] || {
-        is_acting_lieutenant: false,
-        is_acting_captain: false,
-      }
-
-      return {
-        ...r,
-        is_acting_lieutenant: assignment.is_acting_lieutenant || false,
-        is_acting_captain: assignment.is_acting_captain || false,
-      }
-    })
-
-    // Combine assigned replacements with pending replacements
-    const allAssignedReplacements = [...assignedWithAssignments, ...pendingReplacements]
-    setAssignedReplacements(allAssignedReplacements)
-
-    setLoadingReplacements(false)
-  }
 
   const handleCreateReplacement = async () => {
     if (typeof window !== "undefined") {
