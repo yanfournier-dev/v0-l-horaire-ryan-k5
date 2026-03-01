@@ -351,8 +351,14 @@ export function ShiftAssignmentDrawer({
       // Use teamFirefighters from props instead of fetching all firefighters
       setAllFirefighters(Array.isArray(teamFirefighters) ? teamFirefighters : [])
 
+      // Call onShiftUpdated with the shift and updated assignment info for optimized calendar update
       if (onShiftUpdated) {
-        onShiftUpdated(shift)
+        onShiftUpdated({
+          ...shift,
+          // Include the acting designations so calendar can update them immediately
+          is_acting_lieutenant: assignedWithAssignments[0]?.is_acting_lieutenant || false,
+          is_acting_captain: assignedWithAssignments[0]?.is_acting_captain || false,
+        })
       }
 
       setRefreshKey((prev) => prev + 1)
