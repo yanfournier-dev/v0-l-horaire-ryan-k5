@@ -283,17 +283,32 @@ export function ShiftAssignmentDrawer({
     if (!open || !shift) return
 
     const startTime = performance.now()
-    console.log("[v0] DRAWER: loadData started")
+    console.log("[v0] DRAWER: loadData started (using centralized drawer-data endpoint)")
     setLoadingReplacements(true)
     const shiftDate = formatDateForDB(shift.date)
 
     try {
-      // Step 1: Get replacements for shift
-      const replacementsStart = performance.now()
-      const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
-      const replacementsDuration = performance.now() - replacementsStart
-      console.log(`[v0] DRAWER: getReplacementsForShift took ${replacementsDuration.toFixed(0)}ms`)
-      
+      // OPTION B: Use single centralized endpoint instead of multiple API calls
+      const drawerDataStart = performance.now()
+      const drawerDataResponse = await fetch("/api/drawer-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shiftId: shift.id,
+          shiftDate: shiftDate,
+          shiftType: shift.shift_type,
+          teamId: shift.team_id,
+        }),
+      })
+
+      if (!drawerDataResponse.ok) {
+        throw new Error("Failed to fetch drawer data from centralized endpoint")
+      }
+
+      const { replacements: data, assignments, actingDesignations, duration } = await drawerDataResponse.json()
+      const drawerDataDuration = performance.now() - drawerDataStart
+      console.log(`[v0] DRAWER: Centralized endpoint took ${drawerDataDuration.toFixed(0)}ms (server: ${duration?.toFixed(0)}ms)`)
+
       setReplacements(data)
 
       // Get replacements with approved candidates
@@ -306,31 +321,12 @@ export function ShiftAssignmentDrawer({
         (r: any) => r.status === "assigned" && !r.applications?.some((app: any) => app.status === "approved"),
       )
 
-      // OPTIMIZATION: Batch fetch all shift assignments in ONE API call instead of N calls
-      let assignmentsByUserId: Record<number, any> = {}
-      if (assigned.length > 0) {
-        const userIds = assigned.map((r: any) => r.applications.find((app: any) => app.status === "approved")?.applicant_id).filter(Boolean)
-        
-        if (userIds.length > 0) {
-          try {
-            const batchStart = performance.now()
-            const batchResponse = await fetch("/api/get-shift-assignment", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                shiftId: shift.id,
-                userIds: userIds, // Send ALL userIds in one request
-              }),
-            })
-
-            if (batchResponse.ok) {
-              assignmentsByUserId = await batchResponse.json()
-            }
-            const batchDuration = performance.now() - batchStart
-            console.log(`[v0] DRAWER: Batch fetch ${userIds.length} assignments took ${batchDuration.toFixed(0)}ms`)
-          } catch (error) {
-            console.error("[v0] Error fetching batch shift assignments:", error)
-          }
+      // Create assignment map from the centralized response
+      const assignmentsByUserId: Record<number, any> = {}
+      for (const assignment of assignments) {
+        assignmentsByUserId[assignment.user_id] = {
+          is_acting_lieutenant: assignment.is_acting_lieutenant || false,
+          is_acting_captain: assignment.is_acting_captain || false,
         }
       }
 
@@ -343,12 +339,12 @@ export function ShiftAssignmentDrawer({
 
         return {
           ...r,
-          is_acting_lieutenant: assignment.is_acting_lieutenant || false,
-          is_acting_captain: assignment.is_acting_captain || false,
+          is_acting_lieutenant: assignment.is_acting_lieutenant,
+          is_acting_captain: assignment.is_acting_captain,
         }
       })
       
-      // Combine assigned replacements with pending replacements (those without approved candidates)
+      // Combine assigned replacements with pending replacements
       const allAssignedReplacements = [...assignedWithAssignments, ...pendingReplacements]
       setAssignedReplacements(allAssignedReplacements)
 
@@ -400,38 +396,70 @@ export function ShiftAssignmentDrawer({
   const refreshReplacements = async () => {
     setLoadingReplacements(true)
     const shiftDate = formatDateForDB(shift.date)
-    const data = await getReplacementsForShift(shiftDate, shift.shift_type, shift.team_id)
-    setReplacements(data)
-
-    // Get replacements with approved candidates
-    const assigned = data.filter(
-      (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
-    )
     
-    // Also get pending replacements (status === "assigned" but no approved applications)
-    const pendingReplacements = data.filter(
-      (r: any) => r.status === "assigned" && !r.applications?.some((app: any) => app.status === "approved"),
-    )
+    try {
+      // Use centralized endpoint
+      const drawerDataResponse = await fetch("/api/drawer-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shiftId: shift.id,
+          shiftDate: shiftDate,
+          shiftType: shift.shift_type,
+          teamId: shift.team_id,
+        }),
+      })
 
-    // OPTIMIZATION: Batch fetch all shift assignments in ONE API call instead of N calls
-    let assignmentsByUserId: Record<number, any> = {}
-    if (assigned.length > 0) {
-      const userIds = assigned.map((r: any) => r.applications.find((app: any) => app.status === "approved")?.applicant_id).filter(Boolean)
+      if (!drawerDataResponse.ok) {
+        throw new Error("Failed to refresh drawer data")
+      }
+
+      const { replacements: data, assignments } = await drawerDataResponse.json()
+      setReplacements(data)
+
+      // Get replacements with approved candidates
+      const assigned = data.filter(
+        (r: any) => r.status === "assigned" && r.applications?.some((app: any) => app.status === "approved"),
+      )
       
-      if (userIds.length > 0) {
-        try {
-          const batchResponse = await fetch("/api/get-shift-assignment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              shiftId: shift.id,
-              userIds: userIds, // Send ALL userIds in one request
-            }),
-          })
+      // Also get pending replacements
+      const pendingReplacements = data.filter(
+        (r: any) => r.status === "assigned" && !r.applications?.some((app: any) => app.status === "approved"),
+      )
 
-          if (batchResponse.ok) {
-            assignmentsByUserId = await batchResponse.json()
-          }
+      // Create assignment map from the centralized response
+      const assignmentsByUserId: Record<number, any> = {}
+      for (const assignment of assignments) {
+        assignmentsByUserId[assignment.user_id] = {
+          is_acting_lieutenant: assignment.is_acting_lieutenant || false,
+          is_acting_captain: assignment.is_acting_captain || false,
+        }
+      }
+
+      const assignedWithAssignments = assigned.map((r: any) => {
+        const approvedApp = r.applications.find((app: any) => app.status === "approved")
+        const assignment = assignmentsByUserId[approvedApp.applicant_id] || {
+          is_acting_lieutenant: false,
+          is_acting_captain: false,
+        }
+
+        return {
+          ...r,
+          is_acting_lieutenant: assignment.is_acting_lieutenant || false,
+          is_acting_captain: assignment.is_acting_captain || false,
+        }
+      })
+
+      // Combine assigned replacements with pending replacements
+      const allAssignedReplacements = [...assignedWithAssignments, ...pendingReplacements]
+      setAssignedReplacements(allAssignedReplacements)
+    } catch (error) {
+      console.error("[v0] Error refreshing replacements:", error)
+      toast.error("Erreur lors de l'actualisation des données.")
+    } finally {
+      setLoadingReplacements(false)
+    }
+  }
         } catch (error) {
           console.error("[v0] Error fetching batch shift assignments:", error)
         }
